@@ -7,7 +7,7 @@ import os, sys, time, subprocess, webbrowser
 from pathlib import Path
 
 HOST = '127.0.0.1'
-PORT = 8000
+PORT = 6000
 URL  = f'http://{HOST}:{PORT}'
 
 def check_deps():
