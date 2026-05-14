@@ -55,8 +55,8 @@ def _build_html(data: dict, title: str, acos_targets: dict,
         "/* acos targets loaded from db */"
     )
 
-    # 4. 标题（仅更新 <title> tag，h1 保持模板固定值"广告数据 漏斗分析"）
-    tmpl = re.sub(r'<title>.*?</title>', f'<title>{title}</title>', tmpl, count=1)
+    # 4. 标题固定为应用名，不随报告名变化
+    tmpl = re.sub(r'<title>.*?</title>', '<title>广告数据 漏斗分析</title>', tmpl, count=1)
 
     # 5. Web App 导航栏
     if report_id is not None:
