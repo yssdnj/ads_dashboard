@@ -1,0 +1,1861 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>HOWGO-US 广告漏斗分析 W15-W19</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f2f5;color:#1a1a2e;font-size:13px}
+#topbar{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:16px}
+#topbar h1{font-size:16px;font-weight:700;letter-spacing:.5px}
+#topbar .sub{font-size:11px;color:#a0aec0;margin-left:auto}
+#tabbar{background:#fff;border-bottom:2px solid #e2e8f0;padding:0 20px;display:flex;gap:4px;position:sticky;top:0;z-index:20}
+.tab-btn{padding:10px 16px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:500;color:#718096;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s}
+.tab-btn:hover{color:#4a5568}
+.tab-btn.active{color:#3b82f6;border-bottom-color:#3b82f6;font-weight:600}
+.tab-pane{display:none;padding:8px 20px 16px}
+.tab-pane.active{display:block}
+.dm-zone{border:2px dashed #e2e8f0;border-radius:8px;padding:14px;text-align:center;cursor:pointer;transition:all .2s;background:#fafafa}
+.dm-zone:hover{border-color:#3b82f6;background:#eff6ff}
+.dm-zone.ready{border-color:#22c55e;background:#f0fdf4}
+.filter-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px;background:#fff;padding:10px 14px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08)}#tab-ov .filter-bar,#tab-l1 .filter-bar,#tab-l2 .filter-bar,#tab-l3 .filter-bar,#tab-ana .filter-bar{position:sticky;top:42px;z-index:10;margin-bottom:0;border-radius:8px 8px 0 0}
+.filter-label{font-size:11px;font-weight:600;color:#718096;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.filter-pill{padding:4px 12px;border-radius:20px;border:1.5px solid #e2e8f0;background:#f7fafc;cursor:pointer;font-size:12px;color:#4a5568;transition:all .15s;white-space:nowrap}
+.filter-pill:hover{border-color:#93c5fd;color:#2563eb}
+.filter-pill.active{background:#3b82f6;border-color:#3b82f6;color:#fff;font-weight:600}
+.filter-sep{width:1px;height:20px;background:#e2e8f0;flex-shrink:0}
+.wk-chip{padding:4px 10px;border-radius:6px;border:1.5px solid #e2e8f0;background:#f7fafc;cursor:pointer;font-size:11px;font-weight:600;color:#4a5568;transition:all .15s}
+.wk-chip:hover{border-color:#93c5fd}
+.wk-chip.active{background:#3b82f6;border-color:#3b82f6;color:#fff}
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:14px}#ov-cards{margin-top:14px}
+.metric-card{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.07);border-left:3px solid #e2e8f0}
+.metric-card .m-label{font-size:10px;color:#718096;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.metric-card .m-val{font-size:18px;font-weight:700;color:#1a1a2e}
+.metric-card .m-wow{font-size:10px;margin-top:3px}
+.wow-up{color:#10b981;font-weight:600}
+.wow-dn{color:#ef4444;font-weight:600}
+.chart-wrap{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.07);margin-bottom:14px;position:relative}
+.chart-title{font-size:12px;font-weight:700;color:#4a5568;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.chart-title .mode-toggle{margin-left:auto;display:flex;gap:4px}
+.mode-btn{padding:3px 10px;border-radius:4px;border:1px solid #e2e8f0;background:#f7fafc;cursor:pointer;font-size:11px;color:#718096;transition:all .15s}
+.mode-btn.active{background:#3b82f6;border-color:#3b82f6;color:#fff}
+canvas{max-width:100%}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.tbl-wrap{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);overflow:hidden;margin-bottom:14px}
+.tbl-header{padding:10px 14px;font-size:12px;font-weight:700;color:#4a5568;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:8px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{padding:7px 8px;text-align:right;font-weight:600;color:#718096;background:#f7fafc;white-space:nowrap;border-bottom:1px solid #e2e8f0;font-size:11px}
+thead th:first-child{text-align:left}
+tbody tr{border-bottom:1px solid #f0f2f5;transition:background .1s}
+tbody tr.clickable{cursor:pointer}
+tbody tr.clickable:hover{background:#f7fafc}
+tbody tr.expanded-row{background:#eff6ff}
+tbody tr.week-row{background:#f8faff}
+tbody tr.week-row:hover{background:#eff6ff}
+tbody tr.day-row{background:#fafbff}
+tbody tr.day-row td:first-child{padding-left:28px}
+tbody td{padding:6px 8px;text-align:right;white-space:nowrap;font-size:12px}
+tbody td:first-child{text-align:left;font-weight:500}
+tbody td.good{color:#10b981}
+tbody td.warn{color:#f59e0b}
+tbody td.bad{color:#ef4444}
+.tdots{display:flex;gap:2px;align-items:center}
+.tdot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
+.exp-row td{padding:0!important;background:#f0f6ff}
+.exp-content{padding:12px 14px;border-left:3px solid #3b82f6}
+.pagination{display:flex;align-items:center;gap:6px;padding:10px 14px;border-top:1px solid #e2e8f0;flex-wrap:wrap}
+.page-btn{padding:4px 10px;border:1px solid #e2e8f0;border-radius:4px;cursor:pointer;font-size:12px;background:#fff;color:#4a5568}
+.page-btn:hover{background:#f7fafc;border-color:#93c5fd}
+.page-btn.active{background:#3b82f6;border-color:#3b82f6;color:#fff}
+.per-page-select{padding:3px 8px;border:1px solid #e2e8f0;border-radius:4px;font-size:12px;cursor:pointer}
+.status-select{padding:3px 8px;border:1px solid #e2e8f0;border-radius:4px;font-size:11px}
+.status-badge{padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600}
+.s-todo{background:#fef3c7;color:#92400e}
+.s-doing{background:#dbeafe;color:#1e40af}
+.s-done{background:#d1fae5;color:#065f46}
+.s-skip{background:#f1f5f9;color:#64748b}
+.section-title{font-size:11px;font-weight:700;color:#718096;text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px;padding-bottom:4px;border-bottom:1px solid #e2e8f0}
+.cat-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:14px}
+.cat-card{background:#fff;border-radius:10px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,.07);border-top:3px solid #3b82f6}
+.cat-card h3{font-size:13px;font-weight:700;margin-bottom:8px}
+.cat-card .cc-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.cc-m{text-align:center;padding:5px 3px;background:#f7fafc;border-radius:6px}
+.cc-m .ccm-l{font-size:9px;color:#718096;font-weight:600;text-transform:uppercase}
+.cc-m .ccm-v{font-size:12px;font-weight:700}
+.toggle-wrap{display:flex;align-items:center;gap:8px;font-size:12px}
+.toggle{width:34px;height:18px;border-radius:9px;background:#e2e8f0;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
+.toggle.on{background:#3b82f6}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle.on::after{left:18px}
+.acos-g{color:#10b981;font-weight:700}
+.acos-o{color:#3b82f6;font-weight:600}
+.acos-w{color:#f59e0b;font-weight:600}
+.acos-r{color:#ef4444;font-weight:700}
+.acos-info{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;background:#e2e8f0;color:#64748b;font-size:9px;font-weight:700;cursor:help;position:relative;margin-left:3px;vertical-align:middle;line-height:1;flex-shrink:0}
+.acos-info:hover .acos-tip{display:block}
+.acos-tip{display:none;position:absolute;top:20px;right:-4px;z-index:200;background:#1e293b;color:#f8fafc;border-radius:8px;padding:10px 12px;width:190px;font-size:11px;font-weight:400;white-space:normal;box-shadow:0 4px 16px rgba(0,0,0,.25);pointer-events:none;text-align:left}
+.acos-tip::before{content:'';position:absolute;top:-5px;right:8px;border:5px solid transparent;border-bottom-color:#1e293b;border-top:none}
+.acos-tip-row{display:flex;align-items:center;gap:7px;margin-bottom:5px;line-height:1.4}
+.acos-tip-row:last-child{margin-bottom:0}
+.acos-tip-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.acos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.acos-item{background:#fff;border-radius:8px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.acos-item label{display:block;font-size:11px;font-weight:600;color:#718096;margin-bottom:6px}
+.acos-item input{width:100%;padding:6px 10px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:16px;font-weight:700;text-align:center}
+.exp-toggle{font-size:10px;color:#3b82f6;cursor:pointer;margin-right:4px;display:inline-block;width:14px;text-align:center;font-weight:700;flex-shrink:0}
+.row-indent1 td:first-child{padding-left:22px!important}
+#l1-prod-table td:nth-child(2){text-align:left;font-weight:400}
+.row-indent2 td:first-child{padding-left:40px!important}
+
+.tdots-ext{display:flex;gap:3px;align-items:flex-end}
+.tdot-col{display:flex;flex-direction:column;align-items:center;gap:2px}
+.tdot-val{font-size:9px;font-weight:700;color:#374151;white-space:nowrap;line-height:1}
+.tdot-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+/* ── Analysis Tab Enhanced ─────────────────────────────── */
+.ana-summary-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+.ana-sum-card{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.08);text-align:center}
+.ana-sum-card .asc-label{font-size:11px;color:#718096;margin-bottom:4px}
+.ana-sum-card .asc-val{font-size:18px;font-weight:700;color:#1a202c;line-height:1.2}
+.ana-sum-card .asc-wow{font-size:11px;margin-top:3px}
+.asc-wow.up-bad{color:#ef4444}.asc-wow.dn-good{color:#10b981}.asc-wow.up-good{color:#10b981}.asc-wow.dn-bad{color:#ef4444}.asc-wow.neu{color:#94a3b8}
+.ana-section{margin-bottom:14px}
+.ana-sec-hdr{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:700;margin-bottom:8px;cursor:pointer;user-select:none}
+.ana-sec-hdr.urgent{background:#fef2f2;color:#b91c1c}
+.ana-sec-hdr.warning{background:#fffbeb;color:#92400e}
+.ana-sec-hdr.opportunity{background:#f0fdf4;color:#065f46}
+.ana-sec-hdr.neutral{background:#f8fafc;color:#475569}
+.ana-sec-count{background:rgba(0,0,0,.1);padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.ana-card{background:#fff;border-radius:10px;padding:14px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,.07);border-left:3px solid #e2e8f0}
+.ana-card-hdr{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.ana-card-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.ana-card-title{font-size:12px;font-weight:700;flex:1;min-width:0}
+.ana-card-desc{font-size:12px;color:#4a5568;margin-bottom:8px;line-height:1.5}
+.ana-actions{background:#f8fafc;border-radius:6px;padding:8px 10px;margin-bottom:8px;border:1px solid #e2e8f0}
+.ana-actions-lbl{font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.ana-action-item{font-size:11px;color:#334155;padding:2px 0 2px 14px;position:relative;line-height:1.5}
+.ana-action-item::before{content:'→';position:absolute;left:0;color:#94a3b8}
+.ana-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px}
+.ana-table th{background:#f1f5f9;padding:5px 8px;text-align:left;font-weight:600;color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:.3px}
+.ana-table td{padding:4px 8px;border-bottom:1px solid #f1f5f9;color:#1e293b}
+.ana-table tr:last-child td{border-bottom:none}
+.ana-controls{display:flex;gap:8px;margin-top:8px}
+.prod-tag{font-size:10px;background:#eff6ff;color:#3b82f6;padding:2px 6px;border-radius:4px;font-weight:500;flex-shrink:0}
+
+</style>
+</head>
+<body>
+<div id="topbar">
+  <h1>📊 广告数据 漏斗分析</h1>
+  <span class="sub">W15–W19 &nbsp;|&nbsp; 2026-04-06 ~ 2026-05-10 &nbsp;|&nbsp; 数据来源：领星后台</span>
+</div>
+<div id="tabbar">
+  <button class="tab-btn active" onclick="switchTab('ov')">总览</button>
+  <button class="tab-btn" onclick="switchTab('l1')">L1 广告类别</button>
+  <button class="tab-btn" onclick="switchTab('l2')">L2 广告组合</button>
+  <button class="tab-btn" onclick="switchTab('l3')">L3 广告活动</button>
+  <button class="tab-btn" onclick="switchTab('ana')">分析与建议</button>
+  <button class="tab-btn" onclick="switchTab('cfg')">ACoS配置</button>
+  <button class="tab-btn" onclick="switchTab('data')">数据管理</button>
+  
+</div>
+
+<div id="tab-ov" class="tab-pane active">
+  <div class="filter-bar">
+    <span class="filter-label">商品</span>
+    <button class="filter-pill active" onclick="setOvProd('all')">全部</button>
+    <button class="filter-pill" onclick="setOvProd('SL')">P绳(SL)</button>
+    <button class="filter-pill" onclick="setOvProd('DL')">双头牵引(DL)</button>
+    <button class="filter-pill" onclick="setOvProd('DSL2')">双头P绳(DSL2)</button>
+    <button class="filter-pill" onclick="setOvProd('Toy')">玩具羊毛球(Toy)</button>
+    <button class="filter-pill" onclick="setOvProd('ToyDH')">双手柄玩具(ToyDH)</button>
+    <button class="filter-pill" onclick="setOvProd('MFL')">多功能牵引(MFL)</button>
+    <button class="filter-pill" onclick="setOvProd('SFM')">丰容碗(SFM)</button>
+    <div class="filter-sep"></div>
+    <span class="filter-label">周次</span>
+    <select id="ovWkSel" onchange="setOvWkFilter(this.value)" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px">
+      <option value="all" selected>全期</option>
+      <option value="W15">W15</option>
+      <option value="W16">W16</option>
+      <option value="W17">W17</option>
+      <option value="W18">W18</option>
+      <option value="W19">W19</option>
+    </select>
+  </div>
+
+  <div id="ov-cards" class="metric-grid"></div>
+
+  <!-- Weekly chart -->
+  <div class="chart-wrap">
+    <div class="chart-title">
+      <span>📈 周趋势</span>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="ovWkM1" onclick="setOvWkMode('spend')">花费/销售/ACoS</button>
+        <button class="mode-btn" id="ovWkM2" onclick="setOvWkMode('click')">点击/订单/CTR/ACoS</button>
+      </div>
+    </div>
+    <canvas id="ovWkChart" height="75"></canvas>
+  </div>
+
+  <!-- Daily chart -->
+  <div class="chart-wrap">
+    <div class="chart-title">
+      <span>📅 日趋势</span>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="ovDayM1" onclick="setOvDayMode('spend')">花费/销售/ACoS</button>
+        <button class="mode-btn" id="ovDayM2" onclick="setOvDayMode('click')">点击/订单/CTR/ACoS</button>
+      </div>
+    </div>
+    <canvas id="ovDayChart" height="80"></canvas>
+  </div>
+
+  <!-- Product table -->
+  <div class="tbl-wrap">
+    <div class="tbl-header"><span class="tbl-title">各商品汇总</span><span style="margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px"><div class="toggle" id="wowToggle" onclick="toggleWoW()" style="flex-shrink:0"></div><span style="color:#718096">环比</span></span></div>
+    <div id="ov-prod-table"></div>
+  </div>
+</div>
+
+<div id="tab-l1" class="tab-pane">
+  <!-- Filter bar: product | category | week -->
+  <div class="filter-bar">
+    <span class="filter-label">商品</span>
+    <button class="filter-pill active" id="l1pa-all" onclick="setL1Prod('all')">全部</button>
+    <button class="filter-pill" id="l1pa-SL" onclick="setL1Prod('SL')">P绳(SL)</button>
+    <button class="filter-pill" id="l1pa-DL" onclick="setL1Prod('DL')">双头牵引(DL)</button>
+    <button class="filter-pill" id="l1pa-DSL2" onclick="setL1Prod('DSL2')">双头P绳(DSL2)</button>
+    <button class="filter-pill" id="l1pa-Toy" onclick="setL1Prod('Toy')">玩具羊毛球(Toy)</button>
+    <button class="filter-pill" id="l1pa-ToyDH" onclick="setL1Prod('ToyDH')">双手柄玩具(ToyDH)</button>
+    <button class="filter-pill" id="l1pa-MFL" onclick="setL1Prod('MFL')">多功能牵引(MFL)</button>
+    <button class="filter-pill" id="l1pa-SFM" onclick="setL1Prod('SFM')">丰容碗(SFM)</button>
+    <div class="filter-sep"></div>
+    <span class="filter-label">类别</span>
+    <button class="filter-pill active" id="l1ca-all" onclick="setL1Cat('all')">全部</button>
+    <button class="filter-pill" id="l1ca-3" onclick="setL1Cat('3_SP_KW精准')">KW精准</button>
+    <button class="filter-pill" id="l1ca-4" onclick="setL1Cat('4_SP_KW拓展')">KW拓展</button>
+    <button class="filter-pill" id="l1ca-5" onclick="setL1Cat('5_SP_ASIN精准')">ASIN精准</button>
+    <button class="filter-pill" id="l1ca-6" onclick="setL1Cat('6_SP_ASIN拓展')">ASIN拓展</button>
+    <button class="filter-pill" id="l1ca-1" onclick="setL1Cat('1_SB')">SB</button>
+    <button class="filter-pill" id="l1ca-2" onclick="setL1Cat('2_SD')">SD</button>
+    <div class="filter-sep"></div>
+    <span class="filter-label">周次</span>
+    <select id="l1WeekSel" onchange="setL1Week(this.value)" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px">
+      <option value="all">全期</option>
+      <option value="W15">W15</option>
+      <option value="W16">W16</option>
+      <option value="W17">W17</option>
+      <option value="W18">W18</option>
+      <option value="W19" selected>W19</option>
+    </select>
+  </div>
+
+  <!-- Weekly trend (filtered by prod+cat) -->
+  <div class="section-title" style="margin-top:12px">周趋势</div>
+  <div class="chart-wrap">
+    <div class="chart-title">
+      <span id="l1-wk-title">周趋势</span>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="l1WkM1" onclick="setL1WkMode('spend')">花费/销售/ACoS</button>
+        <button class="mode-btn" id="l1WkM2" onclick="setL1WkMode('click')">点击/订单/CTR/ACoS</button>
+      </div>
+    </div>
+    <canvas id="l1WkChart" height="75"></canvas>
+  </div>
+
+  <!-- 3 comparison charts (always all-category view) -->
+  <div class="three-col">
+    <div class="chart-wrap" style="margin-bottom:0">
+      <div class="chart-title">ACoS（柱）&amp; CVR（线）对比</div>
+      <canvas id="l1Chart1" height="200"></canvas>
+    </div>
+    <div class="chart-wrap" style="margin-bottom:0">
+      <div class="chart-title">花费 &amp; 销售额 对比</div>
+      <canvas id="l1Chart2" height="200"></canvas>
+    </div>
+    <div class="chart-wrap" style="margin-bottom:0">
+      <div class="chart-title">点击 &amp; 订单 对比</div>
+      <canvas id="l1Chart3" height="200"></canvas>
+    </div>
+  </div>
+  <div style="margin-bottom:14px"></div>
+
+
+  <!-- Daily trend -->
+  <div class="section-title">日趋势（周次: <span id="l1-day-label">W19</span>）</div>
+  <div class="chart-wrap">
+    <div class="chart-title">
+      <span id="l1-day-title">日趋势</span>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="l1DayM1" onclick="setL1DayMode('spend')">花费/销售/ACoS</button>
+        <button class="mode-btn" id="l1DayM2" onclick="setL1DayMode('click')">点击/订单/CTR/ACoS</button>
+      </div>
+    </div>
+    <canvas id="l1DayChart" height="80"></canvas>
+  </div>
+
+  <!-- Product data table -->
+  <div class="tbl-wrap">
+    <div class="tbl-header">
+      <span class="tbl-title">商品数据</span>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px">
+        <div class="toggle" id="l1WowToggle" onclick="toggleL1WoW()" style="flex-shrink:0"></div>
+        <span style="color:#718096">环比</span>
+      </span>
+    </div>
+    <div id="l1-prod-table"></div>
+  </div>
+</div>
+
+<div id="tab-l2" class="tab-pane">
+  <div class="filter-bar">
+    <span class="filter-label">商品</span>
+    <button class="filter-pill active" onclick="setL2Prod('all')">全部</button>
+    <button class="filter-pill" onclick="setL2Prod('SL')">P绳(SL)</button>
+    <button class="filter-pill" onclick="setL2Prod('DL')">双头牵引(DL)</button>
+    <button class="filter-pill" onclick="setL2Prod('DSL2')">双头P绳(DSL2)</button>
+    <button class="filter-pill" onclick="setL2Prod('Toy')">玩具羊毛球(Toy)</button>
+    <button class="filter-pill" onclick="setL2Prod('ToyDH')">双手柄玩具(ToyDH)</button>
+    <button class="filter-pill" onclick="setL2Prod('MFL')">多功能牵引(MFL)</button>
+    <button class="filter-pill" onclick="setL2Prod('SFM')">丰容碗(SFM)</button>
+    <div class="filter-sep"></div>
+    <span class="filter-label">类别</span>
+    <button class="filter-pill active" id="l2ca-all" onclick="setL2Cat('all')">全部</button>
+    <button class="filter-pill" id="l2ca-3_SP_KW精准" onclick="setL2Cat('3_SP_KW精准')">KW精准</button>
+    <button class="filter-pill" id="l2ca-4_SP_KW拓展" onclick="setL2Cat('4_SP_KW拓展')">KW拓展</button>
+    <button class="filter-pill" id="l2ca-5_SP_ASIN精准" onclick="setL2Cat('5_SP_ASIN精准')">ASIN精准</button>
+    <button class="filter-pill" id="l2ca-6_SP_ASIN拓展" onclick="setL2Cat('6_SP_ASIN拓展')">ASIN拓展</button>
+    <button class="filter-pill" id="l2ca-1_SB" onclick="setL2Cat('1_SB')">SB</button>
+    <button class="filter-pill" id="l2ca-2_SD" onclick="setL2Cat('2_SD')">SD</button>
+    <div class="filter-sep"></div>
+    <span class="filter-label">周次</span>
+    <select id="l2WeekSel" onchange="setL2Week(this.value)" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px">
+      <option value="all">全期</option>
+      <option value="W15">W15</option>
+      <option value="W16">W16</option>
+      <option value="W17">W17</option>
+      <option value="W18">W18</option>
+      <option value="W19" selected>W19</option>
+    </select>
+  </div>
+  <div class="chart-wrap">
+    <div class="chart-title">
+      <span>📈 周趋势</span>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="l2WkM1" onclick="setL2WkMode('spend')">花费/ACoS</button>
+        <button class="mode-btn" id="l2WkM2" onclick="setL2WkMode('click')">点击/订单/CTR/ACoS</button>
+      </div>
+    </div>
+    <canvas id="l2WkChart" height="75"></canvas>
+  </div>
+  <div class="chart-wrap">
+    <div class="chart-title">
+      <span>📅 日趋势 (<span id="l2-day-wk-label">W19</span>)</span>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="l2DayM1" onclick="setL2DayMode('spend')">花费/ACoS</button>
+        <button class="mode-btn" id="l2DayM2" onclick="setL2DayMode('click')">点击/订单/CTR/ACoS</button>
+      </div>
+    </div>
+    <canvas id="l2DayChart" height="75"></canvas>
+  </div>
+  <div style="margin-bottom:14px"></div>
+  <div class="tbl-wrap">
+    <div class="tbl-header"><span class="tbl-title">广告组合列表</span><span id="l2-count" style="font-size:11px;color:#718096"></span><span style="margin-left:auto;display:flex;align-items:center;gap:8px"><input type="text" id="l2SearchInput" placeholder="🔍 搜索组合名..." oninput="setL2Search(this.value)" style="padding:4px 10px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px;width:180px"><span style="font-size:11px;color:#718096">每页</span><select class="per-page-select" onchange="setL2PerPage(+this.value)"><option value="20" selected>20</option><option value="50">50</option><option value="100">100</option><option value="200">200</option></select></span></div>
+    <div id="l2-table"></div>
+    <div class="pagination" id="l2-pages"></div>
+  </div>
+</div>
+
+<div id="tab-l3" class="tab-pane">
+  <div class="filter-bar">
+    <span class="filter-label">商品</span>
+    <button class="filter-pill active" id="l3pd-all" onclick="setL3Prod('all')">全部</button>
+    <button class="filter-pill" id="l3pd-SL" onclick="setL3Prod('SL')">P绳(SL)</button>
+    <button class="filter-pill" id="l3pd-DL" onclick="setL3Prod('DL')">双头牵引(DL)</button>
+    <button class="filter-pill" id="l3pd-DSL2" onclick="setL3Prod('DSL2')">双头P绳(DSL2)</button>
+    <button class="filter-pill" id="l3pd-Toy" onclick="setL3Prod('Toy')">玩具羊毛球(Toy)</button>
+    <button class="filter-pill" id="l3pd-ToyDH" onclick="setL3Prod('ToyDH')">双手柄玩具(ToyDH)</button>
+    <button class="filter-pill" id="l3pd-MFL" onclick="setL3Prod('MFL')">多功能牵引(MFL)</button>
+    <button class="filter-pill" id="l3pd-SFM" onclick="setL3Prod('SFM')">丰容碗(SFM)</button>
+    <div class="filter-sep"></div>
+    <span class="filter-label">类别</span>
+    <button class="filter-pill active" id="l3ca-all" onclick="setL3Cat('all')">全部</button>
+    <button class="filter-pill" id="l3ca-3_SP_KW精准" onclick="setL3Cat('3_SP_KW精准')">KW精准</button>
+    <button class="filter-pill" id="l3ca-4_SP_KW拓展" onclick="setL3Cat('4_SP_KW拓展')">KW拓展</button>
+    <button class="filter-pill" id="l3ca-5_SP_ASIN精准" onclick="setL3Cat('5_SP_ASIN精准')">ASIN精准</button>
+    <button class="filter-pill" id="l3ca-6_SP_ASIN拓展" onclick="setL3Cat('6_SP_ASIN拓展')">ASIN拓展</button>
+    <button class="filter-pill" id="l3ca-1_SB" onclick="setL3Cat('1_SB')">SB</button>
+    <button class="filter-pill" id="l3ca-2_SD" onclick="setL3Cat('2_SD')">SD</button>
+    <div class="filter-sep"></div>
+    <span class="filter-label">状态</span>
+    <button class="filter-pill active" id="l3st-all" onclick="setL3St('all')">全部</button>
+    <button class="filter-pill" id="l3st-conv" onclick="setL3St('converting')">✅ 转化</button>
+    <button class="filter-pill" id="l3st-cno" onclick="setL3St('click_no_order')">🔶 点击无单</button>
+    <button class="filter-pill" id="l3st-imp" onclick="setL3St('imp_only')">⬜ 仅曝光</button>
+    <button class="filter-pill" id="l3st-no" onclick="setL3St('no_imp')">🚫 无曝光</button>
+  </div>
+
+  <div class="tbl-wrap">
+    <div class="tbl-header">
+      <span class="tbl-title">广告活动列表</span>
+      <span id="l3-count" style="font-size:11px;color:#718096"></span>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:8px">
+        <input type="text" id="l3PortSearchInput" placeholder="🔍 广告组合..." oninput="setL3PortSearch(this.value)" style="padding:4px 10px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px;width:160px">
+        <input type="text" id="l3SearchInput" placeholder="🔍 广告活动..." oninput="setL3Search(this.value)" style="padding:4px 10px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px;width:160px">
+        <span style="font-size:12px;color:#64748b">ACoS:</span>
+        <button class="l3-acos-btn" data-v="all" onclick="setL3AcosFlt('all')" style="padding:2px 8px;font-size:12px;border:1px solid #94a3b8;border-radius:4px;cursor:pointer;background:#f8fafc;font-weight:700;opacity:1">全部</button>
+        <button class="l3-acos-btn" data-v="g" onclick="setL3AcosFlt('g')" style="padding:2px 8px;font-size:12px;border:1px solid #16a34a;border-radius:4px;cursor:pointer;background:#f0fdf4;color:#16a34a;opacity:0.45">🟢</button>
+        <button class="l3-acos-btn" data-v="o" onclick="setL3AcosFlt('o')" style="padding:2px 8px;font-size:12px;border:1px solid #2563eb;border-radius:4px;cursor:pointer;background:#eff6ff;color:#2563eb;opacity:0.45">🔵</button>
+        <button class="l3-acos-btn" data-v="w" onclick="setL3AcosFlt('w')" style="padding:2px 8px;font-size:12px;border:1px solid #d97706;border-radius:4px;cursor:pointer;background:#fffbeb;color:#d97706;opacity:0.45">🟡</button>
+        <button class="l3-acos-btn" data-v="r" onclick="setL3AcosFlt('r')" style="padding:2px 8px;font-size:12px;border:1px solid #dc2626;border-radius:4px;cursor:pointer;background:#fef2f2;color:#dc2626;opacity:0.45">🔴</button>
+        <span style="font-size:11px;color:#718096">每页</span>
+        <select class="per-page-select" onchange="setL3PerPage(+this.value)">
+          <option value="50" selected>50</option><option value="100">100</option>
+          <option value="200">200</option><option value="1000">1000</option>
+        </select>
+      </span>
+    </div>
+    <div id="l3-table"></div>
+    <div class="pagination" id="l3-pages"></div>
+  </div>
+</div>
+
+<div id="tab-ana" class="tab-pane">
+  <div class="filter-bar">
+    <span class="filter-label">商品筛选</span>
+    <button class="filter-pill active" onclick="setAnaProd('all')">全部</button>
+    <button class="filter-pill" onclick="setAnaProd('SL')">P绳(SL)</button>
+    <button class="filter-pill" onclick="setAnaProd('DL')">双头牵引(DL)</button>
+    <button class="filter-pill" onclick="setAnaProd('DSL2')">双头P绳(DSL2)</button>
+    <button class="filter-pill" onclick="setAnaProd('Toy')">玩具羊毛球(Toy)</button>
+    <button class="filter-pill" onclick="setAnaProd('ToyDH')">双手柄玩具(ToyDH)</button>
+    <button class="filter-pill" onclick="setAnaProd('MFL')">多功能牵引(MFL)</button>
+    <button class="filter-pill" onclick="setAnaProd('SFM')">丰容碗(SFM)</button>
+  </div>
+  <div id="ana-content"></div>
+</div>
+
+<div id="tab-cfg" class="tab-pane">
+  <div style="max-width:700px">
+    <div class="section-title">ACoS 目标设置（%）</div>
+    <p style="color:#718096;font-size:12px;margin-bottom:12px">设置各商品的 ACoS 目标，影响 ACoS 颜色评级和分析建议。</p>
+    <div class="acos-grid" id="cfg-acos-grid"></div>
+    <div style="margin-top:16px;display:flex;gap:8px">
+      <button onclick="saveCfg()" style="padding:8px 20px;background:#3b82f6;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">保存配置</button>
+      <button onclick="resetCfg()" style="padding:8px 20px;background:#f1f5f9;color:#4a5568;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer;font-size:13px">重置默认</button>
+    </div>
+    <div id="cfg-saved" style="display:none;margin-top:8px;color:#10b981;font-size:12px;font-weight:600">✓ 已保存</div>
+  </div>
+</div>
+<div id="tab-data" class="tab-pane">
+  <div style="max-width:820px">
+
+    <div class="section-title" style="margin-bottom:12px">导入新报告</div>
+    <div style="background:#fff;border-radius:10px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:20px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div id="dm-zone-camp" class="dm-zone" onclick="document.getElementById('dm-inp-camp').click()">
+          <input type="file" id="dm-inp-camp" accept=".xlsx,.xls" style="display:none" onchange="dmOnFile('camp',this)">
+          <div style="font-size:20px">📋</div>
+          <div style="font-weight:600;font-size:12px;margin-top:4px">广告活动每日明细</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:2px">领星 → 全部 → 每日明细导出</div>
+          <div id="dm-camp-name" style="font-size:11px;color:#16a34a;font-weight:600;margin-top:4px;word-break:break-all"></div>
+        </div>
+        <div id="dm-zone-port" class="dm-zone" onclick="document.getElementById('dm-inp-port').click()">
+          <input type="file" id="dm-inp-port" accept=".xlsx,.xls" style="display:none" onchange="dmOnFile('port',this)">
+          <div style="font-size:20px">📦</div>
+          <div style="font-weight:600;font-size:12px;margin-top:4px">广告组合每日明细</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:2px">领星 → 广告组合 → 每日明细导出</div>
+          <div id="dm-port-name" style="font-size:11px;color:#16a34a;font-weight:600;margin-top:4px;word-break:break-all"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <input type="text" id="dm-title" placeholder="报告名称（留空自动生成，如 HOWGO-US W20-W24）"
+          style="flex:1;padding:7px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">
+        <button id="dm-btn-import" onclick="dmDoImport()" disabled
+          style="padding:8px 18px;background:#3b82f6;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;transition:background .15s">
+          开始导入
+        </button>
+      </div>
+      <div id="dm-status" style="font-size:11px;min-height:18px"></div>
+    </div>
+
+    <div class="section-title" style="margin-bottom:12px">历史报告</div>
+    <div id="dm-report-list" style="background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden">
+      <div style="padding:24px;text-align:center;color:#94a3b8;font-size:12px">点击"数据管理"标签加载…</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const RAW = __RAW_JSON__;</script>
+<script>
+const WEEKS = ['W15','W16','W17','W18','W19'];
+const WK_DATES = {W15:'4/6-4/12',W16:'4/13-4/19',W17:'4/20-4/26',W18:'4/27-5/3',W19:'5/4-5/10'};
+const CAT_ORDER = ['3_SP_KW精准','4_SP_KW拓展','5_SP_ASIN精准','6_SP_ASIN拓展','1_SB','2_SD'];
+const CAT_SHORT = {'1_SB':'SB','2_SD':'SD','3_SP_KW精准':'KW精准','4_SP_KW拓展':'KW拓展','5_SP_ASIN精准':'ASIN精准','6_SP_ASIN拓展':'ASIN拓展','7_Other':'Other'};
+const CAT_COLOR = {'1_SB':'#8b5cf6','2_SD':'#f59e0b','3_SP_KW精准':'#3b82f6','4_SP_KW拓展':'#06b6d4','5_SP_ASIN精准':'#10b981','6_SP_ASIN拓展':'#f97316','7_Other':'#94a3b8'};
+const PROD_DESC = {SL:'P绳',DL:'双头牵引绳',DSL2:'双头P绳',Toy:'玩具羊毛球',ToyDH:'双手柄玩具',MFL:'多功能牵引绳',SFM:'丰容碗',ShortL:'超短牵引绳',WB:'水杯',Other:'其他'};
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let acosTargets = {SL:35,DL:35,Toy:35,ToyDH:40,DSL2:40,MFL:40,SFM:40,ShortL:40,WB:40,Other:40};
+let showWoW = false, l1ShowWoW = false;
+let ovProd='all', ovWkMode='spend', ovDayWk='all', ovDayMode='spend';
+let l1Prod='all', l1Cat='all', l1Week='W19', l1WkMode='spend', l1DayMode='spend';
+let l2Prod='all', l2Cat='all', l2WkMode='spend', l2DayMode='spend', l2Page=0, l2PerPage=20, l2Week='W19', l2Search='';
+let l3Prod='all', l3Cat='all', l3St='all', l3Page=0, l3PerPage=50, l3Search='', l3PortSearch='', l3AcosFlt='all';
+let anaProd='all';
+let _charts={};
+
+function destroyChart(id){if(_charts[id]){_charts[id].destroy();delete _charts[id];}}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function fmt(v,type){
+  if(v===null||v===undefined)return'--';
+  switch(type){
+    case'$':return'$'+v.toFixed(2);
+    case'pct':return v.toFixed(1)+'%';
+    case'pct2':return v.toFixed(2)+'%';
+    case'int':return v.toLocaleString();
+    case'x':return v.toFixed(2)+'x';
+    default:return String(v);
+  }
+}
+function getTarget(prod){return acosTargets[prod]||40;}
+function acosClass(v,prod){
+  if(v===null||v===undefined)return'';
+  const t=getTarget(prod);
+  if(v<=t*0.85)return'acos-g';
+  if(v<=t)return'acos-o';
+  if(v<=t*1.3)return'acos-w';
+  return'acos-r';
+}
+function wowTag(cur,prev,lowerBetter){
+  if(cur===null||prev===null||prev===0)return'';
+  const d=((cur-prev)/Math.abs(prev)*100).toFixed(1);
+  const good=lowerBetter?(cur<prev):(cur>prev);
+  const cls=good?'wow-up':'wow-dn';
+  return`<span class="${cls}">${cur>prev?'↑':'↓'}${Math.abs(d)}%</span>`;
+}
+function trendDots(wa,prod){
+  if(!wa||!wa.length)return'';
+  return'<div class="tdots-ext">'+wa.map((v,i)=>{
+    let bg='#e2e8f0';
+    if(v!==null){const t=getTarget(prod);bg=v<=t*0.85?'#10b981':v<=t?'#3b82f6':v<=t*1.3?'#f59e0b':'#ef4444';}
+    const lbl=v!==null?v.toFixed(0)+'%':'--';
+    return`<div class="tdot-col"><div class="tdot-val" style="color:${bg==='#e2e8f0'?'#94a3b8':bg}">${lbl}</div><div class="tdot-dot" style="background:${bg}"></div></div>`;
+  }).join('')+'</div>';
+}
+
+// ── Date/week helpers ──────────────────────────────────────────────────────────
+function wkDays(wk){
+  const r={W15:['2026-04-06','2026-04-12'],W16:['2026-04-13','2026-04-19'],W17:['2026-04-20','2026-04-26'],W18:['2026-04-27','2026-05-03'],W19:['2026-05-04','2026-05-10']};
+  const [s,e]=r[wk]||[];
+  if(!s)return[];
+  const days=[];
+  let cur=new Date(s);
+  const end=new Date(e);
+  while(cur<=end){days.push(cur.toISOString().slice(0,10));cur.setDate(cur.getDate()+1);}
+  return days;
+}
+function allDays(){return WEEKS.flatMap(w=>wkDays(w));}
+function getDayList(wkFilter){
+  if(wkFilter==='all')return allDays();
+  return wkDays(wkFilter);
+}
+
+// Get metric object (total or weekly) for a prod+cat combo
+function getMetrics(prod,cat,wIdx){
+  // wIdx: -1=total, 0-4=week index
+  const isTotal = (wIdx===-1||wIdx===undefined||wIdx===null);
+  const key = isTotal?'t':'w';
+  const widx = isTotal?null:wIdx;
+  if(prod==='all'&&!cat){return isTotal?RAW.ov.t:RAW.ov.w[wIdx];}
+  if(prod!=='all'&&cat){const s=RAW.prod_cats[prod]?.[cat];return s?(isTotal?s.t:s.w[wIdx]):null;}
+  if(prod!=='all'){const s=RAW.prods[prod];return s?(isTotal?s.t:s.w[wIdx]):null;}
+  if(cat){const s=RAW.cats[cat];return s?(isTotal?s.t:s.w[wIdx]):null;}
+  return null;
+}
+
+// Get daily data series for a prod+cat combo
+function getDailyData(prod,cat,days){
+  return days.map(d=>{
+    let src;
+    if(prod==='all'&&!cat) src=RAW.daily_ov[d];
+    else if(prod!=='all'&&cat) src=RAW.daily_prod_cat[prod]?.[cat]?.[d];
+    else if(prod!=='all') src=RAW.daily_prod[prod]?.[d];
+    else if(cat) src=RAW.daily_cat[cat]?.[d];
+    return src||{sp:0,sl:0,cl:0,im:0,or_:0,ac:null,ro:null,ct:null,cv:null,cp:null};
+  });
+}
+
+// ── Chart builder helpers ──────────────────────────────────────────────────────
+// Build combo datasets for spend/click mode
+Chart.register(ChartDataLabels);
+Chart.defaults.set("plugins.datalabels",{display:false});
+
+function buildComboDatasets(metrics, mode){
+  if(mode==='spend'){
+    return[
+      {type:'bar',label:'花费($)',data:metrics.map(m=>m?m.sp:0),backgroundColor:'rgba(59,130,246,0.7)',yAxisID:'y',datalabels:{display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:v=>v>0?'$'+Math.round(v):''}},
+      {type:'bar',label:'销售额($)',data:metrics.map(m=>m?m.sl:0),backgroundColor:'rgba(16,185,129,0.7)',yAxisID:'y',datalabels:{display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:v=>v>0?'$'+Math.round(v):''}},
+      {type:'line',label:'ACoS(%)',data:metrics.map(m=>m?m.ac:null),borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,.1)',yAxisID:'y2',tension:.3,pointRadius:4,fill:false},
+    ];
+  }else{
+    return[
+      {type:'bar',label:'曝光(百)',data:metrics.map(m=>m?+(m.im/100).toFixed(1):0),backgroundColor:'rgba(148,163,184,0.5)',yAxisID:'y',hidden:true},
+      {type:'bar',label:'点击',data:metrics.map(m=>m?m.cl:0),backgroundColor:'rgba(59,130,246,0.7)',yAxisID:'y',datalabels:{display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:v=>v>0?v:''}},
+      {type:'bar',label:'订单',data:metrics.map(m=>m?+(m.or||m.or_||0):0),backgroundColor:'rgba(16,185,129,0.7)',yAxisID:'y',datalabels:{display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:v=>v>0?v:''}},
+      {type:'line',label:'CVR(%)',data:metrics.map(m=>m?m.cv:null),borderColor:'#8b5cf6',yAxisID:'y2',tension:.3,pointRadius:4,fill:false,hidden:true},
+      {type:'line',label:'CTR(%)',data:metrics.map(m=>m?m.ct:null),borderColor:'#f59e0b',yAxisID:'y2',tension:.3,pointRadius:4,fill:false},
+      {type:'line',label:'ACoS(%)',data:metrics.map(m=>m?m.ac:null),borderColor:'#ef4444',yAxisID:'y2',tension:.3,pointRadius:4,fill:false},
+    ];
+  }
+}
+
+function comboChartOpts(yLabel,y2Label){
+  return{responsive:true,interaction:{mode:'index',intersect:false},
+    scales:{
+      y:{beginAtZero:true,position:'left',title:{display:!!yLabel,text:yLabel||''},ticks:{font:{size:9}}},
+      y2:{beginAtZero:true,position:'right',title:{display:!!y2Label,text:y2Label||''},grid:{drawOnChartArea:false},ticks:{font:{size:9},callback:v=>v+'%'}}
+    },
+    plugins:{legend:{labels:{font:{size:10}},position:'top'}}
+  };
+}
+
+// ── Tab routing ────────────────────────────────────────────────────────────────
+function switchTab(id){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active',['ov','l1','l2','l3','ana','cfg','data'][i]===id);
+  });
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  if(id==='ov')renderOv();
+  else if(id==='l1')renderL1();
+  else if(id==='l2')renderL2();
+  else if(id==='l3')renderL3();
+  else if(id==='ana')renderAna();
+  else if(id==='cfg')renderCfg();
+  else if(id==='data')dmLoadReports();
+  else if(id==='dbq')dbqInit();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// OVERVIEW
+// ══════════════════════════════════════════════════════════════════════════════
+function setOvProd(p){
+  ovProd=p;
+  document.querySelectorAll('#tab-ov .filter-bar:first-child .filter-pill').forEach(b=>{
+    const t=b.textContent;
+    b.classList.toggle('active',p==='all'?t.includes('全部'):t.includes('('+p+')'));
+  });
+  renderOv();
+}
+function setOvWkMode(m){ovWkMode=m;document.getElementById('ovWkM1').classList.toggle('active',m==='spend');document.getElementById('ovWkM2').classList.toggle('active',m==='click');drawOvWkChart();}
+function setOvWkFilter(w){
+  ovDayWk=w;
+  const sel=document.getElementById('ovWkSel');if(sel)sel.value=w;
+  renderOvCards();
+  renderOvProdTable();
+  drawOvDayChart();
+}
+function setOvDayMode(m){ovDayMode=m;document.getElementById('ovDayM1').classList.toggle('active',m==='spend');document.getElementById('ovDayM2').classList.toggle('active',m==='click');drawOvDayChart();}
+function toggleWoW(){showWoW=!showWoW;document.getElementById('wowToggle').classList.toggle('on',showWoW);renderOvProdTable();}
+
+function renderOv(){renderOvCards();drawOvWkChart();drawOvDayChart();renderOvProdTable();}
+
+function renderOvCards(){
+  const prod=ovProd==='all'?'Other':ovProd;
+  const wIdx=ovDayWk==='all'?-1:WEEKS.indexOf(ovDayWk);
+  const t=getMetrics(ovProd,null,wIdx);
+  if(!t)return;
+  const cards=[
+    {l:'总花费',v:fmt(t.sp,'$')},
+    {l:'总销售额',v:fmt(t.sl,'$')},
+    {l:'总曝光',v:fmt(t.im,'int')},
+    {l:'总点击',v:fmt(t.cl,'int')},
+    {l:'总订单',v:fmt(t.or||t.or_,'int')},
+    {l:'ACoS',v:fmt(t.ac,'pct'),cls:acosClass(t.ac,prod)},
+    {l:'ROAS',v:fmt(t.ro,'x')},
+    {l:'CTR',v:fmt(t.ct,'pct2')},
+    {l:'CVR',v:fmt(t.cv,'pct2')},
+    {l:'CPC',v:fmt(t.cp,'$')},
+  ];
+  document.getElementById('ov-cards').innerHTML=cards.map(c=>
+    `<div class="metric-card"><div class="m-label">${c.l}</div><div class="m-val ${c.cls||''}">${c.v}</div></div>`
+  ).join('');
+}
+
+function drawOvWkChart(){
+  destroyChart('ovWkChart');
+  const labels=WEEKS.map(w=>w+' ('+WK_DATES[w]+')');
+  const metrics=WEEKS.map((_,i)=>getMetrics(ovProd,null,i)||{sp:0,sl:0,cl:0,im:0,or_:0,ac:null,ct:null,cv:null});
+  _charts['ovWkChart']=new Chart(document.getElementById('ovWkChart'),{
+    type:'bar',data:{labels,datasets:buildComboDatasets(metrics,ovWkMode)},
+    options:comboChartOpts('','%')
+  });
+}
+
+function drawOvDayChart(){
+  destroyChart('ovDayChart');
+  const days=getDayList(ovDayWk);
+  const metrics=getDailyData(ovProd==='all'?'all':ovProd,null,days);
+  _charts['ovDayChart']=new Chart(document.getElementById('ovDayChart'),{
+    type:'bar',data:{labels:days.map(d=>d.slice(5)),datasets:buildComboDatasets(metrics,ovDayMode)},
+    options:comboChartOpts('','%')
+  });
+}
+
+// Overview product table: 曝光,点击,订单,广告花费,销售额,CPC,CTR,CVR,ACoS,目标线,ROAS,ACoS趋势
+let ovSortCol='sl',ovSortDir=-1;
+let l1SortCol='sl',l1SortDir=-1;
+let l2SortCol='sl',l2SortDir=-1;
+let l3SortCol='sl',l3SortDir=-1;
+function _si(sc,c,sd){return sc===c?(sd===-1?'↓':'↑'):'↕';}
+function _th(sc,sd,c,l,fn,xs=''){
+  const _info=c==='ac'?'<span class="acos-info" onclick="event.stopPropagation()">&#9432;<span class="acos-tip"><div style="font-weight:700;margin-bottom:7px;font-size:11px">ACoS 颜色说明</div><div class="acos-tip-row"><span class="acos-tip-dot" style="background:#10b981"></span>≤ 目标 × 85%　优秀</div><div class="acos-tip-row"><span class="acos-tip-dot" style="background:#3b82f6"></span>≤ 目标　　　　达标</div><div class="acos-tip-row"><span class="acos-tip-dot" style="background:#f59e0b"></span>≤ 目标 × 130%　偏高</div><div class="acos-tip-row"><span class="acos-tip-dot" style="background:#ef4444"></span>&gt; 目标 × 130%　超标</div><div style="margin-top:7px;padding-top:6px;border-top:1px solid #334155;font-size:10px;color:#94a3b8">目标在 ACoS配置 Tab 设置</div></span></span>':'';
+  return `<th style="cursor:pointer;user-select:none${xs}" onclick="${fn}('${c}')">${l} <span style="font-size:9px;color:${sc===c?'#3b82f6':'#94a3b8'}">${_si(sc,c,sd)}</span>${_info}</th>`;
+}
+function sortOv(c){if(ovSortCol===c)ovSortDir*=-1;else{ovSortCol=c;ovSortDir=-1;}renderOvProdTable();}
+function sortL1(c){if(l1SortCol===c)l1SortDir*=-1;else{l1SortCol=c;l1SortDir=-1;}renderL1ProdTable();}
+function sortL2(c){if(l2SortCol===c)l2SortDir*=-1;else{l2SortCol=c;l2SortDir=-1;}renderL2Table();}
+function sortL3(c){if(l3SortCol===c)l3SortDir*=-1;else{l3SortCol=c;l3SortDir=-1;}renderL3();}
+
+function _mkSumRow(s,pre,suf){
+  const cpc=s.cl?s.sp/s.cl:null,ctr=s.im?s.cl/s.im*100:null;
+  const cvr=s.cl?s.or/s.cl*100:null,ac=s.sl?s.sp/s.sl*100:null,ro=s.sp?s.sl/s.sp:null;
+  return `<tr style="background:#f1f5f9;font-weight:700;border-bottom:2px solid #cbd5e1;font-size:12px">
+    ${pre}<td>${fmt(s.im,'int')}</td><td>${fmt(s.cl,'int')}</td><td>${fmt(s.or,'int')}</td>
+    <td>${fmt(s.sp,'$')}</td><td>${fmt(s.sl,'$')}</td><td>${fmt(cpc,'$')}</td>
+    <td>${fmt(ctr,'pct2')}</td><td>${fmt(cvr,'pct2')}</td>
+    <td>${fmt(ac,'pct')}</td><td style="color:#718096">-</td><td>${fmt(ro,'x')}</td>${suf}
+  </tr>`;
+}
+function renderOvProdTable(){
+  let prodList=Object.keys(RAW.prods);
+  if(ovProd!=='all')prodList=prodList.filter(p=>p===ovProd);
+  const wIdx=ovDayWk==='all'?-1:WEEKS.indexOf(ovDayWk);
+  prodList.sort((a,b)=>{
+    const gv=p=>{const d=wIdx===-1?RAW.prods[p].t:(RAW.prods[p].w[wIdx]||{});return ovSortCol==='or'?(d.or||d.or_||0):(d[ovSortCol]??-Infinity);};
+    return ovSortDir*(gv(a)-gv(b));
+  });
+  const _ovth=(c,l,xs='')=>_th(ovSortCol,ovSortDir,c,l,'sortOv',xs);
+  let html=`<table><thead><tr>
+    <th style="text-align:left">商品</th>
+    ${_ovth('im','曝光')}${_ovth('cl','点击')}${_ovth('or','订单')}${_ovth('sp','花费($)')}${_ovth('sl','销售额($)')}
+    ${_ovth('cp','CPC($)')}${_ovth('ct','CTR%')}${_ovth('cv','CVR%')}${_ovth('ac','ACoS%')}<th>目标</th>${_ovth('ro','ROAS')}<th style="text-align:center">趋势</th>
+  </tr></thead><tbody>`;
+  {const _s={im:0,cl:0,or:0,sp:0,sl:0};prodList.forEach(p=>{const d=wIdx===-1?RAW.prods[p].t:(RAW.prods[p].w[wIdx]||null);if(!d)return;_s.im+=d.im||0;_s.cl+=d.cl||0;_s.or+=(d.or||d.or_||0);_s.sp+=d.sp||0;_s.sl+=d.sl||0;});html+=_mkSumRow(_s,'<td style="color:#475569;font-weight:700">汇总</td>','<td></td>');}
+  for(const p of prodList){
+    const t=wIdx===-1?RAW.prods[p].t:(RAW.prods[p].w[wIdx]||null);
+    if(!t||(!t.sp&&!t.cl&&!t.im))continue;
+    const wa=RAW.prods[p].w.map(w=>w?.ac??null);
+    const acCls=acosClass(t.ac,p);
+    html+=`<tr class="clickable" onclick="toggleOvRow('${p}',this)">
+      <td><span class="exp-toggle" data-open="false">▶</span>${PROD_DESC[p]||p} <small style="color:#94a3b8">(${p})</small></td>
+      <td>${fmt(t.im,'int')}</td>
+      <td>${fmt(t.cl,'int')}</td>
+      <td>${fmt(t.or||t.or_,'int')}</td>
+      <td>${fmt(t.sp,'$')}</td>
+      <td>${fmt(t.sl,'$')}</td>
+      <td>${fmt(t.cp,'$')}</td>
+      <td>${fmt(t.ct,'pct2')}</td>
+      <td>${fmt(t.cv,'pct2')}</td>
+      <td class="${acCls}">${fmt(t.ac,'pct')}</td>
+      <td style="color:#718096">${getTarget(p)}%</td>
+      <td>${fmt(t.ro,'x')}</td>
+      <td><div style="display:flex;justify-content:center">${trendDots(wa,p)}</div></td>
+    </tr>`;
+  }
+  html+='</tbody></table>';
+  document.getElementById('ov-prod-table').innerHTML=html;
+}
+
+function toggleOvRow(prod,tr){
+  const existRows=document.querySelectorAll('.ov-wk-row-'+prod+',.ov-day-row-'+prod);
+  if(existRows.length){
+    document.querySelectorAll('.ov-wk-row-'+prod+',.ov-day-row-'+prod+',[class*="ov-d-'+prod+'-"]').forEach(r=>r.remove());
+    tr.classList.remove('expanded-row');tr.querySelector('.exp-toggle').textContent='▶';return;
+  }
+  // close other expanded rows
+  document.querySelectorAll('#ov-prod-table .week-row,#ov-prod-table .day-row,#ov-prod-table .exp-row').forEach(r=>r.remove());
+  document.querySelectorAll('#ov-prod-table tbody tr').forEach(r=>{r.classList.remove('expanded-row');const t=r.querySelector('.exp-toggle');if(t)t.textContent='▶';});
+  tr.classList.add('expanded-row');tr.querySelector('.exp-toggle').textContent='▼';
+  const wdata=RAW.prods[prod].w;
+  if(ovDayWk==='all'){
+    let insertAfter=tr;
+    WEEKS.forEach((w,i)=>{
+      const d=wdata[i];if(!d||(!d.sp&&!d.cl&&!d.im))return;
+      const acCls=acosClass(d.ac,prod);
+      const rowHtml=`<tr class="week-row row-indent1 ov-wk-row-${prod} clickable" onclick="toggleOvWeekRow('${prod}','${w}',this)">
+        <td><span class="exp-toggle" data-open="false">▶</span><span style="font-size:11px;color:#3b82f6;font-weight:600">${w}</span> <small style="color:#aaa">${WK_DATES[w]}</small></td>
+        <td>${fmt(d.im,'int')}</td><td>${fmt(d.cl,'int')}</td><td>${fmt(d.or||d.or_,'int')}</td>
+        <td>${fmt(d.sp,'$')}</td><td>${fmt(d.sl,'$')}</td><td>${fmt(d.cp,'$')}</td>
+        <td>${fmt(d.ct,'pct2')}</td><td>${fmt(d.cv,'pct2')}</td>
+        <td class="${acCls}">${fmt(d.ac,'pct')}</td>
+        <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
+        <td>${fmt(d.ro,'x')}</td><td></td>
+      </tr>`;
+      insertAfter.insertAdjacentHTML('afterend',rowHtml);
+      insertAfter=insertAfter.nextSibling;
+    });
+  }else{
+    const days=wkDays(ovDayWk);
+    let insertAfter=tr;
+    days.forEach(d=>{
+      const src=RAW.daily_prod[prod]?.[d];if(!src)return;
+      const acCls=acosClass(src.ac,prod);
+      const rowHtml=`<tr class="day-row row-indent1 ov-day-row-${prod}">
+        <td><span style="color:#718096;font-size:11px">${d.slice(5)}</span></td>
+        <td>${fmt(src.im,'int')}</td><td>${fmt(src.cl,'int')}</td><td>${fmt(src.or_||src.or,'int')}</td>
+        <td>${fmt(src.sp,'$')}</td><td>${fmt(src.sl,'$')}</td><td>${fmt(src.cp,'$')}</td>
+        <td>${fmt(src.ct,'pct2')}</td><td>${fmt(src.cv,'pct2')}</td>
+        <td class="${acCls}">${fmt(src.ac,'pct')}</td>
+        <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
+        <td>${fmt(src.ro,'x')}</td><td></td>
+      </tr>`;
+      insertAfter.insertAdjacentHTML('afterend',rowHtml);
+      insertAfter=insertAfter.nextSibling;
+    });
+  }
+}
+
+function toggleOvWeekRow(prod,wk,tr){
+  const cls='ov-d-'+prod+'-'+wk;
+  const existRows=document.querySelectorAll('.'+cls);
+  if(existRows.length){existRows.forEach(r=>r.remove());tr.classList.remove('expanded-row');tr.querySelector('.exp-toggle').textContent='▶';return;}
+  tr.classList.add('expanded-row');tr.querySelector('.exp-toggle').textContent='▼';
+  const days=wkDays(wk);
+  let insertAfter=tr;
+  days.forEach(d=>{
+    const src=RAW.daily_prod[prod]?.[d];if(!src)return;
+    const acCls=acosClass(src.ac,prod);
+    const rowHtml=`<tr class="day-row row-indent2 ${cls}">
+      <td><span style="color:#718096;font-size:11px">${d.slice(5)}</span></td>
+      <td>${fmt(src.im,'int')}</td><td>${fmt(src.cl,'int')}</td><td>${fmt(src.or_||src.or,'int')}</td>
+      <td>${fmt(src.sp,'$')}</td><td>${fmt(src.sl,'$')}</td><td>${fmt(src.cp,'$')}</td>
+      <td>${fmt(src.ct,'pct2')}</td><td>${fmt(src.cv,'pct2')}</td>
+      <td class="${acCls}">${fmt(src.ac,'pct')}</td>
+      <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
+      <td>${fmt(src.ro,'x')}</td><td></td>
+    </tr>`;
+    insertAfter.insertAdjacentHTML('afterend',rowHtml);
+    insertAfter=insertAfter.nextSibling;
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// L1
+// ══════════════════════════════════════════════════════════════════════════════
+function setL1Prod(p){
+  l1Prod=p;
+  document.querySelectorAll('[id^="l1pa-"]').forEach(b=>b.classList.remove('active'));
+  document.getElementById('l1pa-'+(p==='all'?'all':p)).classList.add('active');
+  renderL1();
+}
+function setL1Cat(c){
+  l1Cat=c;
+  document.querySelectorAll('[id^="l1ca-"]').forEach(b=>b.classList.remove('active'));
+  const idMap={'all':'all','3_SP_KW精准':'3','4_SP_KW拓展':'4','5_SP_ASIN精准':'5','6_SP_ASIN拓展':'6','1_SB':'1','2_SD':'2'};
+  document.getElementById('l1ca-'+(idMap[c]||'all')).classList.add('active');
+  renderL1();
+}
+function setL1Week(w){
+  l1Week=w;
+  document.getElementById('l1-day-label').textContent=w==='all'?'全期':w;
+  renderL1Charts();drawL1WkChart();drawL1DayChart();renderL1ProdTable();
+}
+function setL1WkMode(m){l1WkMode=m;document.getElementById('l1WkM1').classList.toggle('active',m==='spend');document.getElementById('l1WkM2').classList.toggle('active',m==='click');drawL1WkChart();}
+function setL1DayMode(m){l1DayMode=m;document.getElementById('l1DayM1').classList.toggle('active',m==='spend');document.getElementById('l1DayM2').classList.toggle('active',m==='click');drawL1DayChart();}
+function toggleL1WoW(){l1ShowWoW=!l1ShowWoW;document.getElementById('l1WowToggle').classList.toggle('on',l1ShowWoW);renderL1ProdTable();}
+
+function renderL1(){renderL1Charts();drawL1WkChart();drawL1DayChart();renderL1ProdTable();}
+
+// 3 comparison charts — always show all 6 categories, filtered by prod+week
+function renderL1Charts(){
+  const cats=CAT_ORDER;
+  const labels=cats.map(c=>CAT_SHORT[c]);
+  const wIdx=l1Week==='all'?-1:WEEKS.indexOf(l1Week);
+
+  // For comparison charts: use prod filter but always show all categories
+  function getCatMetric(cat){
+    if(l1Prod==='all') return getMetrics('all',cat,wIdx);
+    else return getMetrics(l1Prod,cat,wIdx);
+  }
+
+  const acosVals=cats.map(c=>getCatMetric(c)?.ac??null);
+  const cvrVals=cats.map(c=>getCatMetric(c)?.cv??null);
+  const spVals=cats.map(c=>getCatMetric(c)?.sp??0);
+  const slVals=cats.map(c=>getCatMetric(c)?.sl??0);
+  const clVals=cats.map(c=>getCatMetric(c)?.cl??0);
+  const orVals=cats.map(c=>{const d=getCatMetric(c);return d?(d.or||d.or_||0):0;});
+  const prod=l1Prod==='all'?'Other':l1Prod;
+  const tgt=getTarget(prod);
+  const bgColors=cats.map(c=>CAT_COLOR[c]+'cc');
+
+  // Chart 1: ACoS=bar, CVR=line
+  destroyChart('l1Chart1');
+  _charts['l1Chart1']=new Chart(document.getElementById('l1Chart1'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {type:'bar',label:'ACoS(%)',data:acosVals,backgroundColor:'rgba(99,102,241,0.75)',yAxisID:'y'},
+      {type:'line',label:`目标(${tgt}%)`,data:labels.map(()=>tgt),borderColor:'#ef4444',borderDash:[5,3],pointRadius:0,fill:false,yAxisID:'y'},
+      {type:'line',label:'CVR(%)',data:cvrVals,borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,.1)',tension:.3,pointRadius:6,pointBackgroundColor:bgColors,fill:false,yAxisID:'y2'},
+    ]},
+    options:{responsive:true,interaction:{mode:'index',intersect:false},
+      scales:{
+        y:{beginAtZero:true,position:'left',title:{display:true,text:'ACoS(%)'},ticks:{font:{size:9}}},
+        y2:{beginAtZero:true,position:'right',title:{display:true,text:'CVR(%)'},grid:{drawOnChartArea:false},ticks:{font:{size:9}}}
+      },
+      plugins:{legend:{labels:{font:{size:10}}}}
+    }
+  });
+
+  // Chart 2: 花费 & 销售额 — consistent colors per metric
+  destroyChart('l1Chart2');
+  _charts['l1Chart2']=new Chart(document.getElementById('l1Chart2'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'花费($)',data:spVals,backgroundColor:'rgba(59,130,246,0.8)'},
+      {label:'销售额($)',data:slVals,backgroundColor:'rgba(59,130,246,0.35)'},
+    ]},
+    options:{responsive:true,interaction:{mode:'index',intersect:false},
+      scales:{y:{beginAtZero:true,ticks:{font:{size:9}}}},
+      plugins:{legend:{labels:{font:{size:10}}}}
+    }
+  });
+
+  // Chart 3: 点击 & 订单 — consistent colors per metric
+  destroyChart('l1Chart3');
+  _charts['l1Chart3']=new Chart(document.getElementById('l1Chart3'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'点击',data:clVals,backgroundColor:'rgba(16,185,129,0.8)'},
+      {label:'订单',data:orVals,backgroundColor:'rgba(16,185,129,0.35)'},
+    ]},
+    options:{responsive:true,interaction:{mode:'index',intersect:false},
+      scales:{y:{beginAtZero:true,ticks:{font:{size:9}}}},
+      plugins:{legend:{labels:{font:{size:10}}}}
+    }
+  });
+}
+
+// Weekly trend — aggregated by prod+cat filter
+function drawL1WkChart(){
+  destroyChart('l1WkChart');
+  const metrics=WEEKS.map((_,i)=>getMetrics(l1Prod==='all'?'all':l1Prod, l1Cat==='all'?null:l1Cat, i));
+  const labels=WEEKS.map(w=>w+' ('+WK_DATES[w]+')');
+  // Build title
+  const pLabel=l1Prod==='all'?'全部商品':PROD_DESC[l1Prod]||l1Prod;
+  const cLabel=l1Cat==='all'?'全部类别':CAT_SHORT[l1Cat]||l1Cat;
+  document.getElementById('l1-wk-title').textContent=`周趋势 · ${pLabel} · ${cLabel}`;
+  _charts['l1WkChart']=new Chart(document.getElementById('l1WkChart'),{
+    type:'bar',data:{labels,datasets:buildComboDatasets(metrics,l1WkMode)},
+    options:comboChartOpts('','%')
+  });
+}
+
+// Daily trend — aggregated by prod+cat+week filter
+function drawL1DayChart(){
+  destroyChart('l1DayChart');
+  const days=getDayList(l1Week);
+  const metrics=getDailyData(l1Prod==='all'?'all':l1Prod, l1Cat==='all'?null:l1Cat, days);
+  const pLabel=l1Prod==='all'?'全部':PROD_DESC[l1Prod]||l1Prod;
+  const cLabel=l1Cat==='all'?'全部':CAT_SHORT[l1Cat]||l1Cat;
+  document.getElementById('l1-day-title').textContent=`日趋势 · ${pLabel} · ${cLabel}`;
+  _charts['l1DayChart']=new Chart(document.getElementById('l1DayChart'),{
+    type:'bar',data:{labels:days.map(d=>d.slice(5)),datasets:buildComboDatasets(metrics,l1DayMode)},
+    options:comboChartOpts('','%')
+  });
+}
+
+// L1 product table: rows = (类别 × 商品) combinations from RAW.prod_cats
+function renderL1ProdTable(){
+  const CAT_ORDER=['3_SP_KW精准','4_SP_KW拓展','5_SP_ASIN精准','6_SP_ASIN拓展','1_SB','2_SD'];
+  const allProds=l1Prod==='all'?Object.keys(RAW.prods).filter(p=>p!=='Other'):[l1Prod];
+  const allCats=l1Cat==='all'?CAT_ORDER:[l1Cat];
+  const wIdx=l1Week==='all'?-1:WEEKS.indexOf(l1Week);
+  // Build (cat,prod) rows with data
+  let rows=[];
+  allCats.forEach(cat=>{
+    allProds.forEach(prod=>{
+      const src=RAW.prod_cats[prod]?.[cat];if(!src)return;
+      const d=wIdx===-1?src.t:src.w[wIdx];
+      if(!d||(!d.sp&&!d.cl&&!d.im))return;
+      const prevIdx=wIdx>0?wIdx-1:null;
+      const wowPrev=(l1ShowWoW&&prevIdx!==null)?src.w[prevIdx]:null;
+      rows.push({prod,cat,src,d,wowPrev});
+    });
+  });
+  // Sort
+  rows.sort((a,b)=>{
+    const gv=r=>l1SortCol==='or'?(r.d.or||r.d.or_||0):(r.d[l1SortCol]??-Infinity);
+    return l1SortDir*(gv(a)-gv(b));
+  });
+  const _l1th=(c,l,xs='')=>_th(l1SortCol,l1SortDir,c,l,'sortL1',xs);
+  let html=`<table><thead><tr>
+    <th style="text-align:left;min-width:80px">类别</th>
+    <th style="text-align:left;min-width:140px">商品</th>
+    ${_l1th('im','曝光')}${_l1th('cl','点击')}${_l1th('or','订单')}${_l1th('sp','花费($)')}${_l1th('sl','销售额($)')}
+    ${_l1th('cp','CPC($)')}${_l1th('ct','CTR%')}${_l1th('cv','CVR%')}${_l1th('ac','ACoS%')}<th>目标</th>${_l1th('ro','ROAS')}<th style="text-align:center">趋势</th>
+  </tr></thead><tbody>`;
+  {const _s={im:0,cl:0,or:0,sp:0,sl:0};rows.forEach(r=>{const d=r.d;_s.im+=d.im||0;_s.cl+=d.cl||0;_s.or+=(d.or||d.or_||0);_s.sp+=d.sp||0;_s.sl+=d.sl||0;});html+=_mkSumRow(_s,'<td style="color:#475569;font-weight:700">汇总</td><td></td>','<td></td>');}
+  for(const r of rows){
+    const {prod,cat,src,d,wowPrev}=r;
+    const acCls=acosClass(d.ac,prod);
+    const ww=l1ShowWoW&&wowPrev?{
+      cl:wowTag(d.cl,wowPrev.cl,false),sp:wowTag(d.sp,wowPrev.sp,true),
+      sl:wowTag(d.sl,wowPrev.sl,false),ac:wowTag(d.ac,wowPrev.ac,true),cv:wowTag(d.cv,wowPrev.cv,false)
+    }:{};
+    const rk=prod+'_'+cat.replace(/[^a-zA-Z0-9]/g,'_');
+    const catEsc=cat.replace(/'/g,"\'");
+    html+=`<tr class="clickable" onclick="toggleL1CatRow('${prod}','${catEsc}','${rk}',this)">
+      <td><span class="exp-toggle" data-open="false">▶</span><span style="color:${CAT_COLOR[cat]};font-weight:600">${CAT_SHORT[cat]}</span></td>
+      <td><strong>${PROD_DESC[prod]||prod}</strong> <small style="color:#94a3b8">(${prod})</small> <button onclick="event.stopPropagation();jumpToL2Prod('${prod}','${catEsc}')" style="margin-left:6px;padding:1px 6px;font-size:10px;border:1px solid #3b82f6;color:#3b82f6;background:none;border-radius:4px;cursor:pointer">→L2</button></td>
+      <td>${fmt(d.im,'int')}</td>
+      <td>${fmt(d.cl,'int')}${ww.cl?' '+ww.cl:''}</td>
+      <td>${fmt(d.or||d.or_,'int')}</td>
+      <td>${fmt(d.sp,'$')}${ww.sp?' '+ww.sp:''}</td>
+      <td>${fmt(d.sl,'$')}${ww.sl?' '+ww.sl:''}</td>
+      <td>${fmt(d.cp,'$')}</td>
+      <td>${fmt(d.ct,'pct2')}</td>
+      <td>${fmt(d.cv,'pct2')}${ww.cv?' '+ww.cv:''}</td>
+      <td class="${acCls}">${fmt(d.ac,'pct')}${ww.ac?' '+ww.ac:''}</td>
+      <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
+      <td>${fmt(d.ro,'x')}</td>
+      <td><div style="display:flex;justify-content:center">${trendDots(src.w.map(w=>w?.ac??null),prod)}</div></td>
+    </tr>`;
+  }
+  html+='</tbody></table>';
+  document.getElementById('l1-prod-table').innerHTML=html;
+}
+
+function toggleL1ProdRow(prod,tr){
+  const existRows=document.querySelectorAll(`.l1-wk-row-${prod},.l1-day-row-${prod}`);
+  if(existRows.length){existRows.forEach(r=>r.remove());tr.classList.remove('expanded-row');tr.querySelector('.exp-toggle').textContent='▶';return;}
+  tr.classList.add('expanded-row');tr.querySelector('.exp-toggle').textContent='▼';
+  const src=l1Cat==='all'?RAW.prods[prod]:RAW.prod_cats[prod]?.[l1Cat];
+  if(!src)return;
+  if(l1Week==='all'){
+    // Show W15-W19 sub-rows
+    let insertAfter=tr;
+    WEEKS.forEach((w,i)=>{
+      const d=l1Cat==='all'?src.w[i]:src.w[i];
+      if(!d||(!d.sp&&!d.cl&&!d.im))return;
+      const acCls=acosClass(d.ac,prod);
+      const prevD=i>0?src.w[i-1]:null;
+      const ww=l1ShowWoW&&prevD?{cl:wowTag(d.cl,prevD.cl,false),sp:wowTag(d.sp,prevD.sp,true),sl:wowTag(d.sl,prevD.sl,false),cv:wowTag(d.cv,prevD.cv,false),ac:wowTag(d.ac,prevD.ac,true)}:{};
+      const rowHtml=`<tr class="week-row row-indent1 l1-wk-row-${prod} clickable" onclick="toggleL1WeekRow('${prod}','${w}',this)">
+        <td><span class="exp-toggle" data-open="false">▶</span><span style="font-size:11px;color:#3b82f6;font-weight:600">${w}</span> <small style="color:#aaa">${WK_DATES[w]}</small></td>
+        <td>${fmt(d.im,'int')}</td><td>${fmt(d.cl,'int')}${ww.cl?' '+ww.cl:''}</td><td>${fmt(d.or||d.or_,'int')}</td>
+        <td>${fmt(d.sp,'$')}${ww.sp?' '+ww.sp:''}</td><td>${fmt(d.sl,'$')}${ww.sl?' '+ww.sl:''}</td><td>${fmt(d.cp,'$')}</td>
+        <td>${fmt(d.ct,'pct2')}</td><td>${fmt(d.cv,'pct2')}${ww.cv?' '+ww.cv:''}</td>
+        <td class="${acCls}">${fmt(d.ac,'pct')}${ww.ac?' '+ww.ac:''}</td>
+        <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
+        <td>${fmt(d.ro,'x')}</td><td></td>
+      </tr>`;
+      insertAfter.insertAdjacentHTML('afterend',rowHtml);
+      insertAfter=insertAfter.nextSibling;
+    });
+  }else{
+    // Show daily for selected week
+    const days=wkDays(l1Week);
+    let insertAfter=tr;
+    days.forEach((d,dIdx)=>{
+      const src2=l1Cat==='all'?RAW.daily_prod[prod]?.[d]:RAW.daily_prod_cat[prod]?.[l1Cat]?.[d];
+      if(!src2)return;
+      const acCls=acosClass(src2.ac,prod);
+      const prevDay=dIdx>0?days[dIdx-1]:null;
+      const prevSrc2=prevDay?(l1Cat==='all'?RAW.daily_prod[prod]?.[prevDay]:RAW.daily_prod_cat[prod]?.[l1Cat]?.[prevDay]):null;
+      const ww=l1ShowWoW&&prevSrc2?{cl:wowTag(src2.cl,prevSrc2.cl,false),sp:wowTag(src2.sp,prevSrc2.sp,true),sl:wowTag(src2.sl,prevSrc2.sl,false),cv:wowTag(src2.cv,prevSrc2.cv,false),ac:wowTag(src2.ac,prevSrc2.ac,true)}:{};
+      const rowHtml=`<tr class="day-row row-indent1 l1-day-row-${prod}">
+        <td><span style="color:#718096;font-size:11px">${d.slice(5)}</span></td>
+        <td>${fmt(src2.im,'int')}</td><td>${fmt(src2.cl,'int')}${ww.cl?' '+ww.cl:''}</td><td>${fmt(src2.or_||src2.or,'int')}</td>
+        <td>${fmt(src2.sp,'$')}${ww.sp?' '+ww.sp:''}</td><td>${fmt(src2.sl,'$')}${ww.sl?' '+ww.sl:''}</td><td>${fmt(src2.cp,'$')}</td>
+        <td>${fmt(src2.ct,'pct2')}</td><td>${fmt(src2.cv,'pct2')}${ww.cv?' '+ww.cv:''}</td>
+        <td class="${acCls}">${fmt(src2.ac,'pct')}${ww.ac?' '+ww.ac:''}</td>
+        <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
+        <td>${fmt(src2.ro,'x')}</td><td></td>
+      </tr>`;
+      insertAfter.insertAdjacentHTML('afterend',rowHtml);
+      insertAfter=insertAfter.nextSibling;
+    });
+  }
+}
+
+function toggleL1WeekRow(prod,wk,tr){
+  const cls=`l1-d-${prod}-${wk}`;
+  const existRows=document.querySelectorAll('.'+cls);
+  if(existRows.length){existRows.forEach(r=>r.remove());tr.classList.remove('expanded-row');tr.querySelector('.exp-toggle').textContent='▶';return;}
+  tr.classList.add('expanded-row');tr.querySelector('.exp-toggle').textContent='▼';
+  const days=wkDays(wk);
+  let insertAfter=tr;
+  days.forEach((d,dIdx)=>{
+    const src=l1Cat==='all'?RAW.daily_prod[prod]?.[d]:RAW.daily_prod_cat[prod]?.[l1Cat]?.[d];
+    if(!src)return;
+    const acCls=acosClass(src.ac,prod);
+    const prevDay=dIdx>0?days[dIdx-1]:null;
+    const prevSrc=prevDay?(l1Cat==='all'?RAW.daily_prod[prod]?.[prevDay]:RAW.daily_prod_cat[prod]?.[l1Cat]?.[prevDay]):null;
+    const ww=l1ShowWoW&&prevSrc?{cl:wowTag(src.cl,prevSrc.cl,false),sp:wowTag(src.sp,prevSrc.sp,true),sl:wowTag(src.sl,prevSrc.sl,false),cv:wowTag(src.cv,prevSrc.cv,false),ac:wowTag(src.ac,prevSrc.ac,true)}:{};
+    const rowHtml=`<tr class="day-row row-indent2 ${cls}">
+      <td><span style="color:#718096;font-size:11px">${d.slice(5)}</span></td>
+      <td>${fmt(src.im,'int')}</td><td>${fmt(src.cl,'int')}${ww.cl?' '+ww.cl:''}</td><td>${fmt(src.or_||src.or,'int')}</td>
+      <td>${fmt(src.sp,'$')}${ww.sp?' '+ww.sp:''}</td><td>${fmt(src.sl,'$')}${ww.sl?' '+ww.sl:''}</td><td>${fmt(src.cp,'$')}</td>
+      <td>${fmt(src.ct,'pct2')}</td><td>${fmt(src.cv,'pct2')}${ww.cv?' '+ww.cv:''}</td>
+      <td class="${acCls}">${fmt(src.ac,'pct')}${ww.ac?' '+ww.ac:''}</td>
+      <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
+      <td>${fmt(src.ro,'x')}</td><td></td>
+    </tr>`;
+    insertAfter.insertAdjacentHTML('afterend',rowHtml);
+    insertAfter=insertAfter.nextSibling;
+  });
+}
+
+function toggleL1CatRow(prod,cat,rk,tr){
+  const existRows=document.querySelectorAll('.l1-wk-row-'+rk+',.l1-day-row-'+rk);
+  if(existRows.length){
+    document.querySelectorAll('.l1-wk-row-'+rk+',.l1-day-row-'+rk+',[class*="l1-d-'+rk+'-"]').forEach(r=>r.remove());
+    tr.classList.remove('expanded-row');tr.querySelector('.exp-toggle').textContent='▶';return;
+  }
+  document.querySelectorAll('#l1-prod-table .week-row,#l1-prod-table .day-row').forEach(r=>r.remove());
+  document.querySelectorAll('#l1-prod-table .expanded-row').forEach(r=>{r.classList.remove('expanded-row');const e=r.querySelector('.exp-toggle');if(e)e.textContent='▶';});
+  tr.classList.add('expanded-row');tr.querySelector('.exp-toggle').textContent='▼';
+  const catSrc=RAW.prod_cats[prod]?.[cat];if(!catSrc)return;
+  if(l1Week==='all'){
+    let insertAfter=tr;
+    WEEKS.forEach((w,i)=>{
+      const d=catSrc.w[i];if(!d||(!d.sp&&!d.cl&&!d.im))return;
+      const acCls=acosClass(d.ac,prod);
+      const catEsc=cat.replace(/'/g,"\'");
+      const rowHtml=`<tr class="week-row row-indent1 l1-wk-row-${rk} clickable" onclick="toggleL1CatWeekRow('${prod}','${catEsc}','${w}','${rk}',this)">
+        <td><span class="exp-toggle" data-open="false">▶</span><span style="font-size:11px;color:#3b82f6;font-weight:600">${w}</span> <small style="color:#aaa">${WK_DATES[w]}</small></td>
+        <td></td>
+        <td>${fmt(d.im,'int')}</td><td>${fmt(d.cl,'int')}</td><td>${fmt(d.or||d.or_,'int')}</td>
+        <td>${fmt(d.sp,'$')}</td><td>${fmt(d.sl,'$')}</td><td>${fmt(d.cp,'$')}</td>
+        <td>${fmt(d.ct,'pct2')}</td><td>${fmt(d.cv,'pct2')}</td>
+        <td class="${acCls}">${fmt(d.ac,'pct')}</td>
+        <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
+        <td>${fmt(d.ro,'x')}</td><td></td>
+      </tr>`;
+      insertAfter.insertAdjacentHTML('afterend',rowHtml);
+      insertAfter=insertAfter.nextSibling;
+    });
+  }else{
+    const days=wkDays(l1Week);
+    let insertAfter=tr;
+    days.forEach(d=>{
+      const src=RAW.daily_prod_cat[prod]?.[cat]?.[d];if(!src)return;
+      const acCls=acosClass(src.ac,prod);
+      const rowHtml=`<tr class="day-row row-indent1 l1-day-row-${rk}">
+        <td><span style="color:#718096;font-size:11px">${d.slice(5)}</span></td>
+        <td></td>
+        <td>${fmt(src.im,'int')}</td><td>${fmt(src.cl,'int')}</td><td>${fmt(src.or_||src.or,'int')}</td>
+        <td>${fmt(src.sp,'$')}</td><td>${fmt(src.sl,'$')}</td><td>${fmt(src.cp,'$')}</td>
+        <td>${fmt(src.ct,'pct2')}</td><td>${fmt(src.cv,'pct2')}</td>
+        <td class="${acCls}">${fmt(src.ac,'pct')}</td>
+        <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
+        <td>${fmt(src.ro,'x')}</td><td></td>
+      </tr>`;
+      insertAfter.insertAdjacentHTML('afterend',rowHtml);
+      insertAfter=insertAfter.nextSibling;
+    });
+  }
+}
+
+function toggleL1CatWeekRow(prod,cat,wk,rk,tr){
+  const cls='l1-d-'+rk+'-'+wk;
+  const existRows=document.querySelectorAll('.'+cls);
+  if(existRows.length){existRows.forEach(r=>r.remove());tr.classList.remove('expanded-row');tr.querySelector('.exp-toggle').textContent='▶';return;}
+  tr.classList.add('expanded-row');tr.querySelector('.exp-toggle').textContent='▼';
+  const days=wkDays(wk);
+  let insertAfter=tr;
+  days.forEach(d=>{
+    const src=RAW.daily_prod_cat[prod]?.[cat]?.[d];if(!src)return;
+    const acCls=acosClass(src.ac,prod);
+    const rowHtml=`<tr class="day-row row-indent2 ${cls}">
+      <td><span style="color:#718096;font-size:11px">${d.slice(5)}</span></td>
+      <td></td>
+      <td>${fmt(src.im,'int')}</td><td>${fmt(src.cl,'int')}</td><td>${fmt(src.or_||src.or,'int')}</td>
+      <td>${fmt(src.sp,'$')}</td><td>${fmt(src.sl,'$')}</td><td>${fmt(src.cp,'$')}</td>
+      <td>${fmt(src.ct,'pct2')}</td><td>${fmt(src.cv,'pct2')}</td>
+      <td class="${acCls}">${fmt(src.ac,'pct')}</td>
+      <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
+      <td>${fmt(src.ro,'x')}</td><td></td>
+    </tr>`;
+    insertAfter.insertAdjacentHTML('afterend',rowHtml);
+    insertAfter=insertAfter.nextSibling;
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// L2
+// ══════════════════════════════════════════════════════════════════════════════
+function setL2Prod(p){
+  l2Prod=p;l2Page=0;
+  document.querySelectorAll('#tab-l2 .filter-bar .filter-pill').forEach(b=>{
+    const t=b.textContent;b.classList.toggle('active',p==='all'?t.includes('全部'):t.includes('('+p+')'));
+  });
+  renderL2();
+}
+function setL2Cat(c){
+  l2Cat=c;l2Page=0;document.querySelectorAll('[id^="l2ca-"]').forEach(el=>el.classList.remove('active'));
+  document.getElementById('l2ca-'+(c==='all'?'all':c)).classList.add('active');renderL2();
+}
+function setL2PerPage(n){l2PerPage=n;l2Page=0;renderL2Table();}
+function setL2WkMode(m){l2WkMode=m;document.getElementById('l2WkM1').classList.toggle('active',m==='spend');document.getElementById('l2WkM2').classList.toggle('active',m==='click');drawL2Charts();}
+function setL2DayMode(m){l2DayMode=m;document.getElementById('l2DayM1').classList.toggle('active',m==='spend');document.getElementById('l2DayM2').classList.toggle('active',m==='click');drawL2Charts();}
+function setL2Week(w){l2Week=w;const el=document.getElementById('l2-day-wk-label');if(el)el.textContent=w==='all'?'全期':w;drawL2Charts();}
+
+function getL2Ports(){return RAW.ports.filter(p=>(l2Prod==='all'||p.p===l2Prod)&&(l2Cat==='all'||p.c===l2Cat));}
+
+function renderL2(){drawL2Charts();renderL2Table();}
+
+function drawL2Charts(){
+  const ports=getL2Ports();
+  const wkAgg=WEEKS.map((w,i)=>{
+    const days=wkDays(w);let sp=0,sl=0,cl=0,im=0,or_=0;
+    ports.forEach(pt=>{const pd=RAW.daily_port[pt.n];if(!pd)return;
+      days.forEach(d=>{const dd=pd[d];if(!dd)return;sp+=dd.sp||0;sl+=dd.sl||0;cl+=dd.cl||0;im+=dd.im||0;or_+=(dd.or_||dd.or||0);});
+    });
+    return{sp,sl,cl,im,or_,ac:sl>0?+(sp/sl*100).toFixed(2):null,cv:cl>0?+(or_/cl*100).toFixed(4):null,ct:im>0?+(cl/im*100).toFixed(4):null};
+  });
+  const labels=WEEKS.map(w=>w+' ('+WK_DATES[w]+')');
+  destroyChart('l2WkChart');
+  let ds;
+  if(l2WkMode==='spend')ds=[
+    {type:'bar',label:'花费($)',data:wkAgg.map(m=>m.sp),backgroundColor:'rgba(59,130,246,.7)',yAxisID:'y',datalabels:{display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:v=>v>0?'$'+Math.round(v):''}},
+    {type:'bar',label:'销售额($)',data:wkAgg.map(m=>m.sl),backgroundColor:'rgba(16,185,129,.7)',yAxisID:'y',datalabels:{display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:v=>v>0?'$'+Math.round(v):''}},
+    {type:'line',label:'ACoS(%)',data:wkAgg.map(m=>m.ac),borderColor:'#ef4444',yAxisID:'y2',tension:.3,pointRadius:4,fill:false},
+  ];
+  else ds=[
+    {type:'bar',label:'曝光(百)',data:wkAgg.map(m=>+(m.im/100).toFixed(1)),backgroundColor:'rgba(148,163,184,0.5)',yAxisID:'y',hidden:true},
+    {type:'bar',label:'点击',data:wkAgg.map(m=>m.cl),backgroundColor:'rgba(59,130,246,.7)',yAxisID:'y',datalabels:{display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:v=>v>0?v:''}},
+    {type:'bar',label:'订单',data:wkAgg.map(m=>m.or_),backgroundColor:'rgba(16,185,129,.7)',yAxisID:'y',datalabels:{display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:v=>v>0?v:''}},
+    {type:'line',label:'CVR(%)',data:wkAgg.map(m=>m.cv),borderColor:'#8b5cf6',yAxisID:'y2',tension:.3,pointRadius:4,fill:false,hidden:true},
+    {type:'line',label:'CTR(%)',data:wkAgg.map(m=>m.ct),borderColor:'#f59e0b',yAxisID:'y2',tension:.3,pointRadius:4,fill:false},
+    {type:'line',label:'ACoS(%)',data:wkAgg.map(m=>m.ac),borderColor:'#ef4444',yAxisID:'y2',tension:.3,pointRadius:4,fill:false},
+  ];
+  _charts['l2WkChart']=new Chart(document.getElementById('l2WkChart'),{type:'bar',data:{labels,datasets:ds},options:comboChartOpts('','%')});
+
+  const days=l2Week==='all'?allDays():wkDays(l2Week);
+  const dayAgg=days.map(d=>{
+    let sp=0,sl=0,cl=0,im=0,or_=0;
+    ports.forEach(pt=>{const pd=RAW.daily_port[pt.n];if(!pd||!pd[d])return;const dd=pd[d];sp+=dd.sp||0;sl+=dd.sl||0;cl+=dd.cl||0;im+=dd.im||0;or_+=(dd.or_||dd.or||0);});
+    return{sp,sl,cl,im,or_,ac:sl>0?+(sp/sl*100).toFixed(2):null,cv:cl>0?+(or_/cl*100).toFixed(4):null,ct:im>0?+(cl/im*100).toFixed(4):null};
+  });
+  destroyChart('l2DayChart');
+  let ds2;
+  if(l2DayMode==='spend')ds2=[
+    {type:'bar',label:'花费($)',data:dayAgg.map(m=>m.sp),backgroundColor:'rgba(59,130,246,.6)',yAxisID:'y',datalabels:{display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:v=>v>0?'$'+Math.round(v):''}},
+    {type:'bar',label:'销售额($)',data:dayAgg.map(m=>m.sl),backgroundColor:'rgba(16,185,129,.6)',yAxisID:'y',datalabels:{display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:v=>v>0?'$'+Math.round(v):''}},
+    {type:'line',label:'ACoS(%)',data:dayAgg.map(m=>m.ac),borderColor:'#ef4444',yAxisID:'y2',tension:.2,pointRadius:2,fill:false},
+  ];
+  else ds2=[
+    {type:'bar',label:'曝光(百)',data:dayAgg.map(m=>+(m.im/100).toFixed(1)),backgroundColor:'rgba(148,163,184,0.5)',yAxisID:'y',hidden:true},
+    {type:'bar',label:'点击',data:dayAgg.map(m=>m.cl),backgroundColor:'rgba(59,130,246,.6)',yAxisID:'y',datalabels:{display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:v=>v>0?v:''}},
+    {type:'bar',label:'订单',data:dayAgg.map(m=>m.or_),backgroundColor:'rgba(16,185,129,.6)',yAxisID:'y',datalabels:{display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:v=>v>0?v:''}},
+    {type:'line',label:'CVR(%)',data:dayAgg.map(m=>m.cv),borderColor:'#8b5cf6',yAxisID:'y2',tension:.2,pointRadius:2,fill:false,hidden:true},
+    {type:'line',label:'CTR(%)',data:dayAgg.map(m=>m.ct),borderColor:'#f59e0b',yAxisID:'y2',tension:.2,pointRadius:2,fill:false},
+    {type:'line',label:'ACoS(%)',data:dayAgg.map(m=>m.ac),borderColor:'#ef4444',yAxisID:'y2',tension:.2,pointRadius:2,fill:false},
+  ];
+  _charts['l2DayChart']=new Chart(document.getElementById('l2DayChart'),{type:'bar',data:{labels:days.map(d=>d.slice(5)),datasets:ds2},options:comboChartOpts('','%')});
+}
+
+function renderL2Table(){
+  const ports=getL2Ports()
+    .filter(p=>!l2Search||p.n.toLowerCase().includes(l2Search.toLowerCase()))
+    .sort((a,b)=>{
+      const gv=p=>l2SortCol==='or'?(p.t.or||p.t.or_||0):(p.t[l2SortCol]??-Infinity);
+      return l2SortDir*(gv(a)-gv(b));
+    });
+  const total=ports.length,pages=Math.max(1,Math.ceil(total/l2PerPage));
+  if(l2Page>=pages)l2Page=pages-1;
+  const slice=ports.slice(l2Page*l2PerPage,(l2Page+1)*l2PerPage);
+  document.getElementById('l2-count').textContent=total+' 个组合';
+  const _l2th=(c,l,xs='')=>_th(l2SortCol,l2SortDir,c,l,'sortL2',xs);
+  let html=`<table><thead><tr>
+    <th style="text-align:left">组合名称</th><th>商品</th><th>类别</th>
+    ${_l2th('im','曝光')}${_l2th('cl','点击')}${_l2th('or','订单')}
+    ${_l2th('sp','花费($)')}${_l2th('sl','销售额($)')}${_l2th('cp','CPC($)')}${_l2th('ct','CTR%')}${_l2th('cv','CVR%')}${_l2th('ac','ACoS%')}<th>目标</th>${_l2th('ro','ROAS')}<th style="text-align:center">趋势</th>
+  </tr></thead><tbody>`;
+  {const _s={im:0,cl:0,or:0,sp:0,sl:0};ports.forEach(p=>{const t=p.t;_s.im+=t.im||0;_s.cl+=t.cl||0;_s.or+=(t.or||t.or_||0);_s.sp+=t.sp||0;_s.sl+=t.sl||0;});html+=_mkSumRow(_s,'<td style="color:#475569;font-weight:700">汇总</td><td></td><td></td>','<td></td>');}
+  for(const p of slice){
+    const t=p.t;const acCls=acosClass(t.ac,p.p);
+    html+=`<tr class="clickable" onclick="toggleL2Row('${p.n.replace(/'/g,"\'")}',this)">
+      <td><span class="exp-toggle">▶</span>${p.n} <button onclick="event.stopPropagation();jumpToL3Port(this.dataset.n)" data-n="${p.n.replace(/"/g,'&quot;')}" style="margin-left:6px;padding:1px 6px;font-size:10px;border:1px solid #3b82f6;color:#3b82f6;background:none;border-radius:4px;cursor:pointer">→L3</button></td>
+      <td><small style="color:#3b82f6">${p.p}</small></td>
+      <td><small style="color:${CAT_COLOR[p.c]}">${CAT_SHORT[p.c]}</small></td>
+      <td>${fmt(t.im,'int')}</td><td>${fmt(t.cl,'int')}</td><td>${fmt(t.or||t.or_,'int')}</td>
+      <td>${fmt(t.sp,'$')}</td><td>${fmt(t.sl,'$')}</td><td>${fmt(t.cp,'$')}</td><td>${fmt(t.ct,'pct2')}</td><td>${fmt(t.cv,'pct2')}</td>
+      <td class="${acCls}">${fmt(t.ac,'pct')}</td><td style="color:#718096;font-size:11px">${getTarget(p.p)}%</td><td>${fmt(t.ro,'x')}</td>
+      <td><div style="display:flex;justify-content:center">${trendDots(p.wa,p.p)}</div></td>
+    </tr>`;
+  }
+  html+='</tbody></table>';
+  document.getElementById('l2-table').innerHTML=html;
+  let pg=`<select class="per-page-select" onchange="setL2PerPage(+this.value)">${[20,50,100,200].map(n=>`<option value="${n}"${n===l2PerPage?' selected':''}>${n}</option>`).join('')}</select>`;
+  pg+=`<span class="page-info" style="margin-left:8px">${total} 条 · 第 ${l2Page+1}/${pages} 页</span>`;
+  if(pages>1){
+    if(l2Page>0)pg+=`<button class="page-btn" onclick="l2Page--;renderL2Table()">‹</button>`;
+    const s=Math.max(0,l2Page-2),e=Math.min(pages-1,l2Page+2);
+    for(let i=s;i<=e;i++)pg+=`<button class="page-btn${i===l2Page?' active':''}" onclick="l2Page=${i};renderL2Table()">${i+1}</button>`;
+    if(l2Page<pages-1)pg+=`<button class="page-btn" onclick="l2Page++;renderL2Table()">›</button>`;
+  }
+  document.getElementById('l2-pages').innerHTML=pg;
+}
+
+function aggPortWeek(portName,wk){
+  const pd=RAW.daily_port[portName];if(!pd)return null;
+  const days=wkDays(wk);
+  let sp=0,sl=0,cl=0,im=0,or_=0;
+  days.forEach(d=>{const dd=pd[d];if(!dd)return;sp+=dd.sp||0;sl+=dd.sl||0;cl+=dd.cl||0;im+=dd.im||0;or_+=(dd.or_||dd.or||0);});
+  if(!sp&&!cl&&!im)return null;
+  return{sp,sl,cl,im,or:or_,
+    ac:sl?+(sp/sl*100).toFixed(1):null,ro:sp?+(sl/sp).toFixed(2):null,
+    ct:im?+(cl/im*100).toFixed(2):null,cv:cl?+(or_/cl*100).toFixed(1):null,cp:cl?+(sp/cl).toFixed(2):null};
+}
+
+function toggleL2Row(portName,tr){
+  const sn=portName.replace(/[^a-zA-Z0-9]/g,'_');
+  const existRows=document.querySelectorAll('.l2-wk-row-'+sn+',.l2-day-row-'+sn);
+  if(existRows.length){
+    document.querySelectorAll('.l2-wk-row-'+sn+',.l2-day-row-'+sn+',[class*="l2-d-'+sn+'-"]').forEach(r=>r.remove());
+    tr.classList.remove('expanded-row');tr.querySelector('.exp-toggle').textContent='▶';return;
+  }
+  document.querySelectorAll('#l2-table .week-row,#l2-table .day-row,#l2-table .exp-row').forEach(r=>r.remove());
+  document.querySelectorAll('#l2-table .expanded-row').forEach(r=>{r.classList.remove('expanded-row');const e=r.querySelector('.exp-toggle');if(e)e.textContent='▶';});
+  tr.classList.add('expanded-row');tr.querySelector('.exp-toggle').textContent='▼';
+  const port=RAW.ports.find(p=>p.n===portName);
+  const prod=port?port.p:'Other';
+  const pd=RAW.daily_port[portName];if(!pd)return;
+  if(l2Week==='all'){
+    let insertAfter=tr;
+    WEEKS.forEach(w=>{
+      const d=aggPortWeek(portName,w);if(!d)return;
+      const acCls=acosClass(d.ac,prod);
+      const esc=portName.replace(/'/g,"\'");
+      const rowHtml=`<tr class="week-row row-indent1 l2-wk-row-${sn} clickable" onclick="toggleL2WeekRow('${esc}','${w}','${sn}',this)">
+        <td><span class="exp-toggle" data-open="false">▶</span><span style="font-size:11px;color:#3b82f6;font-weight:600">${w}</span> <small style="color:#aaa">${WK_DATES[w]}</small></td>
+        <td></td><td></td>
+        <td>${fmt(d.im,'int')}</td><td>${fmt(d.cl,'int')}</td><td>${fmt(d.or,'int')}</td>
+        <td>${fmt(d.sp,'$')}</td><td>${fmt(d.sl,'$')}</td><td>${fmt(d.cp,'$')}</td>
+        <td>${fmt(d.ct,'pct2')}</td><td>${fmt(d.cv,'pct2')}</td>
+        <td class="${acCls}">${fmt(d.ac,'pct')}</td>
+        <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
+        <td>${fmt(d.ro,'x')}</td><td></td>
+      </tr>`;
+      insertAfter.insertAdjacentHTML('afterend',rowHtml);
+      insertAfter=insertAfter.nextSibling;
+    });
+  }else{
+    const days=wkDays(l2Week);
+    let insertAfter=tr;
+    days.forEach(d=>{
+      const dd=pd[d];if(!dd)return;
+      const acCls=acosClass(dd.ac,prod);
+      const rowHtml=`<tr class="day-row row-indent1 l2-day-row-${sn}">
+        <td><span style="color:#718096;font-size:11px">${d.slice(5)}</span></td>
+        <td></td><td></td>
+        <td>${fmt(dd.im,'int')}</td><td>${fmt(dd.cl,'int')}</td><td>${fmt(dd.or_||dd.or,'int')}</td>
+        <td>${fmt(dd.sp,'$')}</td><td>${fmt(dd.sl,'$')}</td><td>${fmt(dd.cp,'$')}</td>
+        <td>${fmt(dd.ct,'pct2')}</td><td>${fmt(dd.cv,'pct2')}</td>
+        <td class="${acCls}">${fmt(dd.ac,'pct')}</td>
+        <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
+        <td>${fmt(dd.ro,'x')}</td><td></td>
+      </tr>`;
+      insertAfter.insertAdjacentHTML('afterend',rowHtml);
+      insertAfter=insertAfter.nextSibling;
+    });
+  }
+}
+
+function toggleL2WeekRow(portName,wk,sn,tr){
+  const cls='l2-d-'+sn+'-'+wk;
+  const existRows=document.querySelectorAll('.'+cls);
+  if(existRows.length){existRows.forEach(r=>r.remove());tr.classList.remove('expanded-row');tr.querySelector('.exp-toggle').textContent='▶';return;}
+  tr.classList.add('expanded-row');tr.querySelector('.exp-toggle').textContent='▼';
+  const port=RAW.ports.find(p=>p.n===portName);
+  const prod=port?port.p:'Other';
+  const pd=RAW.daily_port[portName];if(!pd)return;
+  const days=wkDays(wk);
+  let insertAfter=tr;
+  days.forEach(d=>{
+    const dd=pd[d];if(!dd)return;
+    const acCls=acosClass(dd.ac,prod);
+    const rowHtml=`<tr class="day-row row-indent2 ${cls}">
+      <td><span style="color:#718096;font-size:11px">${d.slice(5)}</span></td>
+      <td></td><td></td>
+      <td>${fmt(dd.im,'int')}</td><td>${fmt(dd.cl,'int')}</td><td>${fmt(dd.or_||dd.or,'int')}</td>
+      <td>${fmt(dd.sp,'$')}</td><td>${fmt(dd.sl,'$')}</td><td>${fmt(dd.cp,'$')}</td>
+      <td>${fmt(dd.ct,'pct2')}</td><td>${fmt(dd.cv,'pct2')}</td>
+      <td class="${acCls}">${fmt(dd.ac,'pct')}</td>
+      <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
+      <td>${fmt(dd.ro,'x')}</td><td></td>
+    </tr>`;
+    insertAfter.insertAdjacentHTML('afterend',rowHtml);
+    insertAfter=insertAfter.nextSibling;
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// L3
+// ══════════════════════════════════════════════════════════════════════════════
+function setL3Prod(p){
+  l3Prod=p;l3Page=0;
+  document.querySelectorAll('[id^="l3pd-"]').forEach(el=>el.classList.remove('active'));
+  const el=document.getElementById('l3pd-'+p);if(el)el.classList.add('active');
+  renderL3();
+}
+function setL3Cat(c){l3Cat=c;l3Page=0;document.querySelectorAll('[id^="l3ca-"]').forEach(el=>el.classList.remove('active'));document.getElementById('l3ca-'+(c==='all'?'all':c)).classList.add('active');renderL3();}
+function setL3St(s){
+  l3St=s;l3Page=0;
+  document.querySelectorAll('[id^="l3st-"]').forEach(el=>el.classList.remove('active'));
+  const m={all:'all',converting:'conv',click_no_order:'cno',imp_only:'imp',no_imp:'no'};
+  const el=document.getElementById('l3st-'+m[s]);if(el)el.classList.add('active');
+  renderL3();
+}
+function setL3PerPage(n){l3PerPage=n;l3Page=0;renderL3();}
+function setL2Search(v){l2Search=v;l2Page=0;renderL2Table();}
+function setL3Search(v){l3Search=v;l3Page=0;renderL3();}
+function setL3PortSearch(v){l3PortSearch=v;l3Page=0;renderL3();}
+function setL3AcosFlt(v){
+  l3AcosFlt=v;
+  document.querySelectorAll('.l3-acos-btn').forEach(b=>{
+    b.style.opacity=b.dataset.v===v?'1':'0.45';
+    b.style.fontWeight=b.dataset.v===v?'700':'400';
+  });
+  l3Page=0;renderL3();
+}
+function jumpToL3Port(portName){
+  l3PortSearch=portName;
+  const inp=document.getElementById('l3PortSearchInput');if(inp)inp.value=portName;
+  switchTab('l3');
+  renderL3();
+}
+function jumpToL2Prod(prod,cat){
+  setL2Prod(prod);
+  setL2Cat(cat||l1Cat);
+  switchTab('l2');
+}
+
+
+function renderL3(){
+  const camps=RAW.camps
+    .filter(c=>(l3Prod==='all'||c.p===l3Prod)&&(l3Cat==='all'||c.c===l3Cat)&&(l3St==='all'||c.st===l3St)
+      &&(!l3Search||c.n.toLowerCase().includes(l3Search.toLowerCase()))&&(!l3PortSearch||(c.po||'').toLowerCase().includes(l3PortSearch.toLowerCase()))
+      &&(l3AcosFlt==='all'||acosClass(c.ac,c.p)==='acos-'+l3AcosFlt))
+    .sort((a,b)=>{
+      const gv=c=>l3SortCol==='or'?(c.or||c.or_||0):(c[l3SortCol]??-Infinity);
+      return l3SortDir*(gv(a)-gv(b));
+    });
+  const total=camps.length,pages=Math.max(1,Math.ceil(total/l3PerPage));
+  if(l3Page>=pages)l3Page=pages-1;
+  const slice=camps.slice(l3Page*l3PerPage,(l3Page+1)*l3PerPage);
+  document.getElementById('l3-count').textContent=total+' 个活动';
+  const ST={converting:'✅',click_no_order:'🔶',imp_only:'⬜',no_imp:'🚫'};
+  const _l3th=(c,l,xs='')=>_th(l3SortCol,l3SortDir,c,l,'sortL3',xs);
+  let html=`<table><thead><tr>
+    <th style="text-align:left;min-width:160px">活动名称</th><th>状态</th><th>商品</th><th>类别</th><th>广告组合</th>
+    ${_l3th('im','曝光')}${_l3th('cl','点击')}${_l3th('or','订单')}
+    ${_l3th('sp','花费($)')}${_l3th('sl','销售额($)')}${_l3th('cp','CPC($)')}${_l3th('ct','CTR%')}${_l3th('cv','CVR%')}${_l3th('ac','ACoS%')}<th>目标</th>${_l3th('ro','ROAS')}<th style="text-align:center">趋势</th>
+  </tr></thead><tbody>`;
+  {const _s={im:0,cl:0,or:0,sp:0,sl:0};camps.forEach(c=>{_s.im+=c.im||0;_s.cl+=c.cl||0;_s.or+=(c.or||c.or_||0);_s.sp+=c.sp||0;_s.sl+=c.sl||0;});html+=_mkSumRow(_s,'<td style="color:#475569;font-weight:700">汇总</td><td></td><td></td><td></td><td></td>','<td></td>');}
+  for(const c of slice){
+    const acCls=acosClass(c.ac,c.p);
+    const esc=c.n.replace(/'/g,"\'").replace(/"/g,'&quot;');
+    html+=`<tr class="clickable" onclick="toggleL3Row('${esc}',this)">
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${c.n.replace(/"/g,'&quot;')}"><span class="exp-toggle">▶</span>${c.n}</td>
+      <td>${ST[c.st]||''}</td>
+      <td><small style="color:#3b82f6">${c.p}</small></td>
+      <td><small style="color:${CAT_COLOR[c.c]}">${CAT_SHORT[c.c]}</small></td>
+      <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.po||''}"><small style="color:#8b5cf6">${c.po||''}</small></td>
+      <td>${fmt(c.im,'int')}</td><td>${fmt(c.cl,'int')}</td><td>${fmt(c.or||c.or_,'int')}</td>
+      <td>${fmt(c.sp,'$')}</td><td>${fmt(c.sl,'$')}</td><td>${fmt(c.cp,'$')}</td><td>${fmt(c.ct,'pct2')}</td><td>${fmt(c.cv,'pct2')}</td>
+      <td class="${acCls}">${fmt(c.ac,'pct')}</td><td style="color:#718096;font-size:11px">${getTarget(c.p)}%</td><td>${fmt(c.ro,'x')}</td>
+      <td><div style="display:flex;justify-content:center">${trendDots(c.wa,c.p)}</div></td>
+    </tr>`;
+  }
+  html+='</tbody></table>';
+  document.getElementById('l3-table').innerHTML=html;
+
+  let pg=`<select class="per-page-select" onchange="setL3PerPage(+this.value)">${[50,100,200,1000].map(n=>`<option value="${n}"${n===l3PerPage?' selected':''}>${n}</option>`).join('')}</select>`;
+  pg+=`<span class="page-info" style="margin-left:8px">${total} 条 · 第 ${l3Page+1}/${pages} 页</span>`;
+  if(pages>1){
+    if(l3Page>0)pg+=`<button class="page-btn" onclick="l3Page--;renderL3()">‹</button>`;
+    const s=Math.max(0,l3Page-2),e=Math.min(pages-1,l3Page+2);
+    for(let i=s;i<=e;i++)pg+=`<button class="page-btn${i===l3Page?' active':''}" onclick="l3Page=${i};renderL3()">${i+1}</button>`;
+    if(l3Page<pages-1)pg+=`<button class="page-btn" onclick="l3Page++;renderL3()">›</button>`;
+  }
+  document.getElementById('l3-pages').innerHTML=pg;
+}
+
+function toggleL3Row(name,tr){
+  const next=tr.nextSibling;
+  if(next&&next.classList.contains('exp-row')){next.remove();tr.classList.remove('expanded-row');tr.querySelector('.exp-toggle').textContent='▶';return;}
+  document.querySelectorAll('#l3-table .exp-row').forEach(r=>r.remove());
+  document.querySelectorAll('#l3-table .expanded-row').forEach(r=>{r.classList.remove('expanded-row');const e=r.querySelector('.exp-toggle');if(e)e.textContent='▶';});
+  tr.classList.add('expanded-row');tr.querySelector('.exp-toggle').textContent='▼';
+  const camp=RAW.camps.find(c=>c.n===name);if(!camp)return;
+  const items=[
+    {l:'花费',v:fmt(camp.sp,'$')},{l:'销售额',v:fmt(camp.sl,'$')},
+    {l:'ACoS',v:fmt(camp.ac,'pct')},{l:'ROAS',v:fmt(camp.ro,'x')},
+    {l:'点击',v:fmt(camp.cl,'int')},{l:'订单',v:fmt(camp.or,'int')},
+    {l:'曝光',v:fmt(camp.im,'int')},{l:'CTR',v:fmt(camp.ct,'pct2')},
+    {l:'CVR',v:fmt(camp.cv,'pct2')},{l:'CPC',v:fmt(camp.cp,'$')},
+    {l:'广告组合',v:camp.po},{l:'状态',v:camp.st},
+  ];
+  let exp=`<tr class="exp-row"><td colspan="15"><div class="exp-content">
+    <strong>${name}</strong>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;margin-top:8px">
+      ${items.map(it=>`<div style="background:#fff;border-radius:6px;padding:6px 10px;border:1px solid #e2e8f0"><div style="font-size:9px;color:#718096;font-weight:600;text-transform:uppercase">${it.l}</div><div style="font-size:13px;font-weight:700">${it.v}</div></div>`).join('')}
+    </div>`;
+  if(camp.wa){exp+=`<div style="margin-top:8px;font-size:11px"><strong>周ACoS：</strong>`+WEEKS.map((w,i)=>`${w}:<strong>${camp.wa[i]!==null?camp.wa[i]+'%':'--'}</strong>`).join(' · ')+'</div>';}
+  exp+='</div></td></tr>';
+  tr.insertAdjacentHTML('afterend',exp);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ANALYSIS
+// ══════════════════════════════════════════════════════════════════════════════
+function setAnaProd(p){
+  anaProd=p;
+  document.querySelectorAll('#tab-ana .filter-bar .filter-pill').forEach(b=>{
+    const t=b.textContent;b.classList.toggle('active',p==='all'?t.includes('全部'):t.includes('('+p+')'));
+  });
+  renderAna();
+}
+function saveNote(key,val){try{localStorage.setItem('note_'+key,val);}catch(e){}}
+function getNote(key){try{return localStorage.getItem('note_'+key)||'';}catch(e){return'';}}
+function saveStatus(key,val){try{localStorage.setItem('status_'+key,val);}catch(e){}}
+function getStatus(key){try{return localStorage.getItem('status_'+key)||'todo';}catch(e){return'todo';}}
+
+function renderAna(){
+  const SLAB={todo:'待处理',doing:'进行中',done:'已完成',skip:'已跳过'};
+  const SCLS={todo:'s-todo',doing:'s-doing',done:'s-done',skip:'s-skip'};
+  const recs=getRecommendations(anaProd);
+
+  // ── W19 summary cards ──────────────────────────────────────────
+  const pd=anaProd==='all'?RAW.ov:RAW.prods[anaProd];
+  const w19s=pd?.w?.[4],w18s=pd?.w?.[3];
+  function wowBadge(v19,v18,higherIsBad){
+    if(v19==null||v18==null||v18===0)return'';
+    const d=v19-v18,pct=Math.abs(d/v18*100).toFixed(1);
+    const arrow=d>0?'▲':'▼';
+    let cls=d===0?'neu':(d>0?(higherIsBad?'up-bad':'up-good'):(higherIsBad?'dn-good':'dn-bad'));
+    return`<div class="asc-wow ${cls}">${arrow}${pct}% vs W18</div>`;
+  }
+  const urgentN=recs.filter(r=>r.priority==='urgent').length;
+  const sumCards=[
+    {label:'W19 花费',val:'$'+(w19s?.sp!=null?w19s.sp.toFixed(0):'--'),wow:wowBadge(w19s?.sp,w18s?.sp,true)},
+    {label:'W19 ACoS',val:(w19s?.ac!=null?w19s.ac.toFixed(1):'--')+'%',wow:wowBadge(w19s?.ac,w18s?.ac,true)},
+    {label:'W19 ROAS',val:(w19s?.ro!=null?w19s.ro.toFixed(2):'--')+'x',wow:wowBadge(w19s?.ro,w18s?.ro,false)},
+    {label:'W19 订单',val:(w19s?.or_??w19s?.or)!=null?(w19s?.or_??w19s?.or).toLocaleString():'--',wow:wowBadge(w19s?.or_??w19s?.or,w18s?.or_??w18s?.or,false)},
+    {label:'本轮问题',val:urgentN+'项紧急',wow:`<div class="asc-wow ${urgentN>0?'up-bad':'dn-good'}">${recs.length}条建议</div>`}
+  ];
+  const sumHTML=`<div class="ana-summary-row">${sumCards.map(s=>`<div class="ana-sum-card"><div class="asc-label">${s.label}</div><div class="asc-val">${s.val}</div>${s.wow}</div>`).join('')}</div>`;
+
+  // ── Group by priority ──────────────────────────────────────────
+  const groups=[
+    {key:'urgent',label:'紧急处理',cls:'urgent',icon:'🔴'},
+    {key:'warning',label:'需要关注',cls:'warning',icon:'🟡'},
+    {key:'opportunity',label:'增长机会',cls:'opportunity',icon:'🟢'},
+    {key:'neutral',label:'其他事项',cls:'neutral',icon:'⚪'}
+  ];
+  let recIdx=0;
+  const bodyHTML=groups.map(g=>{
+    const gr=recs.filter(r=>r.priority===g.key);
+    if(!gr.length)return'';
+    const cardsHTML=gr.map(r=>{
+      const i=recIdx++;
+      const key='rec2_'+i+'_'+anaProd;
+      const note=getNote(key);const status=getStatus(key);
+      const actHTML=r.actions?.length
+        ?`<div class="ana-actions"><div class="ana-actions-lbl">建议操作</div>${r.actions.map(a=>`<div class="ana-action-item">${a}</div>`).join('')}</div>`:'';
+      const tblHTML=r.dataTable?`<div style="overflow-x:auto;margin-bottom:6px">${r.dataTable}</div>`:'';
+      return`<div class="ana-card" style="border-left-color:${r.color}">
+        <div class="ana-card-hdr">
+          <span class="ana-card-icon">${r.icon}</span>
+          <span class="ana-card-title">${r.title}</span>
+          <span class="status-badge ${SCLS[status]}">${SLAB[status]}</span>
+          ${r.prod?`<span class="prod-tag">${PROD_DESC[r.prod]||r.prod}</span>`:''}
+        </div>
+        <p class="ana-card-desc">${r.desc}</p>
+        ${tblHTML}${actHTML}
+        <div class="ana-controls">
+          <select class="status-select" onchange="saveStatus('${key}',this.value);renderAna()">
+            ${['todo','doing','done','skip'].map(s=>`<option value="${s}"${status===s?' selected':''}>${SLAB[s]}</option>`).join('')}
+          </select>
+          <input type="text" style="flex:1;padding:4px 8px;border:1px solid #e2e8f0;border-radius:4px;font-size:12px" placeholder="备注…" value="${note.replace(/"/g,'&quot;')}" onchange="saveNote('${key}',this.value)">
+        </div>
+      </div>`;
+    }).join('');
+    return`<div class="ana-section">
+      <div class="ana-sec-hdr ${g.cls}">${g.icon} ${g.label} <span class="ana-sec-count">${gr.length}</span></div>
+      ${cardsHTML}
+    </div>`;
+  }).join('');
+
+  document.getElementById('ana-content').innerHTML=recs.length
+    ?sumHTML+bodyHTML
+    :'<div style="text-align:center;padding:40px;color:#94a3b8">暂无建议</div>';
+}
+
+function getRecommendations(prod){
+  const recs=[];
+  const prods=prod==='all'?Object.keys(RAW.prods):[prod];
+
+  // ── 产品级别分析 ──────────────────────────────────────────────
+  prods.forEach(p=>{
+    const pd=RAW.prods[p];if(!pd)return;
+    const t=pd.t;if(!t)return;
+    const tgt=getTarget(p);const desc=PROD_DESC[p]||p;
+    const w18=pd.w?.[3],w19=pd.w?.[4];
+
+    // ACoS 严重超标（>目标130%）
+    if(t.ac&&t.ac>tgt*1.3){
+      const over=(t.ac-tgt).toFixed(1);
+      const cut=Math.min(40,Math.round((t.ac-tgt)/t.ac*100));
+      recs.push({priority:'urgent',icon:'📉',color:'#ef4444',prod:p,
+        title:`${desc} ACoS严重超标（${t.ac.toFixed(1)}% vs 目标${tgt}%）`,
+        desc:`全期ACoS ${t.ac.toFixed(1)}%，超目标 +${over}pp，总花费 $${t.sp?.toFixed(0)||0}，ROAS ${t.ro?.toFixed(2)||'--'}x。`,
+        actions:[
+          `在L3筛选"${desc}"，按花费降序找出ACoS>${(tgt*1.5).toFixed(0)}%的活动优先处理`,
+          `高ACoS活动竞价建议降低约${cut}%（每次调整≤20%，观察一周再调）`,
+          `审查并否定W15-W19中持续有点击但无转化的关键词/ASIN`
+        ]
+      });
+    } else if(t.ac&&t.ac>tgt*1.1){
+      // ACoS 偏高（>目标110%）
+      const over=(t.ac-tgt).toFixed(1);
+      recs.push({priority:'warning',icon:'⚠️',color:'#f59e0b',prod:p,
+        title:`${desc} ACoS偏高（${t.ac.toFixed(1)}% vs 目标${tgt}%）`,
+        desc:`全期ACoS ${t.ac.toFixed(1)}%，超目标 +${over}pp，总花费 $${t.sp?.toFixed(0)||0}。`,
+        actions:[
+          `优先检查花费前5的高ACoS活动，识别拉高均值的活动`,
+          `竞价小幅下调5-15%后观察一周，避免大幅度一次性调整`
+        ]
+      });
+    }
+
+    // ACoS 优秀（<目标70%，花费>$100）
+    if(t.ac&&t.ac<tgt*0.7&&t.sp>100){
+      const inc=Math.round((t.sp||0)*0.3);
+      recs.push({priority:'opportunity',icon:'🚀',color:'#10b981',prod:p,
+        title:`${desc} ACoS优秀，建议扩大投入`,
+        desc:`ACoS ${t.ac.toFixed(1)}%远低于目标${tgt}%，ROAS ${t.ro?.toFixed(2)||'--'}x，当前花费 $${t.sp?.toFixed(0)||0}。`,
+        actions:[
+          `核心转化活动预算提升20-30%（约增加$${inc}）`,
+          `KW精准匹配竞价上调5-15%扩大流量`,
+          `评估是否新建KW拓展或ASIN拓展活动承接更多流量`
+        ]
+      });
+    }
+
+    // W18→W19 环比变化
+    if(w18?.ac&&w19?.ac){
+      const diff=w19.ac-w18.ac;
+      const spD=(w19.sp||0)-(w18.sp||0);
+      if(diff>5){
+        recs.push({priority:diff>10?'urgent':'warning',icon:'📈',color:diff>10?'#ef4444':'#f59e0b',prod:p,
+          title:`${desc} W18→W19 ACoS上升 +${diff.toFixed(1)}pp`,
+          desc:`ACoS: ${w18.ac.toFixed(1)}% → ${w19.ac.toFixed(1)}%，花费 W18 $${w18.sp?.toFixed(0)||0} → W19 $${w19.sp?.toFixed(0)||0}（${spD>=0?'+':''}$${spD.toFixed(0)}）。`,
+          actions:[
+            `对比L3中W18→W19各活动ACoS变化，定位恶化的具体活动`,
+            `检查W19是否有竞价上调或新增活动拉高了均值`,
+            diff>10
+              ?`ACoS上升超10pp，建议本周内完成竞价优化，优先处理花费最大的活动`
+              :`下周持续监控，若继续上升则升为紧急处理`
+          ]
+        });
+      } else if(diff<-5&&(w19.sp||0)>50){
+        recs.push({priority:'opportunity',icon:'✅',color:'#10b981',prod:p,
+          title:`${desc} W18→W19 ACoS改善 ${diff.toFixed(1)}pp`,
+          desc:`ACoS: ${w18.ac.toFixed(1)}% → ${w19.ac.toFixed(1)}%，效率持续提升。`,
+          actions:[
+            `总结本轮有效优化措施，可复制到其他商品的类似活动`,
+            `在效率提升基础上适度增加预算，扩大规模`
+          ]
+        });
+      }
+    }
+  });
+
+  // ── 活动级别分析 ──────────────────────────────────────────────
+
+  // 高ACoS活动（>目标150%，花费>$50）
+  const hAcos=RAW.camps.filter(c=>(prod==='all'||c.p===prod)&&c.ac&&c.ac>getTarget(c.p)*1.5&&c.sp>50).sort((a,b)=>b.sp-a.sp).slice(0,8);
+  if(hAcos.length){
+    const tot=hAcos.reduce((s,c)=>s+(c.sp||0),0);
+    const rows=hAcos.map(c=>{
+      const tgt=getTarget(c.p);
+      const ov=((c.ac-tgt)/tgt*100).toFixed(0);
+      const nm=c.n.length>34?c.n.substring(0,34)+'…':c.n;
+      return`<tr><td title="${c.n}">${nm}</td><td style="color:#ef4444;font-weight:600">${c.ac}%</td><td>$${c.sp.toFixed(0)}</td><td style="color:#ef4444">+${ov}%</td></tr>`;
+    }).join('');
+    recs.push({priority:'urgent',icon:'🔴',color:'#ef4444',prod:null,
+      title:`高ACoS活动（${hAcos.length}个，合计花费 $${tot.toFixed(0)}）`,
+      desc:`以下活动ACoS超目标150%且花费>$50，需重点优化：`,
+      dataTable:`<table class="ana-table"><tr><th>活动名称</th><th>ACoS</th><th>花费</th><th>超目标</th></tr>${rows}</table>`,
+      actions:[
+        `按花费由高到低逐一处理，每个活动竞价下调20-40%`,
+        `排查是否有不相关关键词/ASIN匹配在消耗预算`,
+        `30天内持续有点击但零转化的关键词：直接添加为否定精准`
+      ]
+    });
+  }
+
+  // 点击无转化（点击>20次，零订单）
+  const cno=RAW.camps.filter(c=>(prod==='all'||c.p===prod)&&c.st==='click_no_order'&&c.cl>20).sort((a,b)=>b.cl-a.cl).slice(0,8);
+  if(cno.length){
+    const tot=cno.reduce((s,c)=>s+(c.sp||0),0);
+    const rows=cno.map(c=>{
+      const nm=c.n.length>34?c.n.substring(0,34)+'…':c.n;
+      return`<tr><td title="${c.n}">${nm}</td><td>${c.cl}</td><td>$${c.sp.toFixed(0)}</td><td>$${c.cp?.toFixed(2)||'--'}</td></tr>`;
+    }).join('');
+    recs.push({priority:'warning',icon:'🔶',color:'#f59e0b',prod:null,
+      title:`点击无转化活动（${cno.length}个，花费 $${tot.toFixed(0)}）`,
+      desc:`以下活动有点击但W15-W19期间零订单，合计花费 $${tot.toFixed(0)}：`,
+      dataTable:`<table class="ana-table"><tr><th>活动名称</th><th>点击</th><th>花费</th><th>CPC</th></tr>${rows}</table>`,
+      actions:[
+        `检查对应Listing：主图质量、价格竞争力、Review数量及评分`,
+        `核查关键词/ASIN与商品的相关性是否准确`,
+        `点击≥50次仍零订单：拉取搜索词报告，否定不相关词`,
+        `CPC偏高且持续无转化：暂停活动，优化Listing后再重开`
+      ]
+    });
+  }
+
+  // 无曝光活动
+  const noImpN=RAW.camps.filter(c=>(prod==='all'||c.p===prod)&&c.st==='no_imp').length;
+  if(noImpN){
+    recs.push({priority:'neutral',icon:'😴',color:'#94a3b8',prod:prod==='all'?null:prod,
+      title:`无曝光活动（共 ${noImpN} 个）`,
+      desc:`${noImpN}个活动在W15-W19期间完全无曝光，资源未利用。`,
+      actions:[
+        `检查日预算设置：是否过低导致全天耗尽或从未竞价`,
+        `对比类目建议竞价，将SP/SD活动出价上调至建议区间`,
+        `确认Listing状态：是否下架、缺货或不符合广告资格`,
+        `SB视频/图文活动：检查素材是否通过Amazon审核`
+      ]
+    });
+  }
+
+  return recs;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════════════════════════════
+function renderCfg(){
+  const prods=['SL','DL','DSL2','Toy','ToyDH','MFL','SFM','ShortL','WB','Other'];
+  document.getElementById('cfg-acos-grid').innerHTML=prods.map(p=>`
+    <div class="acos-item"><label>${PROD_DESC[p]||p} (${p})</label>
+    <div style="display:flex;align-items:center;gap:6px">
+      <input type="number" id="cfg_${p}" value="${acosTargets[p]||40}" min="1" max="100">
+      <span style="color:#718096">%</span>
+    </div></div>`).join('');
+}
+function saveCfg(){
+  ['SL','DL','DSL2','Toy','ToyDH','MFL','SFM','ShortL','WB','Other'].forEach(p=>{
+    const el=document.getElementById('cfg_'+p);if(el)acosTargets[p]=parseFloat(el.value)||40;
+  });
+  try{localStorage.setItem('acosTargets',JSON.stringify(acosTargets));}catch(e){}
+  document.getElementById('cfg-saved').style.display='block';
+  setTimeout(()=>document.getElementById('cfg-saved').style.display='none',2000);
+}
+function resetCfg(){acosTargets={SL:35,DL:35,Toy:35,ToyDH:40,DSL2:40,MFL:40,SFM:40,ShortL:40,WB:40,Other:40};renderCfg();}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DATA MANAGEMENT TAB
+// ══════════════════════════════════════════════════════════════════════════════
+const _dmFiles = {camp:null,port:null};
+
+function dmOnFile(type,input){
+  const f=input.files[0];if(!f)return;
+  _dmFiles[type]=f;
+  document.getElementById('dm-'+type+'-name').textContent=f.name;
+  document.getElementById('dm-zone-'+type).classList.add('ready');
+  document.getElementById('dm-btn-import').disabled=!(_dmFiles.camp&&_dmFiles.port);
+}
+
+async function dmDoImport(){
+  const btn=document.getElementById('dm-btn-import');
+  const st=document.getElementById('dm-status');
+  btn.disabled=true;
+  st.style.color='#3b82f6';st.textContent='正在解析 Excel 并写入数据库，请稍候…';
+  const fd=new FormData();
+  fd.append('camp_file',_dmFiles.camp);
+  fd.append('port_file',_dmFiles.port);
+  const t=document.getElementById('dm-title').value.trim();
+  if(t)fd.append('title',t);
+  try{
+    const resp=await fetch('/api/import',{method:'POST',body:fd});
+    const data=await resp.json();
+    if(!resp.ok)throw new Error(data.detail||'导入失败');
+    st.style.color='#16a34a';
+    st.textContent='导入成功：'+data.title+'（'+data.weeks.join('、')+'）';
+    _dmFiles.camp=_dmFiles.port=null;
+    ['camp','port'].forEach(tp=>{
+      document.getElementById('dm-'+tp+'-name').textContent='';
+      document.getElementById('dm-zone-'+tp).classList.remove('ready');
+      document.getElementById('dm-inp-'+tp).value='';
+    });
+    document.getElementById('dm-title').value='';
+    dmLoadReports();
+    // 自动跳转到新报告
+    setTimeout(()=>window.location='/?id='+data.id,800);
+  }catch(e){
+    st.style.color='#dc2626';st.textContent='错误: '+e.message;
+    btn.disabled=!(_dmFiles.camp&&_dmFiles.port);
+  }
+}
+
+async function dmLoadReports(){
+  const list=document.getElementById('dm-report-list');
+  const currentId=typeof REPORT_ID!=='undefined'?REPORT_ID:null;
+  try{
+    const reports=await fetch('/api/reports').then(r=>r.json());
+    if(!reports.length){
+      list.innerHTML='<div style="padding:24px;text-align:center;color:#94a3b8;font-size:12px">暂无报告，请先导入 Excel 文件</div>';
+      return;
+    }
+    list.innerHTML=reports.map(r=>{
+      const wks=(r.weeks||[]).map(w=>`<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#dbeafe;color:#1e40af;margin-right:3px">${w}</span>`).join('');
+      const cur=r.id===currentId;
+      const date=r.created_at?r.created_at.slice(0,16):'';
+      const safeTitle=r.title.replace(/'/g,"\\'");
+      return`<div style="padding:12px 18px;border-bottom:1px solid #f7f8fa;display:flex;align-items:center;gap:10px;${cur?'background:#f0f9ff':''}">
+        <div>${wks}</div>
+        <div style="flex:1;font-weight:600;font-size:12px;color:#111827">${r.title}${cur?' <span style="font-size:10px;color:#3b82f6;font-weight:400">（当前）</span>':''}</div>
+        <div style="font-size:11px;color:#9ca3af;white-space:nowrap">${date}</div>
+        <div style="display:flex;gap:5px;flex-shrink:0">
+          ${!cur?`<button onclick="location='/?id=${r.id}'" style="padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#eff6ff;color:#2563eb">查看</button>`:''}
+          <button onclick="location='/api/reports/${r.id}/export/html'" style="padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#f0fdf4;color:#16a34a">HTML</button>
+          <button onclick="location='/api/reports/${r.id}/export/json'" style="padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#f5f3ff;color:#7c3aed">JSON</button>
+          <button onclick="location='/api/reports/${r.id}/export/csv'" style="padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#fff7ed;color:#c2410c">CSV</button>
+          <button onclick="dmDel(${r.id},'${safeTitle}',${cur})" style="padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#fef2f2;color:#dc2626">删除</button>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    list.innerHTML=`<div style="padding:20px;text-align:center;color:#dc2626;font-size:12px">加载失败（非 Web 模式不支持）</div>`;
+  }
+}
+
+async function dmDel(id,title,isCurrent){
+  if(!confirm('确认删除报告「'+title+'」？此操作不可恢复。'))return;
+  await fetch('/api/reports/'+id,{method:'DELETE'});
+  if(isCurrent)window.location='/?';
+  else dmLoadReports();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DATABASE TAB
+// ══════════════════════════════════════════════════════════════════════════════
+const DBQ_PWD = 'howgo';
+
+
+</script>
+</body>
+</html>

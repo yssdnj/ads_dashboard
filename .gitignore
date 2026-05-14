@@ -1,0 +1,21 @@
+# 数据库文件（含业务数据，不入库）
+ads_funnel/ads_funnel.db
+
+# v1.0 历史存档（只本地查看，不入库）
+legacy/
+
+# 原始 Excel 数据（可能含敏感信息）
+data/
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+
+# 日志
+*.log
+uvicorn.log
+uvicorn_err.log
+
+# 系统文件
+.DS_Store
+Thumbs.db

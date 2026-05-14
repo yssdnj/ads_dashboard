@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>广告漏斗分析 v2.0</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f2f5;color:#1a202c;font-size:13px}
+a{color:inherit;text-decoration:none}
+
+/* ── Top bar ── */
+#topbar{background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;padding:14px 24px;display:flex;align-items:center;gap:16px}
+#topbar h1{font-size:15px;font-weight:700;letter-spacing:.5px}
+#topbar .sub{font-size:11px;color:#a0aec0;margin-left:auto}
+
+/* ── Layout ── */
+.main{max-width:960px;margin:24px auto;padding:0 16px}
+
+/* ── Import card ── */
+.import-card{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);padding:20px 24px;margin-bottom:20px}
+.import-card h2{font-size:13px;font-weight:700;color:#374151;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.import-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.file-zone{border:2px dashed #e2e8f0;border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;background:#fafafa}
+.file-zone:hover,.file-zone.drag{border-color:#3b82f6;background:#eff6ff}
+.file-zone.ready{border-color:#22c55e;background:#f0fdf4}
+.file-zone input{display:none}
+.file-zone .label{font-size:11px;color:#94a3b8;margin-top:4px}
+.file-zone .fname{font-size:11px;font-weight:600;color:#16a34a;margin-top:4px;word-break:break-all}
+.title-row{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+.title-row input{flex:1;padding:7px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px}
+.btn{padding:8px 18px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:all .15s}
+.btn-primary{background:#3b82f6;color:#fff}
+.btn-primary:hover{background:#2563eb}
+.btn-primary:disabled{background:#93c5fd;cursor:not-allowed}
+#import-status{font-size:11px;margin-top:8px;min-height:18px}
+.status-ok{color:#16a34a}.status-err{color:#dc2626}.status-loading{color:#3b82f6}
+
+/* ── Reports list ── */
+.reports-card{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden}
+.reports-header{padding:14px 20px;border-bottom:1px solid #f0f2f5;display:flex;align-items:center;gap:8px}
+.reports-header h2{font-size:13px;font-weight:700;color:#374151;flex:1}
+#report-count{font-size:11px;color:#94a3b8}
+.report-row{padding:14px 20px;border-bottom:1px solid #f7f8fa;display:flex;align-items:center;gap:12px;transition:background .1s}
+.report-row:hover{background:#f9fafb}
+.report-row:last-child{border-bottom:none}
+.report-weeks{display:flex;gap:4px}
+.wk-badge{font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#dbeafe;color:#1e40af}
+.report-title{font-weight:600;font-size:13px;color:#111827;flex:1}
+.report-date{font-size:11px;color:#9ca3af}
+.report-actions{display:flex;gap:6px}
+.btn-sm{padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn-view{background:#eff6ff;color:#2563eb}.btn-view:hover{background:#dbeafe}
+.btn-html{background:#f0fdf4;color:#16a34a}.btn-html:hover{background:#dcfce7}
+.btn-json{background:#f5f3ff;color:#7c3aed}.btn-json:hover{background:#ede9fe}
+.btn-csv{background:#fff7ed;color:#c2410c}.btn-csv:hover{background:#fed7aa}
+.btn-del{background:#fef2f2;color:#dc2626}.btn-del:hover{background:#fee2e2}
+.empty{padding:40px 20px;text-align:center;color:#9ca3af;font-size:12px}
+.loading{padding:32px 20px;text-align:center;color:#94a3b8;font-size:12px}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:24px;right:24px;background:#1e293b;color:#f8fafc;padding:10px 16px;border-radius:8px;font-size:12px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9999}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1>📊 广告漏斗分析 v2.0</h1>
+  <span class="sub">本地数据管理 · HOWGO-US</span>
+</div>
+
+<div class="main">
+
+  <!-- Import -->
+  <div class="import-card">
+    <h2>📥 导入新报告</h2>
+    <div class="import-grid">
+      <div class="file-zone" id="zone-camp" onclick="document.getElementById('inp-camp').click()">
+        <input type="file" id="inp-camp" accept=".xlsx,.xls" onchange="onFile('camp',this)">
+        <div style="font-size:20px">📋</div>
+        <div style="font-weight:600;font-size:12px;margin-top:4px">广告活动每日明细</div>
+        <div class="label">领星 → 全部 → 每日明细导出</div>
+        <div class="fname" id="camp-name"></div>
+      </div>
+      <div class="file-zone" id="zone-port" onclick="document.getElementById('inp-port').click()">
+        <input type="file" id="inp-port" accept=".xlsx,.xls" onchange="onFile('port',this)">
+        <div style="font-size:20px">📦</div>
+        <div style="font-weight:600;font-size:12px;margin-top:4px">广告组合每日明细</div>
+        <div class="label">领星 → 广告组合 → 每日明细导出</div>
+        <div class="fname" id="port-name"></div>
+      </div>
+    </div>
+    <div class="title-row">
+      <input type="text" id="report-title" placeholder="报告名称（留空自动生成，如 HOWGO-US W15-W19）">
+      <button class="btn btn-primary" id="btn-import" onclick="doImport()" disabled>开始导入</button>
+    </div>
+    <div id="import-status"></div>
+  </div>
+
+  <!-- Reports -->
+  <div class="reports-card">
+    <div class="reports-header">
+      <h2>📁 历史报告</h2>
+      <span id="report-count"></span>
+    </div>
+    <div id="report-list"><div class="loading">加载中…</div></div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const files = {camp: null, port: null};
+
+function onFile(type, input) {
+  const f = input.files[0];
+  if (!f) return;
+  files[type] = f;
+  document.getElementById(`${type}-name`).textContent = f.name;
+  document.getElementById(`zone-${type}`).classList.add('ready');
+  checkReady();
+}
+
+function checkReady() {
+  document.getElementById('btn-import').disabled = !(files.camp && files.port);
+}
+
+// ── Import ────────────────────────────────────────────────────────────────────
+async function doImport() {
+  const btn = document.getElementById('btn-import');
+  const status = document.getElementById('import-status');
+  btn.disabled = true;
+  status.className = 'status-loading';
+  status.textContent = '⏳ 正在解析 Excel 并写入数据库，请稍候…';
+
+  const fd = new FormData();
+  fd.append('camp_file', files.camp);
+  fd.append('port_file', files.port);
+  const title = document.getElementById('report-title').value.trim();
+  if (title) fd.append('title', title);
+
+  try {
+    const resp = await fetch('/api/import', {method:'POST', body:fd});
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || '导入失败');
+
+    status.className = 'status-ok';
+    status.textContent = `✓ 导入成功：${data.title}（${data.weeks.join('、')}）`;
+    // reset
+    files.camp = files.port = null;
+    ['camp','port'].forEach(t => {
+      document.getElementById(`${t}-name`).textContent = '';
+      document.getElementById(`zone-${t}`).classList.remove('ready');
+      document.getElementById(`inp-${t}`).value = '';
+    });
+    document.getElementById('report-title').value = '';
+    loadReports();
+  } catch(e) {
+    status.className = 'status-err';
+    status.textContent = `✗ ${e.message}`;
+  }
+  btn.disabled = !(files.camp && files.port);
+}
+
+// ── Reports List ──────────────────────────────────────────────────────────────
+async function loadReports() {
+  const list = document.getElementById('report-list');
+  try {
+    const reports = await fetch('/api/reports').then(r=>r.json());
+    document.getElementById('report-count').textContent = `共 ${reports.length} 个`;
+
+    if (!reports.length) {
+      list.innerHTML = '<div class="empty">暂无报告，请先导入 Excel 文件</div>';
+      return;
+    }
+
+    list.innerHTML = reports.map(r => {
+      const weeks = (r.weeks||[]).map(w=>`<span class="wk-badge">${w}</span>`).join('');
+      const date  = r.created_at ? r.created_at.slice(0,16) : '';
+      return `
+        <div class="report-row">
+          <div class="report-weeks">${weeks}</div>
+          <div class="report-title">${r.title}</div>
+          <div class="report-date">${date}</div>
+          <div class="report-actions">
+            <button class="btn-sm btn-view" onclick="openReport(${r.id})">查看</button>
+            <button class="btn-sm btn-html" onclick="exportFmt(${r.id},'html')">HTML</button>
+            <button class="btn-sm btn-json" onclick="exportFmt(${r.id},'json')">JSON</button>
+            <button class="btn-sm btn-csv"  onclick="exportFmt(${r.id},'csv')">CSV</button>
+            <button class="btn-sm btn-del"  onclick="delReport(${r.id},'${r.title}')">删除</button>
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = `<div class="empty" style="color:#dc2626">加载失败: ${e.message}</div>`;
+  }
+}
+
+function openReport(id) {
+  window.open(`/dashboard?id=${id}`, '_blank');
+}
+
+function exportFmt(id, fmt) {
+  window.location.href = `/api/reports/${id}/export/${fmt}`;
+}
+
+async function delReport(id, title) {
+  if (!confirm(`确认删除报告「${title}」？此操作不可恢复。`)) return;
+  await fetch(`/api/reports/${id}`, {method:'DELETE'});
+  toast(`已删除：${title}`);
+  loadReports();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ── Drag & Drop ───────────────────────────────────────────────────────────────
+['camp','port'].forEach(type => {
+  const zone = document.getElementById(`zone-${type}`);
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag');
+    const f = e.dataTransfer.files[0];
+    if (!f || !f.name.match(/\.xlsx?$/i)) return;
+    files[type] = f;
+    document.getElementById(`${type}-name`).textContent = f.name;
+    zone.classList.add('ready');
+    checkReady();
+  });
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadReports();
+</script>
+</body>
+</html>
