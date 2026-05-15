@@ -5,6 +5,8 @@
 <title>HOWGO-US 广告漏斗分析 W15-W19</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f2f5;color:#1a1a2e;font-size:13px}
@@ -42,6 +44,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .mode-btn{padding:3px 10px;border-radius:4px;border:1px solid #e2e8f0;background:#f7fafc;cursor:pointer;font-size:11px;color:#718096;transition:all .15s}
 .mode-btn.active{background:#3b82f6;border-color:#3b82f6;color:#fff}
 canvas{max-width:100%}
+.drs-wrap{padding:6px 2px 2px;user-select:none}
+.drs-track{position:relative;height:20px;display:flex;align-items:center}
+.drs-track::before{content:'';position:absolute;left:0;right:0;height:3px;background:#e2e8f0;border-radius:2px}
+.drs-fill{position:absolute;height:3px;background:#93c5fd;border-radius:2px;pointer-events:none}
+.drs-input{position:absolute;width:100%;height:3px;-webkit-appearance:none;appearance:none;background:transparent;pointer-events:none;outline:none;margin:0}
+.drs-input::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#3b82f6;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:grab;pointer-events:all}
+.drs-input::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:#3b82f6;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:grab;pointer-events:all;border:none}
+.drs-labels{position:relative;height:16px;}
+.drs-lbl{position:absolute;font-size:10px;color:#6b7280;transform:translateX(-50%);white-space:nowrap;pointer-events:none}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
 .three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
 .tbl-wrap{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);overflow:hidden;margin-bottom:14px}
@@ -201,9 +212,18 @@ tbody td.bad{color:#ef4444}
       <div class="mode-toggle">
         <button class="mode-btn active" id="ovDayM1" onclick="setOvDayMode('spend')">花费/销售/ACoS</button>
         <button class="mode-btn" id="ovDayM2" onclick="setOvDayMode('click')">点击/订单/CTR/ACoS</button>
+        <button class="mode-btn" onclick="resetZoom('ovDayChart')" title="重置缩放">↺ 重置</button>
       </div>
     </div>
     <canvas id="ovDayChart" height="80"></canvas>
+    <div class="drs-wrap">
+      <div class="drs-track">
+        <div class="drs-fill" id="ovDrsFill"></div>
+        <input class="drs-input" type="range" id="ovDrsFrom">
+        <input class="drs-input" type="range" id="ovDrsTo">
+      </div>
+      <div class="drs-labels"><span class="drs-lbl" id="ovDrsLblFrom"></span><span class="drs-lbl" id="ovDrsLblTo"></span></div>
+    </div>
   </div>
 
   <!-- Product table -->
@@ -280,9 +300,18 @@ tbody td.bad{color:#ef4444}
       <div class="mode-toggle">
         <button class="mode-btn active" id="l1DayM1" onclick="setL1DayMode('spend')">花费/销售/ACoS</button>
         <button class="mode-btn" id="l1DayM2" onclick="setL1DayMode('click')">点击/订单/CTR/ACoS</button>
+        <button class="mode-btn" onclick="resetZoom('l1DayChart')" title="重置缩放">↺ 重置</button>
       </div>
     </div>
     <canvas id="l1DayChart" height="80"></canvas>
+    <div class="drs-wrap">
+      <div class="drs-track">
+        <div class="drs-fill" id="l1DrsFill"></div>
+        <input class="drs-input" type="range" id="l1DrsFrom">
+        <input class="drs-input" type="range" id="l1DrsTo">
+      </div>
+      <div class="drs-labels"><span class="drs-lbl" id="l1DrsLblFrom"></span><span class="drs-lbl" id="l1DrsLblTo"></span></div>
+    </div>
   </div>
 
   <!-- Product data table -->
@@ -340,9 +369,18 @@ tbody td.bad{color:#ef4444}
       <div class="mode-toggle">
         <button class="mode-btn active" id="l2DayM1" onclick="setL2DayMode('spend')">花费/ACoS</button>
         <button class="mode-btn" id="l2DayM2" onclick="setL2DayMode('click')">点击/订单/CTR/ACoS</button>
+        <button class="mode-btn" onclick="resetZoom('l2DayChart')" title="重置缩放">↺ 重置</button>
       </div>
     </div>
     <canvas id="l2DayChart" height="75"></canvas>
+    <div class="drs-wrap">
+      <div class="drs-track">
+        <div class="drs-fill" id="l2DrsFill"></div>
+        <input class="drs-input" type="range" id="l2DrsFrom">
+        <input class="drs-input" type="range" id="l2DrsTo">
+      </div>
+      <div class="drs-labels"><span class="drs-lbl" id="l2DrsLblFrom"></span><span class="drs-lbl" id="l2DrsLblTo"></span></div>
+    </div>
   </div>
   <div style="margin-bottom:14px"></div>
   <div class="tbl-wrap">
@@ -841,6 +879,86 @@ function comboChartOpts(yLabel,y2Label){
     plugins:{legend:{labels:{font:{size:10}},position:'top'}}
   };
 }
+function dayChartOpts(yLabel,y2Label){
+  const base=comboChartOpts(yLabel,y2Label);
+  base.plugins.zoom={
+    zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'},
+    pan:{enabled:true,mode:'x'},
+  };
+  return base;
+}
+function resetZoom(chartId){
+  if(_charts[chartId])_charts[chartId].resetZoom();
+}
+function initDaySlider(chartId, prefix, days){
+  const n=days.length-1;
+  if(n<1)return;
+  const elFrom=document.getElementById(prefix+'DrsFrom');
+  const elTo=document.getElementById(prefix+'DrsTo');
+  const fill=document.getElementById(prefix+'DrsFill');
+  const lblFrom=document.getElementById(prefix+'DrsLblFrom');
+  const lblTo=document.getElementById(prefix+'DrsLblTo');
+  const track=fill.parentElement;
+  if(!elFrom||!elTo)return;
+  elFrom.min=0;elFrom.max=n;elFrom.value=0;
+  elTo.min=0;elTo.max=n;elTo.value=n;
+
+  function render(f,t){
+    const pf=f/n*100,pt=t/n*100;
+    fill.style.left=pf+'%';fill.style.width=(pt-pf)+'%';
+    // 标签跟随柄位置
+    lblFrom.textContent=days[f];lblFrom.style.left=pf+'%';
+    lblTo.textContent=days[t];lblTo.style.left=pt+'%';
+  }
+  function zoomChart(f,t){
+    const c=_charts[chartId];if(c)c.zoomScale('x',{min:f,max:t},'none');
+  }
+  // chart zoom/pan → 反向同步滑块
+  function syncFromChart(c){
+    const xs=c.scales.x;if(!xs)return;
+    const f=Math.max(0,Math.min(n,Math.round(xs.min)));
+    const t=Math.max(0,Math.min(n,Math.round(xs.max)));
+    elFrom.value=f;elTo.value=t;render(f,t);
+  }
+  const chart=_charts[chartId];
+  if(chart&&chart.options.plugins.zoom){
+    chart.options.plugins.zoom.zoom.onZoomComplete=({chart:c})=>syncFromChart(c);
+    chart.options.plugins.zoom.pan.onPanComplete=({chart:c})=>syncFromChart(c);
+  }
+  // 单柄拖动
+  function onInput(){
+    let f=+elFrom.value,t=+elTo.value;
+    if(f>t){if(document.activeElement===elFrom){elFrom.value=t;f=t;}else{elTo.value=f;t=f;}}
+    render(f,t);zoomChart(f,t);
+  }
+  elFrom.oninput=onInput;elTo.oninput=onInput;
+  // track mousedown → 判断点击落在 fill 区域则整体平移
+  track.addEventListener('mousedown',e=>{
+    if(e.target===elFrom||e.target===elTo)return;
+    const rect=track.getBoundingClientRect();
+    const clickPct=(e.clientX-rect.left)/rect.width;
+    const clickIdx=clickPct*n;
+    const f0=+elFrom.value,t0=+elTo.value;
+    if(clickIdx<f0-0.5||clickIdx>t0+0.5)return; // 不在 fill 区域
+    e.preventDefault();
+    const span=t0-f0,startX=e.clientX;
+    track.style.cursor='grabbing';
+    function onMove(e){
+      const delta=Math.round((e.clientX-startX)/rect.width*n);
+      const f=Math.max(0,Math.min(n-span,f0+delta));
+      const t=f+span;
+      elFrom.value=f;elTo.value=t;render(f,t);zoomChart(f,t);
+    }
+    function onUp(){
+      track.style.cursor='';
+      document.removeEventListener('mousemove',onMove);
+      document.removeEventListener('mouseup',onUp);
+    }
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onUp);
+  });
+  render(0,n);zoomChart(0,n);
+}
 
 // ── Tab routing ────────────────────────────────────────────────────────────────
 function switchTab(id){
@@ -920,8 +1038,9 @@ function drawOvDayChart(){
   const metrics=getDailyData(ovProd==='all'?'all':ovProd,null,days);
   _charts['ovDayChart']=new Chart(document.getElementById('ovDayChart'),{
     type:'bar',data:{labels:days.map(d=>d.slice(5)),datasets:buildComboDatasets(metrics,ovDayMode)},
-    options:comboChartOpts('','%')
+    options:dayChartOpts('','%')
   });
+  initDaySlider('ovDayChart','ov',days);
 }
 
 // Overview product table: 曝光,点击,订单,广告花费,销售额,CPC,CTR,CVR,ACoS,目标线,ROAS,ACoS趋势
@@ -1166,8 +1285,9 @@ function drawL1DayChart(){
   document.getElementById('l1-day-title').textContent=`日趋势 · ${pLabel} · ${cLabel}`;
   _charts['l1DayChart']=new Chart(document.getElementById('l1DayChart'),{
     type:'bar',data:{labels:days.map(d=>d.slice(5)),datasets:buildComboDatasets(metrics,l1DayMode)},
-    options:comboChartOpts('','%')
+    options:dayChartOpts('','%')
   });
+  initDaySlider('l1DayChart','l1',days);
 }
 
 // L1 product table: rows = (类别 × 商品) combinations from RAW.prod_cats
@@ -1423,7 +1543,8 @@ function drawL2Charts(){
     {type:'line',label:'CTR(%)',data:dayAgg.map(m=>m.ct),borderColor:'#f59e0b',yAxisID:'y2',tension:.2,pointRadius:2,fill:false},
     {type:'line',label:'ACoS(%)',data:dayAgg.map(m=>m.ac),borderColor:'#ef4444',yAxisID:'y2',tension:.2,pointRadius:2,fill:false},
   ];
-  _charts['l2DayChart']=new Chart(document.getElementById('l2DayChart'),{type:'bar',data:{labels:days.map(d=>d.slice(5)),datasets:ds2},options:comboChartOpts('','%')});
+  _charts['l2DayChart']=new Chart(document.getElementById('l2DayChart'),{type:'bar',data:{labels:days.map(d=>d.slice(5)),datasets:ds2},options:dayChartOpts('','%')});
+  initDaySlider('l2DayChart','l2',days);
 }
 
 function renderL2Table(){
