@@ -160,7 +160,7 @@ tbody td.bad{color:#ef4444}
 <body>
 <div id="topbar">
   <h1>📊 广告数据 漏斗分析</h1>
-  <span class="sub">W15–W19 &nbsp;|&nbsp; 2026-04-06 ~ 2026-05-10 &nbsp;|&nbsp; 数据来源：领星后台</span>
+  <span class="sub" id="topbar-sub"></span>
 </div>
 <div id="tabbar">
   <button class="tab-btn active" onclick="switchTab('ov')">总览</button>
@@ -719,6 +719,7 @@ tbody td.bad{color:#ef4444}
 </div>
 
 <script>
+const REPORT_COUNTRY = '__REPORT_COUNTRY__';
 const RAW = __RAW_JSON__;</script>
 <script>
 const WEEKS = ['W15','W16','W17','W18','W19'];
@@ -727,6 +728,20 @@ const CAT_ORDER = ['3_SP_KW精准','4_SP_KW拓展','5_SP_ASIN精准','6_SP_ASIN�
 const CAT_SHORT = {'1_SB':'SB','2_SD':'SD','3_SP_KW精准':'KW精准','4_SP_KW拓展':'KW拓展','5_SP_ASIN精准':'ASIN精准','6_SP_ASIN拓展':'ASIN拓展','7_Other':'Other'};
 const CAT_COLOR = {'1_SB':'#8b5cf6','2_SD':'#f59e0b','3_SP_KW精准':'#3b82f6','4_SP_KW拓展':'#06b6d4','5_SP_ASIN精准':'#10b981','6_SP_ASIN拓展':'#f97316','7_Other':'#94a3b8'};
 const PROD_DESC = {SL:'P绳',DL:'双头牵引绳',DSL2:'双头P绳',Toy:'玩具羊毛球',ToyDH:'双手柄玩具',MFL:'多功能牵引绳',SFM:'丰容碗',ShortL:'超短牵引绳',WB:'水杯',Other:'其他'};
+
+// ── 顶栏信息 ───────────────────────────────────────────────────────────────────
+(function(){
+  const days=Object.keys(RAW.daily_ov||{}).sort();
+  const d0=days[0]||'',d1=days[days.length-1]||'';
+  const wkRange=WEEKS.length>1?`${WEEKS[0]}–${WEEKS[WEEKS.length-1]}`:WEEKS[0]||'';
+  const parts=[];
+  if(REPORT_COUNTRY)parts.push(`<strong>${REPORT_COUNTRY}</strong>`);
+  if(wkRange)parts.push(wkRange);
+  if(d0&&d1)parts.push(`${d0} ~ ${d1}`);
+  parts.push('数据来源：领星后台');
+  const el=document.getElementById('topbar-sub');
+  if(el)el.innerHTML=parts.join(' &nbsp;|&nbsp; ');
+})();
 
 // ── State ──────────────────────────────────────────────────────────────────────
 let acosTargets = {SL:35,DL:35,Toy:35,ToyDH:40,DSL2:40,MFL:40,SFM:40,ShortL:40,WB:40,Other:40};

@@ -33,6 +33,10 @@ def _build_html(data: dict, title: str, acos_targets: dict,
     weeks_js     = json.dumps(weeks,   ensure_ascii=False)
     wk_dates_js  = json.dumps(wk_dates, ensure_ascii=False)
 
+    # 0. 注入国家
+    country = title.split()[0] if title else ''
+    tmpl = tmpl.replace("'__REPORT_COUNTRY__'", json.dumps(country), 1)
+
     # 1. 注入 RAW 数据
     tmpl = tmpl.replace('const RAW = __RAW_JSON__;',
                         f'const RAW = {raw_json};', 1)
