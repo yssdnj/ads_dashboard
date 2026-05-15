@@ -159,7 +159,7 @@ tbody td.bad{color:#ef4444}
   <button class="tab-btn" onclick="switchTab('ana')">分析与建议</button>
   <button class="tab-btn" onclick="switchTab('cfg')">ACoS配置</button>
   <button class="tab-btn" onclick="switchTab('data')">数据管理</button>
-  
+  <button class="tab-btn" onclick="switchTab('help')">使用说明</button>
 </div>
 
 <div id="tab-ov" class="tab-pane active">
@@ -439,19 +439,19 @@ tbody td.bad{color:#ef4444}
     <div class="section-title" style="margin-bottom:12px">导入新报告</div>
     <div style="background:#fff;border-radius:10px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:20px">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-        <div id="dm-zone-camp" class="dm-zone" onclick="document.getElementById('dm-inp-camp').click()">
-          <input type="file" id="dm-inp-camp" accept=".xlsx,.xls" style="display:none" onchange="dmOnFile('camp',this)">
-          <div style="font-size:20px">📋</div>
-          <div style="font-weight:600;font-size:12px;margin-top:4px">广告活动每日明细</div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:2px">领星 → 全部 → 每日明细导出</div>
-          <div id="dm-camp-name" style="font-size:11px;color:#16a34a;font-weight:600;margin-top:4px;word-break:break-all"></div>
-        </div>
         <div id="dm-zone-port" class="dm-zone" onclick="document.getElementById('dm-inp-port').click()">
           <input type="file" id="dm-inp-port" accept=".xlsx,.xls" style="display:none" onchange="dmOnFile('port',this)">
           <div style="font-size:20px">📦</div>
           <div style="font-weight:600;font-size:12px;margin-top:4px">广告组合每日明细</div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:2px">领星 → 广告组合 → 每日明细导出</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:2px">领星-广告-广告组合-下载(全部指标+每日明细)</div>
           <div id="dm-port-name" style="font-size:11px;color:#16a34a;font-weight:600;margin-top:4px;word-break:break-all"></div>
+        </div>
+        <div id="dm-zone-camp" class="dm-zone" onclick="document.getElementById('dm-inp-camp').click()">
+          <input type="file" id="dm-inp-camp" accept=".xlsx,.xls" style="display:none" onchange="dmOnFile('camp',this)">
+          <div style="font-size:20px">📋</div>
+          <div style="font-weight:600;font-size:12px;margin-top:4px">广告活动每日明细</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:2px">领星-广告-全部活动-下载(全部指标+每日明细)</div>
+          <div id="dm-camp-name" style="font-size:11px;color:#16a34a;font-weight:600;margin-top:4px;word-break:break-all"></div>
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
@@ -468,6 +468,213 @@ tbody td.bad{color:#ef4444}
     <div class="section-title" style="margin-bottom:12px">历史报告</div>
     <div id="dm-report-list" style="background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden">
       <div style="padding:24px;text-align:center;color:#94a3b8;font-size:12px">点击"数据管理"标签加载…</div>
+    </div>
+
+  </div>
+</div>
+
+<div id="tab-help" class="tab-pane">
+  <div style="max-width:820px;padding-bottom:32px">
+
+    <!-- ── 命名规范（核心必读） ── -->
+    <div style="background:#fff7ed;border:2px solid #fb923c;border-radius:12px;padding:20px 24px;margin-bottom:20px">
+      <div style="font-size:14px;font-weight:700;color:#c2410c;margin-bottom:14px">⚠️ 必读：广告组合命名规范（工具正常运行的前提条件）</div>
+      <p style="font-size:12px;color:#78350f;margin-bottom:12px">本工具依赖广告组合名称自动识别产品线与广告类别。<strong>命名不符合规范将导致数据无法归类。</strong></p>
+
+      <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:8px">命名格式：<code style="background:#fef3c7;padding:2px 6px;border-radius:4px;font-size:12px">产品代码_广告类型</code></div>
+
+      <!-- 产品代码表 -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">产品代码对照表</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px">
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;font-weight:700;color:#2563eb;min-width:52px">SL</span><span style="font-size:11px;color:#4b5563">P绳</span></div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;font-weight:700;color:#2563eb;min-width:52px">DL</span><span style="font-size:11px;color:#4b5563">双头牵引绳</span></div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;font-weight:700;color:#2563eb;min-width:52px">DSL2</span><span style="font-size:11px;color:#4b5563">双头P绳</span></div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;font-weight:700;color:#2563eb;min-width:52px">Toy</span><span style="font-size:11px;color:#4b5563">玩具羊毛球</span></div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;font-weight:700;color:#2563eb;min-width:52px">ToyDH</span><span style="font-size:11px;color:#4b5563">双手柄玩具羊毛球</span></div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;font-weight:700;color:#2563eb;min-width:52px">MFL</span><span style="font-size:11px;color:#4b5563">多功能牵引绳</span></div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;font-weight:700;color:#2563eb;min-width:52px">SFM</span><span style="font-size:11px;color:#4b5563">丰容碗</span></div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;font-weight:700;color:#2563eb;min-width:52px">ShortL</span><span style="font-size:11px;color:#4b5563">超短牵引绳</span></div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;font-weight:700;color:#2563eb;min-width:52px">WB</span><span style="font-size:11px;color:#4b5563">水杯</span></div>
+        </div>
+      </div>
+
+      <!-- 广告类型命名规则 -->
+      <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">广告组合命名规则（以 SL 为例）</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:#fef3c7">
+            <th style="padding:7px 10px;text-align:left;font-weight:700;color:#92400e;border-bottom:1px solid #fcd34d">广告类别（系统识别）</th>
+            <th style="padding:7px 10px;text-align:left;font-weight:700;color:#92400e;border-bottom:1px solid #fcd34d">广告组合名称前缀（必须以此开头）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #f3f4f6">
+            <td style="padding:7px 10px;color:#374151">SB 品牌广告</td>
+            <td style="padding:7px 10px"><code style="background:#ede9fe;color:#5b21b6;padding:2px 6px;border-radius:4px">SL_SB</code></td>
+          </tr>
+          <tr style="border-bottom:1px solid #f3f4f6;background:#fafafa">
+            <td style="padding:7px 10px;color:#374151">SD 展示广告</td>
+            <td style="padding:7px 10px"><code style="background:#fef9c3;color:#854d0e;padding:2px 6px;border-radius:4px">SL_SD</code></td>
+          </tr>
+          <tr style="border-bottom:1px solid #f3f4f6">
+            <td style="padding:7px 10px;color:#374151">SP KW 精准</td>
+            <td style="padding:7px 10px"><code style="background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:4px">SL_SP_KW精准</code> 或 <code style="background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:4px">SL_SP_KW防守</code></td>
+          </tr>
+          <tr style="border-bottom:1px solid #f3f4f6;background:#fafafa">
+            <td style="padding:7px 10px;color:#374151">SP KW 拓展</td>
+            <td style="padding:7px 10px"><code style="background:#cffafe;color:#155e75;padding:2px 6px;border-radius:4px">SL_SP_KW拓展</code></td>
+          </tr>
+          <tr style="border-bottom:1px solid #f3f4f6">
+            <td style="padding:7px 10px;color:#374151">SP ASIN 精准</td>
+            <td style="padding:7px 10px"><code style="background:#d1fae5;color:#065f46;padding:2px 6px;border-radius:4px">SL_SP_ASIN进攻</code> 或 <code style="background:#d1fae5;color:#065f46;padding:2px 6px;border-radius:4px">SL_SP_ASIN防守</code></td>
+          </tr>
+          <tr>
+            <td style="padding:7px 10px;color:#374151">SP ASIN 拓展</td>
+            <td style="padding:7px 10px"><code style="background:#ffedd5;color:#9a3412;padding:2px 6px;border-radius:4px">SL_SP_ASIN拓展</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:10px;font-size:11px;color:#92400e;background:#fef3c7;padding:8px 12px;border-radius:6px">
+        💡 规则：名称以 <strong>产品代码_</strong> 开头，其余部分含关键词 <code>SB / SD / KW精准 / KW拓展 / ASIN进攻或防守 / ASIN拓展</code> 即可被正确归类。大小写不敏感，后缀内容不影响识别。
+      </div>
+    </div>
+
+    <!-- ── 数据导入说明 ── -->
+    <div style="background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);padding:20px 24px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">📥 数据导入说明</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div style="border:1px solid #e2e8f0;border-radius:8px;padding:12px">
+          <div style="font-weight:700;font-size:12px;color:#1e40af;margin-bottom:4px">① 广告组合每日明细</div>
+          <div style="font-size:11px;color:#6b7280;line-height:1.6">领星 → 广告 → 广告组合 → 下载<br>（全部指标 + 每日明细）</div>
+        </div>
+        <div style="border:1px solid #e2e8f0;border-radius:8px;padding:12px">
+          <div style="font-weight:700;font-size:12px;color:#1e40af;margin-bottom:4px">② 广告活动每日明细</div>
+          <div style="font-size:11px;color:#6b7280;line-height:1.6">领星 → 广告 → 全部活动 → 下载<br>（全部指标 + 每日明细）</div>
+        </div>
+      </div>
+      <ul style="font-size:12px;color:#4b5563;padding-left:16px;line-height:1.8;margin:0">
+        <li>支持多国数据（US、UK 等），系统按"国家"列自动拆分报告</li>
+        <li>支持增量导入：重复导入同一时段数据会自动覆盖，不同时段数据自动合并</li>
+        <li>导入后报告即时更新，无需重启服务</li>
+      </ul>
+    </div>
+
+    <!-- ── 各 Tab 说明 ── -->
+    <div style="background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);padding:20px 24px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">📊 各 Tab 功能说明</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:#f8fafc">
+            <th style="padding:8px 10px;text-align:left;font-weight:700;color:#374151;border-bottom:2px solid #e2e8f0;width:100px">Tab</th>
+            <th style="padding:8px 10px;text-align:left;font-weight:700;color:#374151;border-bottom:2px solid #e2e8f0">说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #f3f4f6">
+            <td style="padding:8px 10px;font-weight:600;color:#2563eb">总览</td>
+            <td style="padding:8px 10px;color:#4b5563">全部产品汇总，按周趋势图 + 日趋势图，支持区间筛选</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f3f4f6;background:#fafafa">
+            <td style="padding:8px 10px;font-weight:600;color:#2563eb">L1 广告类别</td>
+            <td style="padding:8px 10px;color:#4b5563">按产品 × 广告类型（SB / SD / KW精准 / KW拓展 / ASIN精准 / ASIN拓展）拆分，含环比（WoW）</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f3f4f6">
+            <td style="padding:8px 10px;font-weight:600;color:#2563eb">L2 广告组合</td>
+            <td style="padding:8px 10px;color:#4b5563">各广告组合明细，可展开查看周粒度数据，支持搜索</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f3f4f6;background:#fafafa">
+            <td style="padding:8px 10px;font-weight:600;color:#2563eb">L3 广告活动</td>
+            <td style="padding:8px 10px;color:#4b5563">各广告活动明细，含状态（启用/暂停）、花费、ACoS 等核心指标</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f3f4f6">
+            <td style="padding:8px 10px;font-weight:600;color:#2563eb">分析与建议</td>
+            <td style="padding:8px 10px;color:#4b5563">自动标记高 ACoS 活动、零曝光活动、高花费低转化等问题，生成优化建议</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f3f4f6;background:#fafafa">
+            <td style="padding:8px 10px;font-weight:600;color:#2563eb">ACoS 配置</td>
+            <td style="padding:8px 10px;color:#4b5563">为每个产品线设置 ACoS 目标值，影响全局颜色标注（绿/橙/红）</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 10px;font-weight:600;color:#2563eb">数据管理</td>
+            <td style="padding:8px 10px;color:#4b5563">导入 Excel、查看历史报告、导出 HTML / JSON / CSV</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── 广告调优逻辑摘要 ── -->
+    <div style="background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);padding:20px 24px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px">🎯 广告调优逻辑摘要（SOP）</div>
+
+      <div style="font-size:12px;font-weight:700;color:#1e40af;margin-bottom:6px">SB 品牌广告</div>
+      <p style="font-size:12px;color:#4b5563;margin-bottom:4px;line-height:1.7">聚焦"旗舰店视频"和"商品视频"两类投放。KW 来源于 SP 精准广告历史数据，按 ACoS 分为三个活动：</p>
+      <ul style="font-size:12px;color:#4b5563;padding-left:16px;margin-bottom:12px;line-height:1.8">
+        <li><strong>Acos低</strong>（≤ 30%）/ <strong>Acos中</strong>（30~60%）/ <strong>Acos高</strong>（> 60%）</li>
+        <li>相同 KW + 视频分别投旗舰店 Store 和商品 Product</li>
+      </ul>
+
+      <div style="font-size:12px;font-weight:700;color:#1e40af;margin-bottom:6px">SP KW 精准广告</div>
+      <p style="font-size:12px;color:#4b5563;margin-bottom:4px;line-height:1.7">按全网关键词排名分层（广告活动命名前缀对应排名区间）：</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;margin-bottom:12px">
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;font-size:11px"><span style="font-family:monospace;color:#1e40af">SL_1</span> &nbsp;排名 15W 以内</div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;font-size:11px"><span style="font-family:monospace;color:#1e40af">SL_2</span> &nbsp;排名 15~30W</div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;font-size:11px"><span style="font-family:monospace;color:#1e40af">SL_3</span> &nbsp;排名 30~50W</div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;font-size:11px"><span style="font-family:monospace;color:#1e40af">SL_4</span> &nbsp;排名 50~100W</div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;font-size:11px"><span style="font-family:monospace;color:#1e40af">SL_5</span> &nbsp;排名 100W 以外</div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;font-size:11px"><span style="font-family:monospace;color:#1e40af">SL_0</span> &nbsp;无排名</div>
+      </div>
+
+      <div style="font-size:12px;font-weight:700;color:#1e40af;margin-bottom:6px">SP ASIN 精准广告</div>
+      <ul style="font-size:12px;color:#4b5563;padding-left:16px;margin-bottom:12px;line-height:1.8">
+        <li><strong>进攻_重点</strong>：历史优秀 ASIN（近 30 天订单 &gt; 10，ACoS 低于均值）</li>
+        <li><strong>进攻</strong>：普通竞品 ASIN 投放</li>
+        <li><strong>进攻MMDD</strong>：某日新建批次，便于单独追踪，后续按效果移入重点或普通组合</li>
+        <li><strong>拓展</strong>：用于发现新的高潜力 ASIN</li>
+      </ul>
+
+      <div style="font-size:12px;font-weight:700;color:#1e40af;margin-bottom:6px">预算调优规则</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:#f8fafc">
+            <th style="padding:7px 10px;text-align:left;border-bottom:2px solid #e2e8f0;color:#374151">周期</th>
+            <th style="padding:7px 10px;text-align:left;border-bottom:2px solid #e2e8f0;color:#374151">条件</th>
+            <th style="padding:7px 10px;text-align:left;border-bottom:2px solid #e2e8f0;color:#374151">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #f3f4f6">
+            <td style="padding:7px 10px;color:#6b7280" rowspan="2">长期（上月+本月）</td>
+            <td style="padding:7px 10px;color:#4b5563">表现不好</td>
+            <td style="padding:7px 10px;color:#dc2626;font-weight:600">预算 −1</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f3f4f6;background:#fafafa">
+            <td style="padding:7px 10px;color:#4b5563">订单 &gt; 5，ACoS &lt; 40%</td>
+            <td style="padding:7px 10px;color:#16a34a;font-weight:600">预算 +1</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f3f4f6">
+            <td style="padding:7px 10px;color:#6b7280" rowspan="2">中期（近 15~30 天）</td>
+            <td style="padding:7px 10px;color:#4b5563">表现不好</td>
+            <td style="padding:7px 10px;color:#dc2626;font-weight:600">预算再 −1</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f3f4f6;background:#fafafa">
+            <td style="padding:7px 10px;color:#4b5563">订单 &gt; 4，ACoS &lt; 35%</td>
+            <td style="padding:7px 10px;color:#16a34a;font-weight:600">预算再 +1</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f3f4f6">
+            <td style="padding:7px 10px;color:#6b7280" rowspan="2">短期（近 7~15 天）</td>
+            <td style="padding:7px 10px;color:#4b5563">表现不好</td>
+            <td style="padding:7px 10px;color:#dc2626;font-weight:600">预算再 −1</td>
+          </tr>
+          <tr>
+            <td style="padding:7px 10px;color:#4b5563">订单 &gt; 3，ACoS &lt; 35%</td>
+            <td style="padding:7px 10px;color:#16a34a;font-weight:600">预算再 +1</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:10px;font-size:11px;color:#6b7280;line-height:1.6">
+        初始预算为整数（5、10、15…），超预算每次 +5。临时暂停留空；长期暂停设为 <strong>4.4</strong>。
+      </div>
     </div>
 
   </div>
@@ -638,7 +845,7 @@ function comboChartOpts(yLabel,y2Label){
 // ── Tab routing ────────────────────────────────────────────────────────────────
 function switchTab(id){
   document.querySelectorAll('.tab-btn').forEach((b,i)=>{
-    b.classList.toggle('active',['ov','l1','l2','l3','ana','cfg','data'][i]===id);
+    b.classList.toggle('active',['ov','l1','l2','l3','ana','cfg','data','help'][i]===id);
   });
   document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('tab-'+id).classList.add('active');

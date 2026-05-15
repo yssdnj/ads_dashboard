@@ -42,7 +42,12 @@
       "Bash(curl -s -X DELETE http://127.0.0.1:8000/api/reports/4)",
       "Bash(curl -s -X POST http://127.0.0.1:8000/api/import -F \"camp_file=@data/HOWGO-US-US-全部-0406-0510-每日明细-912305834109726720.xlsx\" -F \"port_file=@data/HOWGO-US-US-广告组合-0406-0510-每日明细-912303679291469824.xlsx\" -F \"title=HOWGO-US W15-W19\")",
       "Bash(python -c \"import sys,json;[print\\(r['id'], r['title'], r['weeks']\\) for r in json.load\\(sys.stdin\\)]\")",
-      "Bash(curl -s -X POST http://127.0.0.1:8000/api/import -F \"camp_file=@data/HOWGO-US-US-全部-0406-0510-每日明细-912305834109726720.xlsx\" -F \"port_file=@data/HOWGO-US-US-广告组合-0406-0510-每日明细-912303679291469824.xlsx\")"
+      "Bash(curl -s -X POST http://127.0.0.1:8000/api/import -F \"camp_file=@data/HOWGO-US-US-全部-0406-0510-每日明细-912305834109726720.xlsx\" -F \"port_file=@data/HOWGO-US-US-广告组合-0406-0510-每日明细-912303679291469824.xlsx\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Read(//c/Users/admin/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/f0330588-53c3-4877-a22f-68605c2accbb/39dc384a-5b12-4b8f-90e5-638a4c3fbdc7/skills/docx/**)",
+      "Bash(python scripts/office/unpack.py \"D:\\\\Dropbox\\\\Amazon\\\\howgo\\\\广告\\\\广告调优SOP.docx\" \"C:\\\\Users\\\\admin\\\\Desktop\\\\python\\\\ads_dashboard\\\\tmp_docx_unpack\")"
     ]
   }
 }

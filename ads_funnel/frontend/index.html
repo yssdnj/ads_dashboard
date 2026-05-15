@@ -75,19 +75,19 @@ a{color:inherit;text-decoration:none}
   <div class="import-card">
     <h2>📥 导入新报告</h2>
     <div class="import-grid">
-      <div class="file-zone" id="zone-camp" onclick="document.getElementById('inp-camp').click()">
-        <input type="file" id="inp-camp" accept=".xlsx,.xls" onchange="onFile('camp',this)">
-        <div style="font-size:20px">📋</div>
-        <div style="font-weight:600;font-size:12px;margin-top:4px">广告活动每日明细</div>
-        <div class="label">领星 → 全部 → 每日明细导出</div>
-        <div class="fname" id="camp-name"></div>
-      </div>
       <div class="file-zone" id="zone-port" onclick="document.getElementById('inp-port').click()">
         <input type="file" id="inp-port" accept=".xlsx,.xls" onchange="onFile('port',this)">
         <div style="font-size:20px">📦</div>
         <div style="font-weight:600;font-size:12px;margin-top:4px">广告组合每日明细</div>
-        <div class="label">领星 → 广告组合 → 每日明细导出</div>
+        <div class="label">领星-广告-广告组合-下载(全部指标+每日明细)</div>
         <div class="fname" id="port-name"></div>
+      </div>
+      <div class="file-zone" id="zone-camp" onclick="document.getElementById('inp-camp').click()">
+        <input type="file" id="inp-camp" accept=".xlsx,.xls" onchange="onFile('camp',this)">
+        <div style="font-size:20px">📋</div>
+        <div style="font-weight:600;font-size:12px;margin-top:4px">广告活动每日明细</div>
+        <div class="label">领星-广告-全部活动-下载(全部指标+每日明细)</div>
+        <div class="fname" id="camp-name"></div>
       </div>
     </div>
     <div class="title-row">
