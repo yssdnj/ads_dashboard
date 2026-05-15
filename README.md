@@ -16,14 +16,61 @@ ads_dashboard/
 
 ## v2.0 — 当前版本（推荐使用）
 
-**启动方式：**
+**本地启动：**
 
 ```bash
 cd ads_funnel
 python start.py
 ```
 
-浏览器自动打开 → `http://localhost:8000`
+浏览器自动打开 → `http://localhost:5001`
+
+---
+
+## 云服务器部署
+
+**1. 拉取代码（首次）**
+
+```bash
+git clone -b dev https://github.com/yssdnj/ads_dashboard.git
+cd ads_dashboard/ads_funnel
+```
+
+**2. 安装依赖**
+
+```bash
+pip install fastapi uvicorn[standard] python-multipart pandas openpyxl numpy
+```
+
+**3. 启动服务（后台运行）**
+
+```bash
+nohup uvicorn api.main:app --host 0.0.0.0 --port 5001 > app.log 2>&1 &
+```
+
+访问地址：`http://<服务器IP>:5001`
+
+**4. 验证服务正常**
+
+```bash
+curl http://localhost:5001/api/health
+# 返回 {"status":"ok","report_count":0} 表示正常
+```
+
+**5. 查看日志 / 停止服务**
+
+```bash
+tail -f app.log                  # 查看日志
+kill $(lsof -t -i:5001)          # 停止服务
+```
+
+**6. 更新代码后重启**
+
+```bash
+git pull origin dev
+kill $(lsof -t -i:5001)
+nohup uvicorn api.main:app --host 0.0.0.0 --port 5001 > app.log 2>&1 &
+```
 
 **功能：**
 - 在线上传领星 Excel，自动解析并入库
