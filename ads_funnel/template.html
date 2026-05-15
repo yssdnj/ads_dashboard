@@ -2081,7 +2081,8 @@ async function dmDoImport(){
     const data=await resp.json();
     if(!resp.ok)throw new Error(data.detail||'导入失败');
     st.style.color='#16a34a';
-    st.textContent='导入成功：'+data.title+'（'+data.weeks.join('、')+'）';
+    const summary=(data.reports||[]).map(r=>`${r.title}（${(r.weeks||[]).join('、')}）`).join('；');
+    st.textContent='导入成功：'+summary;
     _dmFiles.camp=_dmFiles.port=null;
     ['camp','port'].forEach(tp=>{
       document.getElementById('dm-'+tp+'-name').textContent='';
@@ -2090,8 +2091,8 @@ async function dmDoImport(){
     });
     document.getElementById('dm-title').value='';
     dmLoadReports();
-    // 自动跳转到新报告
-    setTimeout(()=>window.location='/?id='+data.id,800);
+    // 自动跳转到第一个报告
+    if(data.ids&&data.ids.length)setTimeout(()=>window.location='/?id='+data.ids[0],800);
   }catch(e){
     st.style.color='#dc2626';st.textContent='错误: '+e.message;
     btn.disabled=!(_dmFiles.camp&&_dmFiles.port);
