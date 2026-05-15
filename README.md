@@ -85,6 +85,43 @@ pip install fastapi uvicorn[standard] python-multipart pandas openpyxl numpy
 
 ---
 
+## 数据流转逻辑
+
+### 导入时（一次性写入）
+
+```
+上传 Excel（广告活动 + 广告组合）
+  ↓ gen_data.process(df_camp, df_port)
+      聚合计算各维度指标（总览/产品/类别/广告活动/每日趋势等）
+  ↓ 原始行数据 → SQLite raw_camp / raw_port 表（增量合并）
+  ↓ 聚合结果 → SQLite reports.data 列（JSON 字符串）
+```
+
+### 每次刷新页面（实时渲染）
+
+```
+浏览器请求 /?id=1
+  ↓ db.get_report(1)  从 SQLite 读取 reports.data
+  ↓ export._build_html()
+      读取 template.html 文件
+      将数据注入 JS 变量（RAW / WEEKS / WK_DATES / acosTargets 等）
+  ↓ 返回完整 HTML 给浏览器（无缓存，每次实时生成）
+```
+
+### 服务重启时（自动重建）
+
+```
+startup()
+  ↓ db.rebuild_from_raw()
+      从 raw_camp / raw_port 按国家重新聚合
+      覆盖更新 reports.data
+```
+
+> `reports.data` 只在导入时写入，之后只读。  
+> 修改 `template.html` 后刷新浏览器即可生效，无需重启服务。
+
+---
+
 ## v1.0 — 历史存档（只读）
 
 位于 `legacy/`，直接用浏览器打开 HTML 文件即可查看，无需运行任何脚本。
