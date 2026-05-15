@@ -45,7 +45,7 @@ pip install fastapi uvicorn[standard] python-multipart pandas openpyxl numpy
 **3. 启动服务（后台运行）**
 
 ```bash
-nohup uvicorn api.main:app --host 0.0.0.0 --port 5001 > app.log 2>&1 &
+nohup python3 start.py > app.log 2>&1 &
 ```
 
 访问地址：`http://<服务器IP>:5001`
@@ -69,7 +69,7 @@ kill $(lsof -t -i:5001)          # 停止服务
 ```bash
 git pull origin dev
 kill $(lsof -t -i:5001)
-nohup uvicorn api.main:app --host 0.0.0.0 --port 5001 > app.log 2>&1 &
+nohup python3 start.py > app.log 2>&1 &
 ```
 
 **功能：**

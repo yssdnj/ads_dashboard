@@ -6,9 +6,9 @@ start.py — 一键启动广告漏斗分析 v2.0
 import os, sys, time, subprocess, webbrowser
 from pathlib import Path
 
-HOST = '127.0.0.1'
+HOST = '0.0.0.0'
 PORT = 5001
-URL  = f'http://{HOST}:{PORT}'
+URL  = f'http://127.0.0.1:{PORT}'
 
 def check_deps():
     missing = []
