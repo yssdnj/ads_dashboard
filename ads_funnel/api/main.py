@@ -28,7 +28,6 @@ FRONTEND = Path(__file__).parent.parent / 'frontend'
 @app.on_event('startup')
 def startup():
     db.init_db()
-    db.migrate_existing()       # 补写已有报告的细粒度表（历史兼容）
     db.rebuild_from_raw()       # 从原始数据重建 JSON（若 raw 表有数据）
     print('Database ready:', db.DB_PATH)
 
@@ -110,19 +109,17 @@ async def api_import(
 
     try:
         db.upsert_raw(df_c, df_p)
-        report_id = db.rebuild_from_raw(title=title)
+        report_ids = db.rebuild_from_raw()
     except Exception as e:
         raise HTTPException(500, f'数据处理失败: {e}')
 
-    if report_id is None:
+    if not report_ids:
         raise HTTPException(500, 'raw 数据为空，导入失败')
 
-    r = db.get_report(report_id)
+    reports = [db.get_report(rid) for rid in report_ids]
     return {
-        'id':      report_id,
-        'title':   r['title'],
-        'weeks':   r['weeks'],
-        'wk_dates': r['wk_dates'],
+        'ids':     report_ids,
+        'reports': [{'id': r['id'], 'title': r['title'], 'weeks': r['weeks']} for r in reports if r],
     }
 
 

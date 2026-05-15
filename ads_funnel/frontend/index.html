@@ -147,7 +147,8 @@ async function doImport() {
     if (!resp.ok) throw new Error(data.detail || '导入失败');
 
     status.className = 'status-ok';
-    status.textContent = `✓ 导入成功：${data.title}（${data.weeks.join('、')}）`;
+    const summary = data.reports.map(r => `${r.title}（${r.weeks.join('、')}）`).join('；');
+    status.textContent = `✓ 导入成功：${summary}`;
     // reset
     files.camp = files.port = null;
     ['camp','port'].forEach(t => {
@@ -177,7 +178,13 @@ async function loadReports() {
     }
 
     list.innerHTML = reports.map(r => {
-      const weeks = (r.weeks||[]).map(w=>`<span class="wk-badge">${w}</span>`).join('');
+      const wks = r.weeks||[];
+      let weeks;
+      if (wks.length <= 6) {
+        weeks = wks.map(w=>`<span class="wk-badge">${w}</span>`).join('');
+      } else {
+        weeks = `<span class="wk-badge">${wks[0]}</span><span class="wk-badge" style="background:#e5e7eb;color:#6b7280">…</span><span class="wk-badge">${wks[wks.length-1]}</span><span style="font-size:10px;color:#9ca3af;margin-left:2px">(${wks.length}周)</span>`;
+      }
       const date  = r.created_at ? r.created_at.slice(0,16) : '';
       return `
         <div class="report-row">

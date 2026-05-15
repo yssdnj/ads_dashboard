@@ -175,14 +175,9 @@ tbody td.bad{color:#ef4444}
     <button class="filter-pill" onclick="setOvProd('SFM')">丰容碗(SFM)</button>
     <div class="filter-sep"></div>
     <span class="filter-label">周次</span>
-    <select id="ovWkSel" onchange="setOvWkFilter(this.value)" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px">
-      <option value="all" selected>全期</option>
-      <option value="W15">W15</option>
-      <option value="W16">W16</option>
-      <option value="W17">W17</option>
-      <option value="W18">W18</option>
-      <option value="W19">W19</option>
-    </select>
+    <select id="ovWkFrom" onchange="setOvWkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
+    <span style="font-size:11px;color:#94a3b8;padding:0 2px">—</span>
+    <select id="ovWkTo" onchange="setOvWkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
   </div>
 
   <div id="ov-cards" class="metric-grid"></div>
@@ -241,14 +236,9 @@ tbody td.bad{color:#ef4444}
     <button class="filter-pill" id="l1ca-2" onclick="setL1Cat('2_SD')">SD</button>
     <div class="filter-sep"></div>
     <span class="filter-label">周次</span>
-    <select id="l1WeekSel" onchange="setL1Week(this.value)" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px">
-      <option value="all">全期</option>
-      <option value="W15">W15</option>
-      <option value="W16">W16</option>
-      <option value="W17">W17</option>
-      <option value="W18">W18</option>
-      <option value="W19" selected>W19</option>
-    </select>
+    <select id="l1WkFrom" onchange="setL1WkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
+    <span style="font-size:11px;color:#94a3b8;padding:0 2px">—</span>
+    <select id="l1WkTo" onchange="setL1WkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
   </div>
 
   <!-- Weekly trend (filtered by prod+cat) -->
@@ -283,7 +273,7 @@ tbody td.bad{color:#ef4444}
 
 
   <!-- Daily trend -->
-  <div class="section-title">日趋势（周次: <span id="l1-day-label">W19</span>）</div>
+  <div class="section-title">日趋势（周次: <span id="l1-day-label">全期</span>）</div>
   <div class="chart-wrap">
     <div class="chart-title">
       <span id="l1-day-title">日趋势</span>
@@ -330,14 +320,9 @@ tbody td.bad{color:#ef4444}
     <button class="filter-pill" id="l2ca-2_SD" onclick="setL2Cat('2_SD')">SD</button>
     <div class="filter-sep"></div>
     <span class="filter-label">周次</span>
-    <select id="l2WeekSel" onchange="setL2Week(this.value)" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px">
-      <option value="all">全期</option>
-      <option value="W15">W15</option>
-      <option value="W16">W16</option>
-      <option value="W17">W17</option>
-      <option value="W18">W18</option>
-      <option value="W19" selected>W19</option>
-    </select>
+    <select id="l2WkFrom" onchange="setL2WkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
+    <span style="font-size:11px;color:#94a3b8;padding:0 2px">—</span>
+    <select id="l2WkTo" onchange="setL2WkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
   </div>
   <div class="chart-wrap">
     <div class="chart-title">
@@ -501,9 +486,12 @@ const PROD_DESC = {SL:'P绳',DL:'双头牵引绳',DSL2:'双头P绳',Toy:'玩具�
 // ── State ──────────────────────────────────────────────────────────────────────
 let acosTargets = {SL:35,DL:35,Toy:35,ToyDH:40,DSL2:40,MFL:40,SFM:40,ShortL:40,WB:40,Other:40};
 let showWoW = false, l1ShowWoW = false;
-let ovProd='all', ovWkMode='spend', ovDayWk='all', ovDayMode='spend';
-let l1Prod='all', l1Cat='all', l1Week='W19', l1WkMode='spend', l1DayMode='spend';
-let l2Prod='all', l2Cat='all', l2WkMode='spend', l2DayMode='spend', l2Page=0, l2PerPage=20, l2Week='W19', l2Search='';
+let ovProd='all', ovWkMode='spend', ovDayMode='spend';
+let ovWkFrom=WEEKS[0], ovWkTo=WEEKS[WEEKS.length-1];
+let l1Prod='all', l1Cat='all', l1WkMode='spend', l1DayMode='spend';
+let l1WkFrom=WEEKS[0], l1WkTo=WEEKS[WEEKS.length-1];
+let l2Prod='all', l2Cat='all', l2WkMode='spend', l2DayMode='spend', l2Page=0, l2PerPage=20, l2Search='';
+let l2WkFrom=WEEKS[0], l2WkTo=WEEKS[WEEKS.length-1];
 let l3Prod='all', l3Cat='all', l3St='all', l3Page=0, l3PerPage=50, l3Search='', l3PortSearch='', l3AcosFlt='all';
 let anaProd='all';
 let _charts={};
@@ -549,21 +537,44 @@ function trendDots(wa,prod){
 }
 
 // ── Date/week helpers ──────────────────────────────────────────────────────────
-function wkDays(wk){
-  const r={W15:['2026-04-06','2026-04-12'],W16:['2026-04-13','2026-04-19'],W17:['2026-04-20','2026-04-26'],W18:['2026-04-27','2026-05-03'],W19:['2026-05-04','2026-05-10']};
-  const [s,e]=r[wk]||[];
-  if(!s)return[];
-  const days=[];
-  let cur=new Date(s);
-  const end=new Date(e);
-  while(cur<=end){days.push(cur.toISOString().slice(0,10));cur.setDate(cur.getDate()+1);}
-  return days;
+function _isoWkNum(dateStr){
+  const d=new Date(dateStr+'T12:00:00');
+  d.setDate(d.getDate()+3-(d.getDay()+6)%7);
+  const w1=new Date(d.getFullYear(),0,4);
+  return 1+Math.round(((d-w1)/86400000-3+(w1.getDay()+6)%7)/7);
 }
+// 从 RAW.daily_ov 实际日期动态构建 周→日期列表 映射
+const _wkDaysCache=(()=>{
+  const m={};
+  Object.keys(RAW.daily_ov).forEach(d=>{
+    const w='W'+_isoWkNum(d);
+    (m[w]=m[w]||[]).push(d);
+  });
+  Object.values(m).forEach(a=>a.sort());
+  return m;
+})();
+function wkDays(wk){return _wkDaysCache[wk]||[];}
 function allDays(){return WEEKS.flatMap(w=>wkDays(w));}
 function getDayList(wkFilter){
   if(wkFilter==='all')return allDays();
   return wkDays(wkFilter);
 }
+
+// ── 周次区间辅助 ────────────────────────────────────────────────────────────────
+function rangeWks(from,to){
+  const fi=WEEKS.indexOf(from),ti=WEEKS.indexOf(to);
+  return WEEKS.slice(fi<0?0:fi,ti<0?WEEKS.length:ti+1);
+}
+function getRangeMetrics(prod,cat,from,to){
+  const fi=WEEKS.indexOf(from),ti=WEEKS.indexOf(to);
+  if(fi<0||ti<0||fi===ti)return getMetrics(prod,cat,fi<0?-1:fi);
+  let sp=0,sl=0,cl=0,im=0,or_=0;
+  for(let i=fi;i<=ti;i++){const m=getMetrics(prod,cat,i);if(!m)continue;sp+=m.sp||0;sl+=m.sl||0;cl+=m.cl||0;im+=m.im||0;or_+=(m.or_||m.or||0);}
+  const ac=sl>0?+(sp/sl*100).toFixed(2):null,ro=sp>0?+(sl/sp).toFixed(2):null;
+  const ct=im>0?+(cl/im*100).toFixed(4):null,cv=cl>0?+(or_/cl*100).toFixed(4):null,cp=cl>0?+(sp/cl).toFixed(4):null;
+  return{sp,sl,cl,im,or_,ac,ro,ct,cv,cp};
+}
+function rangeDays(from,to){return rangeWks(from,to).flatMap(w=>wkDays(w));}
 
 // Get metric object (total or weekly) for a prod+cat combo
 function getMetrics(prod,cat,wIdx){
@@ -653,12 +664,11 @@ function setOvProd(p){
   renderOv();
 }
 function setOvWkMode(m){ovWkMode=m;document.getElementById('ovWkM1').classList.toggle('active',m==='spend');document.getElementById('ovWkM2').classList.toggle('active',m==='click');drawOvWkChart();}
-function setOvWkFilter(w){
-  ovDayWk=w;
-  const sel=document.getElementById('ovWkSel');if(sel)sel.value=w;
-  renderOvCards();
-  renderOvProdTable();
-  drawOvDayChart();
+function setOvWkRange(){
+  ovWkFrom=document.getElementById('ovWkFrom').value;
+  ovWkTo=document.getElementById('ovWkTo').value;
+  if(WEEKS.indexOf(ovWkFrom)>WEEKS.indexOf(ovWkTo)){ovWkTo=ovWkFrom;document.getElementById('ovWkTo').value=ovWkTo;}
+  renderOvCards();drawOvWkChart();drawOvDayChart();renderOvProdTable();
 }
 function setOvDayMode(m){ovDayMode=m;document.getElementById('ovDayM1').classList.toggle('active',m==='spend');document.getElementById('ovDayM2').classList.toggle('active',m==='click');drawOvDayChart();}
 function toggleWoW(){showWoW=!showWoW;document.getElementById('wowToggle').classList.toggle('on',showWoW);renderOvProdTable();}
@@ -667,8 +677,7 @@ function renderOv(){renderOvCards();drawOvWkChart();drawOvDayChart();renderOvPro
 
 function renderOvCards(){
   const prod=ovProd==='all'?'Other':ovProd;
-  const wIdx=ovDayWk==='all'?-1:WEEKS.indexOf(ovDayWk);
-  const t=getMetrics(ovProd,null,wIdx);
+  const t=getRangeMetrics(ovProd,null,ovWkFrom,ovWkTo);
   if(!t)return;
   const cards=[
     {l:'总花费',v:fmt(t.sp,'$')},
@@ -689,8 +698,9 @@ function renderOvCards(){
 
 function drawOvWkChart(){
   destroyChart('ovWkChart');
-  const labels=WEEKS.map(w=>w+' ('+WK_DATES[w]+')');
-  const metrics=WEEKS.map((_,i)=>getMetrics(ovProd,null,i)||{sp:0,sl:0,cl:0,im:0,or_:0,ac:null,ct:null,cv:null});
+  const rWks=rangeWks(ovWkFrom,ovWkTo),fi=WEEKS.indexOf(ovWkFrom);
+  const labels=rWks.map(w=>w+' ('+WK_DATES[w]+')');
+  const metrics=rWks.map((_,i)=>getMetrics(ovProd,null,fi+i)||{sp:0,sl:0,cl:0,im:0,or_:0,ac:null,ct:null,cv:null});
   _charts['ovWkChart']=new Chart(document.getElementById('ovWkChart'),{
     type:'bar',data:{labels,datasets:buildComboDatasets(metrics,ovWkMode)},
     options:comboChartOpts('','%')
@@ -699,7 +709,7 @@ function drawOvWkChart(){
 
 function drawOvDayChart(){
   destroyChart('ovDayChart');
-  const days=getDayList(ovDayWk);
+  const days=rangeDays(ovWkFrom,ovWkTo);
   const metrics=getDailyData(ovProd==='all'?'all':ovProd,null,days);
   _charts['ovDayChart']=new Chart(document.getElementById('ovDayChart'),{
     type:'bar',data:{labels:days.map(d=>d.slice(5)),datasets:buildComboDatasets(metrics,ovDayMode)},
@@ -735,9 +745,8 @@ function _mkSumRow(s,pre,suf){
 function renderOvProdTable(){
   let prodList=Object.keys(RAW.prods);
   if(ovProd!=='all')prodList=prodList.filter(p=>p===ovProd);
-  const wIdx=ovDayWk==='all'?-1:WEEKS.indexOf(ovDayWk);
   prodList.sort((a,b)=>{
-    const gv=p=>{const d=wIdx===-1?RAW.prods[p].t:(RAW.prods[p].w[wIdx]||{});return ovSortCol==='or'?(d.or||d.or_||0):(d[ovSortCol]??-Infinity);};
+    const gv=p=>{const d=getRangeMetrics(p,null,ovWkFrom,ovWkTo)||{};return ovSortCol==='or'?(d.or||d.or_||0):(d[ovSortCol]??-Infinity);};
     return ovSortDir*(gv(a)-gv(b));
   });
   const _ovth=(c,l,xs='')=>_th(ovSortCol,ovSortDir,c,l,'sortOv',xs);
@@ -746,9 +755,9 @@ function renderOvProdTable(){
     ${_ovth('im','曝光')}${_ovth('cl','点击')}${_ovth('or','订单')}${_ovth('sp','花费($)')}${_ovth('sl','销售额($)')}
     ${_ovth('cp','CPC($)')}${_ovth('ct','CTR%')}${_ovth('cv','CVR%')}${_ovth('ac','ACoS%')}<th>目标</th>${_ovth('ro','ROAS')}<th style="text-align:center">趋势</th>
   </tr></thead><tbody>`;
-  {const _s={im:0,cl:0,or:0,sp:0,sl:0};prodList.forEach(p=>{const d=wIdx===-1?RAW.prods[p].t:(RAW.prods[p].w[wIdx]||null);if(!d)return;_s.im+=d.im||0;_s.cl+=d.cl||0;_s.or+=(d.or||d.or_||0);_s.sp+=d.sp||0;_s.sl+=d.sl||0;});html+=_mkSumRow(_s,'<td style="color:#475569;font-weight:700">汇总</td>','<td></td>');}
+  {const _s={im:0,cl:0,or:0,sp:0,sl:0};prodList.forEach(p=>{const d=getRangeMetrics(p,null,ovWkFrom,ovWkTo);if(!d)return;_s.im+=d.im||0;_s.cl+=d.cl||0;_s.or+=(d.or||d.or_||0);_s.sp+=d.sp||0;_s.sl+=d.sl||0;});html+=_mkSumRow(_s,'<td style="color:#475569;font-weight:700">汇总</td>','<td></td>');}
   for(const p of prodList){
-    const t=wIdx===-1?RAW.prods[p].t:(RAW.prods[p].w[wIdx]||null);
+    const t=getRangeMetrics(p,null,ovWkFrom,ovWkTo);
     if(!t||(!t.sp&&!t.cl&&!t.im))continue;
     const wa=RAW.prods[p].w.map(w=>w?.ac??null);
     const acCls=acosClass(t.ac,p);
@@ -783,10 +792,10 @@ function toggleOvRow(prod,tr){
   document.querySelectorAll('#ov-prod-table tbody tr').forEach(r=>{r.classList.remove('expanded-row');const t=r.querySelector('.exp-toggle');if(t)t.textContent='▶';});
   tr.classList.add('expanded-row');tr.querySelector('.exp-toggle').textContent='▼';
   const wdata=RAW.prods[prod].w;
-  if(ovDayWk==='all'){
+  {const rWks=rangeWks(ovWkFrom,ovWkTo),fi=WEEKS.indexOf(ovWkFrom);
     let insertAfter=tr;
-    WEEKS.forEach((w,i)=>{
-      const d=wdata[i];if(!d||(!d.sp&&!d.cl&&!d.im))return;
+    rWks.forEach((w,i)=>{
+      const d=wdata[fi+i];if(!d||(!d.sp&&!d.cl&&!d.im))return;
       const acCls=acosClass(d.ac,prod);
       const rowHtml=`<tr class="week-row row-indent1 ov-wk-row-${prod} clickable" onclick="toggleOvWeekRow('${prod}','${w}',this)">
         <td><span class="exp-toggle" data-open="false">▶</span><span style="font-size:11px;color:#3b82f6;font-weight:600">${w}</span> <small style="color:#aaa">${WK_DATES[w]}</small></td>
@@ -796,24 +805,6 @@ function toggleOvRow(prod,tr){
         <td class="${acCls}">${fmt(d.ac,'pct')}</td>
         <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
         <td>${fmt(d.ro,'x')}</td><td></td>
-      </tr>`;
-      insertAfter.insertAdjacentHTML('afterend',rowHtml);
-      insertAfter=insertAfter.nextSibling;
-    });
-  }else{
-    const days=wkDays(ovDayWk);
-    let insertAfter=tr;
-    days.forEach(d=>{
-      const src=RAW.daily_prod[prod]?.[d];if(!src)return;
-      const acCls=acosClass(src.ac,prod);
-      const rowHtml=`<tr class="day-row row-indent1 ov-day-row-${prod}">
-        <td><span style="color:#718096;font-size:11px">${d.slice(5)}</span></td>
-        <td>${fmt(src.im,'int')}</td><td>${fmt(src.cl,'int')}</td><td>${fmt(src.or_||src.or,'int')}</td>
-        <td>${fmt(src.sp,'$')}</td><td>${fmt(src.sl,'$')}</td><td>${fmt(src.cp,'$')}</td>
-        <td>${fmt(src.ct,'pct2')}</td><td>${fmt(src.cv,'pct2')}</td>
-        <td class="${acCls}">${fmt(src.ac,'pct')}</td>
-        <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
-        <td>${fmt(src.ro,'x')}</td><td></td>
       </tr>`;
       insertAfter.insertAdjacentHTML('afterend',rowHtml);
       insertAfter=insertAfter.nextSibling;
@@ -861,9 +852,12 @@ function setL1Cat(c){
   document.getElementById('l1ca-'+(idMap[c]||'all')).classList.add('active');
   renderL1();
 }
-function setL1Week(w){
-  l1Week=w;
-  document.getElementById('l1-day-label').textContent=w==='all'?'全期':w;
+function setL1WkRange(){
+  l1WkFrom=document.getElementById('l1WkFrom').value;
+  l1WkTo=document.getElementById('l1WkTo').value;
+  if(WEEKS.indexOf(l1WkFrom)>WEEKS.indexOf(l1WkTo)){l1WkTo=l1WkFrom;document.getElementById('l1WkTo').value=l1WkTo;}
+  const lbl=l1WkFrom===l1WkTo?l1WkFrom:l1WkFrom+'–'+l1WkTo;
+  document.getElementById('l1-day-label').textContent=lbl;
   renderL1Charts();drawL1WkChart();drawL1DayChart();renderL1ProdTable();
 }
 function setL1WkMode(m){l1WkMode=m;document.getElementById('l1WkM1').classList.toggle('active',m==='spend');document.getElementById('l1WkM2').classList.toggle('active',m==='click');drawL1WkChart();}
@@ -876,12 +870,10 @@ function renderL1(){renderL1Charts();drawL1WkChart();drawL1DayChart();renderL1Pr
 function renderL1Charts(){
   const cats=CAT_ORDER;
   const labels=cats.map(c=>CAT_SHORT[c]);
-  const wIdx=l1Week==='all'?-1:WEEKS.indexOf(l1Week);
-
   // For comparison charts: use prod filter but always show all categories
   function getCatMetric(cat){
-    if(l1Prod==='all') return getMetrics('all',cat,wIdx);
-    else return getMetrics(l1Prod,cat,wIdx);
+    if(l1Prod==='all') return getRangeMetrics('all',cat,l1WkFrom,l1WkTo);
+    else return getRangeMetrics(l1Prod,cat,l1WkFrom,l1WkTo);
   }
 
   const acosVals=cats.map(c=>getCatMetric(c)?.ac??null);
@@ -944,8 +936,9 @@ function renderL1Charts(){
 // Weekly trend — aggregated by prod+cat filter
 function drawL1WkChart(){
   destroyChart('l1WkChart');
-  const metrics=WEEKS.map((_,i)=>getMetrics(l1Prod==='all'?'all':l1Prod, l1Cat==='all'?null:l1Cat, i));
-  const labels=WEEKS.map(w=>w+' ('+WK_DATES[w]+')');
+  const rWks=rangeWks(l1WkFrom,l1WkTo),fi=WEEKS.indexOf(l1WkFrom);
+  const metrics=rWks.map((_,i)=>getMetrics(l1Prod==='all'?'all':l1Prod,l1Cat==='all'?null:l1Cat,fi+i));
+  const labels=rWks.map(w=>w+' ('+WK_DATES[w]+')');
   // Build title
   const pLabel=l1Prod==='all'?'全部商品':PROD_DESC[l1Prod]||l1Prod;
   const cLabel=l1Cat==='all'?'全部类别':CAT_SHORT[l1Cat]||l1Cat;
@@ -959,7 +952,7 @@ function drawL1WkChart(){
 // Daily trend — aggregated by prod+cat+week filter
 function drawL1DayChart(){
   destroyChart('l1DayChart');
-  const days=getDayList(l1Week);
+  const days=rangeDays(l1WkFrom,l1WkTo);
   const metrics=getDailyData(l1Prod==='all'?'all':l1Prod, l1Cat==='all'?null:l1Cat, days);
   const pLabel=l1Prod==='all'?'全部':PROD_DESC[l1Prod]||l1Prod;
   const cLabel=l1Cat==='all'?'全部':CAT_SHORT[l1Cat]||l1Cat;
@@ -975,16 +968,16 @@ function renderL1ProdTable(){
   const CAT_ORDER=['3_SP_KW精准','4_SP_KW拓展','5_SP_ASIN精准','6_SP_ASIN拓展','1_SB','2_SD'];
   const allProds=l1Prod==='all'?Object.keys(RAW.prods).filter(p=>p!=='Other'):[l1Prod];
   const allCats=l1Cat==='all'?CAT_ORDER:[l1Cat];
-  const wIdx=l1Week==='all'?-1:WEEKS.indexOf(l1Week);
   // Build (cat,prod) rows with data
+  const isSingleWk=l1WkFrom===l1WkTo;
   let rows=[];
   allCats.forEach(cat=>{
     allProds.forEach(prod=>{
       const src=RAW.prod_cats[prod]?.[cat];if(!src)return;
-      const d=wIdx===-1?src.t:src.w[wIdx];
+      const d=getRangeMetrics(prod,cat,l1WkFrom,l1WkTo);
       if(!d||(!d.sp&&!d.cl&&!d.im))return;
-      const prevIdx=wIdx>0?wIdx-1:null;
-      const wowPrev=(l1ShowWoW&&prevIdx!==null)?src.w[prevIdx]:null;
+      const fi=WEEKS.indexOf(l1WkFrom);
+      const wowPrev=(l1ShowWoW&&isSingleWk&&fi>0)?src.w[fi-1]:null;
       rows.push({prod,cat,src,d,wowPrev});
     });
   });
@@ -1037,14 +1030,12 @@ function toggleL1ProdRow(prod,tr){
   tr.classList.add('expanded-row');tr.querySelector('.exp-toggle').textContent='▼';
   const src=l1Cat==='all'?RAW.prods[prod]:RAW.prod_cats[prod]?.[l1Cat];
   if(!src)return;
-  if(l1Week==='all'){
-    // Show W15-W19 sub-rows
+  {const rWks=rangeWks(l1WkFrom,l1WkTo),fi=WEEKS.indexOf(l1WkFrom);
     let insertAfter=tr;
-    WEEKS.forEach((w,i)=>{
-      const d=l1Cat==='all'?src.w[i]:src.w[i];
-      if(!d||(!d.sp&&!d.cl&&!d.im))return;
+    rWks.forEach((w,i)=>{
+      const d=src.w[fi+i];if(!d||(!d.sp&&!d.cl&&!d.im))return;
       const acCls=acosClass(d.ac,prod);
-      const prevD=i>0?src.w[i-1]:null;
+      const prevD=i>0?src.w[fi+i-1]:null;
       const ww=l1ShowWoW&&prevD?{cl:wowTag(d.cl,prevD.cl,false),sp:wowTag(d.sp,prevD.sp,true),sl:wowTag(d.sl,prevD.sl,false),cv:wowTag(d.cv,prevD.cv,false),ac:wowTag(d.ac,prevD.ac,true)}:{};
       const rowHtml=`<tr class="week-row row-indent1 l1-wk-row-${prod} clickable" onclick="toggleL1WeekRow('${prod}','${w}',this)">
         <td><span class="exp-toggle" data-open="false">▶</span><span style="font-size:11px;color:#3b82f6;font-weight:600">${w}</span> <small style="color:#aaa">${WK_DATES[w]}</small></td>
@@ -1054,29 +1045,6 @@ function toggleL1ProdRow(prod,tr){
         <td class="${acCls}">${fmt(d.ac,'pct')}${ww.ac?' '+ww.ac:''}</td>
         <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
         <td>${fmt(d.ro,'x')}</td><td></td>
-      </tr>`;
-      insertAfter.insertAdjacentHTML('afterend',rowHtml);
-      insertAfter=insertAfter.nextSibling;
-    });
-  }else{
-    // Show daily for selected week
-    const days=wkDays(l1Week);
-    let insertAfter=tr;
-    days.forEach((d,dIdx)=>{
-      const src2=l1Cat==='all'?RAW.daily_prod[prod]?.[d]:RAW.daily_prod_cat[prod]?.[l1Cat]?.[d];
-      if(!src2)return;
-      const acCls=acosClass(src2.ac,prod);
-      const prevDay=dIdx>0?days[dIdx-1]:null;
-      const prevSrc2=prevDay?(l1Cat==='all'?RAW.daily_prod[prod]?.[prevDay]:RAW.daily_prod_cat[prod]?.[l1Cat]?.[prevDay]):null;
-      const ww=l1ShowWoW&&prevSrc2?{cl:wowTag(src2.cl,prevSrc2.cl,false),sp:wowTag(src2.sp,prevSrc2.sp,true),sl:wowTag(src2.sl,prevSrc2.sl,false),cv:wowTag(src2.cv,prevSrc2.cv,false),ac:wowTag(src2.ac,prevSrc2.ac,true)}:{};
-      const rowHtml=`<tr class="day-row row-indent1 l1-day-row-${prod}">
-        <td><span style="color:#718096;font-size:11px">${d.slice(5)}</span></td>
-        <td>${fmt(src2.im,'int')}</td><td>${fmt(src2.cl,'int')}${ww.cl?' '+ww.cl:''}</td><td>${fmt(src2.or_||src2.or,'int')}</td>
-        <td>${fmt(src2.sp,'$')}${ww.sp?' '+ww.sp:''}</td><td>${fmt(src2.sl,'$')}${ww.sl?' '+ww.sl:''}</td><td>${fmt(src2.cp,'$')}</td>
-        <td>${fmt(src2.ct,'pct2')}</td><td>${fmt(src2.cv,'pct2')}${ww.cv?' '+ww.cv:''}</td>
-        <td class="${acCls}">${fmt(src2.ac,'pct')}${ww.ac?' '+ww.ac:''}</td>
-        <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
-        <td>${fmt(src2.ro,'x')}</td><td></td>
       </tr>`;
       insertAfter.insertAdjacentHTML('afterend',rowHtml);
       insertAfter=insertAfter.nextSibling;
@@ -1122,10 +1090,10 @@ function toggleL1CatRow(prod,cat,rk,tr){
   document.querySelectorAll('#l1-prod-table .expanded-row').forEach(r=>{r.classList.remove('expanded-row');const e=r.querySelector('.exp-toggle');if(e)e.textContent='▶';});
   tr.classList.add('expanded-row');tr.querySelector('.exp-toggle').textContent='▼';
   const catSrc=RAW.prod_cats[prod]?.[cat];if(!catSrc)return;
-  if(l1Week==='all'){
+  {const rWks=rangeWks(l1WkFrom,l1WkTo),fi=WEEKS.indexOf(l1WkFrom);
     let insertAfter=tr;
-    WEEKS.forEach((w,i)=>{
-      const d=catSrc.w[i];if(!d||(!d.sp&&!d.cl&&!d.im))return;
+    rWks.forEach((w,i)=>{
+      const d=catSrc.w[fi+i];if(!d||(!d.sp&&!d.cl&&!d.im))return;
       const acCls=acosClass(d.ac,prod);
       const catEsc=cat.replace(/'/g,"\'");
       const rowHtml=`<tr class="week-row row-indent1 l1-wk-row-${rk} clickable" onclick="toggleL1CatWeekRow('${prod}','${catEsc}','${w}','${rk}',this)">
@@ -1137,25 +1105,6 @@ function toggleL1CatRow(prod,cat,rk,tr){
         <td class="${acCls}">${fmt(d.ac,'pct')}</td>
         <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
         <td>${fmt(d.ro,'x')}</td><td></td>
-      </tr>`;
-      insertAfter.insertAdjacentHTML('afterend',rowHtml);
-      insertAfter=insertAfter.nextSibling;
-    });
-  }else{
-    const days=wkDays(l1Week);
-    let insertAfter=tr;
-    days.forEach(d=>{
-      const src=RAW.daily_prod_cat[prod]?.[cat]?.[d];if(!src)return;
-      const acCls=acosClass(src.ac,prod);
-      const rowHtml=`<tr class="day-row row-indent1 l1-day-row-${rk}">
-        <td><span style="color:#718096;font-size:11px">${d.slice(5)}</span></td>
-        <td></td>
-        <td>${fmt(src.im,'int')}</td><td>${fmt(src.cl,'int')}</td><td>${fmt(src.or_||src.or,'int')}</td>
-        <td>${fmt(src.sp,'$')}</td><td>${fmt(src.sl,'$')}</td><td>${fmt(src.cp,'$')}</td>
-        <td>${fmt(src.ct,'pct2')}</td><td>${fmt(src.cv,'pct2')}</td>
-        <td class="${acCls}">${fmt(src.ac,'pct')}</td>
-        <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
-        <td>${fmt(src.ro,'x')}</td><td></td>
       </tr>`;
       insertAfter.insertAdjacentHTML('afterend',rowHtml);
       insertAfter=insertAfter.nextSibling;
@@ -1205,7 +1154,14 @@ function setL2Cat(c){
 function setL2PerPage(n){l2PerPage=n;l2Page=0;renderL2Table();}
 function setL2WkMode(m){l2WkMode=m;document.getElementById('l2WkM1').classList.toggle('active',m==='spend');document.getElementById('l2WkM2').classList.toggle('active',m==='click');drawL2Charts();}
 function setL2DayMode(m){l2DayMode=m;document.getElementById('l2DayM1').classList.toggle('active',m==='spend');document.getElementById('l2DayM2').classList.toggle('active',m==='click');drawL2Charts();}
-function setL2Week(w){l2Week=w;const el=document.getElementById('l2-day-wk-label');if(el)el.textContent=w==='all'?'全期':w;drawL2Charts();}
+function setL2WkRange(){
+  l2WkFrom=document.getElementById('l2WkFrom').value;
+  l2WkTo=document.getElementById('l2WkTo').value;
+  if(WEEKS.indexOf(l2WkFrom)>WEEKS.indexOf(l2WkTo)){l2WkTo=l2WkFrom;document.getElementById('l2WkTo').value=l2WkTo;}
+  const lbl=l2WkFrom===l2WkTo?l2WkFrom:l2WkFrom+'–'+l2WkTo;
+  const el=document.getElementById('l2-day-wk-label');if(el)el.textContent=lbl;
+  drawL2Charts();
+}
 
 function getL2Ports(){return RAW.ports.filter(p=>(l2Prod==='all'||p.p===l2Prod)&&(l2Cat==='all'||p.c===l2Cat));}
 
@@ -1213,14 +1169,15 @@ function renderL2(){drawL2Charts();renderL2Table();}
 
 function drawL2Charts(){
   const ports=getL2Ports();
-  const wkAgg=WEEKS.map((w,i)=>{
+  const rWks=rangeWks(l2WkFrom,l2WkTo);
+  const wkAgg=rWks.map((w)=>{
     const days=wkDays(w);let sp=0,sl=0,cl=0,im=0,or_=0;
     ports.forEach(pt=>{const pd=RAW.daily_port[pt.n];if(!pd)return;
       days.forEach(d=>{const dd=pd[d];if(!dd)return;sp+=dd.sp||0;sl+=dd.sl||0;cl+=dd.cl||0;im+=dd.im||0;or_+=(dd.or_||dd.or||0);});
     });
     return{sp,sl,cl,im,or_,ac:sl>0?+(sp/sl*100).toFixed(2):null,cv:cl>0?+(or_/cl*100).toFixed(4):null,ct:im>0?+(cl/im*100).toFixed(4):null};
   });
-  const labels=WEEKS.map(w=>w+' ('+WK_DATES[w]+')');
+  const labels=rWks.map(w=>w+' ('+WK_DATES[w]+')');
   destroyChart('l2WkChart');
   let ds;
   if(l2WkMode==='spend')ds=[
@@ -1238,7 +1195,7 @@ function drawL2Charts(){
   ];
   _charts['l2WkChart']=new Chart(document.getElementById('l2WkChart'),{type:'bar',data:{labels,datasets:ds},options:comboChartOpts('','%')});
 
-  const days=l2Week==='all'?allDays():wkDays(l2Week);
+  const days=rangeDays(l2WkFrom,l2WkTo);
   const dayAgg=days.map(d=>{
     let sp=0,sl=0,cl=0,im=0,or_=0;
     ports.forEach(pt=>{const pd=RAW.daily_port[pt.n];if(!pd||!pd[d])return;const dd=pd[d];sp+=dd.sp||0;sl+=dd.sl||0;cl+=dd.cl||0;im+=dd.im||0;or_+=(dd.or_||dd.or||0);});
@@ -1329,9 +1286,9 @@ function toggleL2Row(portName,tr){
   const port=RAW.ports.find(p=>p.n===portName);
   const prod=port?port.p:'Other';
   const pd=RAW.daily_port[portName];if(!pd)return;
-  if(l2Week==='all'){
+  {const rWks=rangeWks(l2WkFrom,l2WkTo);
     let insertAfter=tr;
-    WEEKS.forEach(w=>{
+    rWks.forEach(w=>{
       const d=aggPortWeek(portName,w);if(!d)return;
       const acCls=acosClass(d.ac,prod);
       const esc=portName.replace(/'/g,"\'");
@@ -1344,25 +1301,6 @@ function toggleL2Row(portName,tr){
         <td class="${acCls}">${fmt(d.ac,'pct')}</td>
         <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
         <td>${fmt(d.ro,'x')}</td><td></td>
-      </tr>`;
-      insertAfter.insertAdjacentHTML('afterend',rowHtml);
-      insertAfter=insertAfter.nextSibling;
-    });
-  }else{
-    const days=wkDays(l2Week);
-    let insertAfter=tr;
-    days.forEach(d=>{
-      const dd=pd[d];if(!dd)return;
-      const acCls=acosClass(dd.ac,prod);
-      const rowHtml=`<tr class="day-row row-indent1 l2-day-row-${sn}">
-        <td><span style="color:#718096;font-size:11px">${d.slice(5)}</span></td>
-        <td></td><td></td>
-        <td>${fmt(dd.im,'int')}</td><td>${fmt(dd.cl,'int')}</td><td>${fmt(dd.or_||dd.or,'int')}</td>
-        <td>${fmt(dd.sp,'$')}</td><td>${fmt(dd.sl,'$')}</td><td>${fmt(dd.cp,'$')}</td>
-        <td>${fmt(dd.ct,'pct2')}</td><td>${fmt(dd.cv,'pct2')}</td>
-        <td class="${acCls}">${fmt(dd.ac,'pct')}</td>
-        <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
-        <td>${fmt(dd.ro,'x')}</td><td></td>
       </tr>`;
       insertAfter.insertAdjacentHTML('afterend',rowHtml);
       insertAfter=insertAfter.nextSibling;
@@ -1821,7 +1759,10 @@ async function dmLoadReports(){
       return;
     }
     list.innerHTML=reports.map(r=>{
-      const wks=(r.weeks||[]).map(w=>`<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#dbeafe;color:#1e40af;margin-right:3px">${w}</span>`).join('');
+      const _ws=r.weeks||[];
+      const wks=_ws.length<=6
+        ?_ws.map(w=>`<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#dbeafe;color:#1e40af;margin-right:3px">${w}</span>`).join('')
+        :`<span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#dbeafe;color:#1e40af;margin-right:3px">${_ws[0]}</span><span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#e5e7eb;color:#6b7280;margin-right:3px">…</span><span style="font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:#dbeafe;color:#1e40af;margin-right:3px">${_ws[_ws.length-1]}</span><span style="font-size:10px;color:#9ca3af">(${_ws.length}周)</span>`;
       const cur=r.id===currentId;
       const date=r.created_at?r.created_at.slice(0,16):'';
       const safeTitle=r.title.replace(/'/g,"\\'");
@@ -1849,6 +1790,29 @@ async function dmDel(id,title,isCurrent){
   if(isCurrent)window.location='/?';
   else dmLoadReports();
 }
+
+// ── 初始化周次区间下拉框（从 WEEKS 动态生成）────────────────────────────────
+function initWeekRangeSelects(){
+  const pairs=[
+    {fromId:'ovWkFrom', toId:'ovWkTo'},
+    {fromId:'l1WkFrom', toId:'l1WkTo'},
+    {fromId:'l2WkFrom', toId:'l2WkTo'},
+  ];
+  pairs.forEach(({fromId,toId})=>{
+    const selFrom=document.getElementById(fromId);
+    const selTo=document.getElementById(toId);
+    if(!selFrom||!selTo)return;
+    WEEKS.forEach((w,i)=>{
+      const o1=document.createElement('option');
+      o1.value=w;o1.textContent=w;if(i===0)o1.selected=true;
+      selFrom.appendChild(o1);
+      const o2=document.createElement('option');
+      o2.value=w;o2.textContent=w;if(i===WEEKS.length-1)o2.selected=true;
+      selTo.appendChild(o2);
+    });
+  });
+}
+initWeekRangeSelects();
 
 // ══════════════════════════════════════════════════════════════════════════════
 // DATABASE TAB
