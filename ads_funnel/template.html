@@ -786,6 +786,12 @@ function wowTag(cur,prev,lowerBetter){
   const cls=good?'wow-up':'wow-dn';
   return`<span class="${cls}">${cur>prev?'↑':'↓'}${Math.abs(d)}%</span>`;
 }
+function sliceWa(wa,from,to){
+  if(!wa||!wa.length)return wa;
+  const fi=WEEKS.indexOf(from),ti=WEEKS.indexOf(to);
+  if(fi<0||ti<0)return wa;
+  return wa.slice(fi,ti+1);
+}
 function trendDots(wa,prod){
   if(!wa||!wa.length)return'';
   return'<div class="tdots-ext">'+wa.map((v,i)=>{
@@ -1100,7 +1106,7 @@ function renderOvProdTable(){
   for(const p of prodList){
     const t=getRangeMetrics(p,null,ovWkFrom,ovWkTo);
     if(!t||(!t.sp&&!t.cl&&!t.im))continue;
-    const wa=RAW.prods[p].w.map(w=>w?.ac??null);
+    const wa=sliceWa(RAW.prods[p].w,ovWkFrom,ovWkTo).map(w=>w?.ac??null);
     const acCls=acosClass(t.ac,p);
     html+=`<tr class="clickable" onclick="toggleOvRow('${p}',this)">
       <td><span class="exp-toggle" data-open="false">▶</span>${PROD_DESC[p]||p} <small style="color:#94a3b8">(${p})</small></td>
@@ -1359,7 +1365,7 @@ function renderL1ProdTable(){
       <td class="${acCls}">${fmt(d.ac,'pct')}${ww.ac?' '+ww.ac:''}</td>
       <td style="color:#718096;font-size:11px">${getTarget(prod)}%</td>
       <td>${fmt(d.ro,'x')}</td>
-      <td><div style="display:flex;justify-content:center">${trendDots(src.w.map(w=>w?.ac??null),prod)}</div></td>
+      <td><div style="display:flex;justify-content:center">${trendDots(sliceWa(src.w,l1WkFrom,l1WkTo).map(w=>w?.ac??null),prod)}</div></td>
     </tr>`;
   }
   html+='</tbody></table>';
@@ -1589,7 +1595,7 @@ function renderL2Table(){
       <td>${fmt(t.im,'int')}</td><td>${fmt(t.cl,'int')}</td><td>${fmt(t.or||t.or_,'int')}</td>
       <td>${fmt(t.sp,'$')}</td><td>${fmt(t.sl,'$')}</td><td>${fmt(t.cp,'$')}</td><td>${fmt(t.ct,'pct2')}</td><td>${fmt(t.cv,'pct2')}</td>
       <td class="${acCls}">${fmt(t.ac,'pct')}</td><td style="color:#718096;font-size:11px">${getTarget(p.p)}%</td><td>${fmt(t.ro,'x')}</td>
-      <td><div style="display:flex;justify-content:center">${trendDots(p.wa,p.p)}</div></td>
+      <td><div style="display:flex;justify-content:center">${trendDots(sliceWa(p.wa,l2WkFrom,l2WkTo),p.p)}</div></td>
     </tr>`;
   }
   html+='</tbody></table>';
