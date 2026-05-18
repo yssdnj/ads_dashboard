@@ -16,16 +16,18 @@ def classify_port(name: str):
     """根据广告组合名称推断 (商品, 类别)"""
     prod, cat = 'Other', '7_Other'
     n = str(name)
+    # 用于匹配的标准化名称：仅将 ASCII 字母转大写，解决 Asin/ASIN 大小写混用问题
+    n_m = ''.join(c.upper() if c.isascii() else c for c in n)
     for p in PRODS:
         if n.startswith(p + '_') or n == p:
             prod = p
             break
-    if   '_SB' in n or n.startswith('SB'):          cat = '1_SB'
-    elif '_SD' in n or n.startswith('SD'):           cat = '2_SD'
-    elif 'KW精准' in n:                               cat = '3_SP_KW精准'
-    elif 'KW拓展' in n:                               cat = '4_SP_KW拓展'
-    elif 'ASIN精准' in n or 'ASIN进攻' in n:          cat = '5_SP_ASIN精准'
-    elif 'ASIN拓展' in n or 'ASIN防守' in n:          cat = '6_SP_ASIN拓展'
+    if   '_SB' in n or n.startswith('SB'):                    cat = '1_SB'
+    elif '_SD' in n or n.startswith('SD'):                    cat = '2_SD'
+    elif 'KW精准' in n_m or 'KW防守' in n_m:                   cat = '3_SP_KW精准'
+    elif 'KW拓展' in n_m:                                      cat = '4_SP_KW拓展'
+    elif 'ASIN精准' in n_m or 'ASIN进攻' in n_m or 'ASIN防守' in n_m:  cat = '5_SP_ASIN精准'
+    elif 'ASIN拓展' in n_m:                                          cat = '6_SP_ASIN拓展'
     return prod, cat
 
 

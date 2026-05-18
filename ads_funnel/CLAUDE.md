@@ -112,10 +112,10 @@ PRODS = ['SL','DL','DSL2','Toy','ToyDH','MFL','SFM','ShortL','WB']
 |-------------------|------|
 | `_SB` / `SB` 开头 | 1_SB |
 | `_SD` / `SD` 开头 | 2_SD |
-| `KW精准` | 3_SP_KW精准 |
+| `KW精准` / `KW防守` | 3_SP_KW精准 |
 | `KW拓展` | 4_SP_KW拓展 |
-| `ASIN精准` / `ASIN进攻` | 5_SP_ASIN精准 |
-| `ASIN拓展` / `ASIN防守` | 6_SP_ASIN拓展 |
+| `ASIN精准` / `ASIN进攻` / `ASIN防守` | 5_SP_ASIN精准 |
+| `ASIN拓展` | 6_SP_ASIN拓展 |
 
 ## 修改模板
 
