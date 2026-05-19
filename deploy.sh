@@ -39,21 +39,26 @@ echo ""
 echo "▶ 启动服务..."
 cd "$APP_DIR"
 nohup python3 "$APP" > "$LOG" 2>&1 &
-sleep 5
 
-# 4. 检查是否成功启动
-NEW_PID=$(lsof -t -i:$PORT 2>/dev/null || true)
-if [ -n "$NEW_PID" ]; then
-    echo ""
-    echo "✅ 服务启动成功！"
-    echo "   PID: $NEW_PID"
-    echo "   端口: $PORT"
-    echo "   日志: tail -f $LOG"
-else
-    echo ""
-    echo "❌ 服务启动失败，查看日志："
-    tail -20 "$LOG"
-    exit 1
-fi
+# 4. 检查是否成功启动（最多等 6 秒）
+echo "   等待服务就绪..."
+for i in $(seq 1 3); do
+    if curl -s http://localhost:$PORT/api/health > /dev/null 2>&1; then
+        NEW_PID=$(lsof -t -i:$PORT 2>/dev/null || true)
+        echo ""
+        echo "✅ 服务启动成功！"
+        echo "   PID: $NEW_PID"
+        echo "   端口: $PORT"
+        echo "   日志: tail -f $LOG"
+        break
+    fi
+    sleep 2
+    if [ $i -eq 3 ]; then
+        echo ""
+        echo "❌ 服务启动失败，查看日志："
+        tail -20 "$LOG"
+        exit 1
+    fi
+done
 
 echo "========================================"
