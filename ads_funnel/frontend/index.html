@@ -142,7 +142,7 @@ async function doImport() {
   if (title) fd.append('title', title);
 
   try {
-    const resp = await fetch('/api/import', {method:'POST', body:fd});
+    const resp = await fetch('api/import', {method:'POST', body:fd});
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.detail || '导入失败');
 
@@ -169,7 +169,7 @@ async function doImport() {
 async function loadReports() {
   const list = document.getElementById('report-list');
   try {
-    const reports = await fetch('/api/reports').then(r=>r.json());
+    const reports = await fetch('api/reports').then(r=>r.json());
     document.getElementById('report-count').textContent = `共 ${reports.length} 个`;
 
     if (!reports.length) {
@@ -206,16 +206,16 @@ async function loadReports() {
 }
 
 function openReport(id) {
-  window.open(`/?id=${id}`, '_blank');
+  window.open(`?id=${id}`, '_blank');
 }
 
 function exportFmt(id, fmt) {
-  window.location.href = `/api/reports/${id}/export/${fmt}`;
+  window.location.href = `api/reports/${id}/export/${fmt}`;
 }
 
 async function delReport(id, title) {
   if (!confirm(`确认删除报告「${title}」？此操作不可恢复。`)) return;
-  await fetch(`/api/reports/${id}`, {method:'DELETE'});
+  await fetch(`api/reports/${id}`, {method:'DELETE'});
   toast(`已删除：${title}`);
   loadReports();
 }

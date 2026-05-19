@@ -2279,7 +2279,7 @@ async function dmDoImport(){
   const t=document.getElementById('dm-title').value.trim();
   if(t)fd.append('title',t);
   try{
-    const resp=await fetch('/api/import',{method:'POST',body:fd});
+    const resp=await fetch('api/import',{method:'POST',body:fd});
     const data=await resp.json();
     if(!resp.ok)throw new Error(data.detail||'导入失败');
     st.style.color='#16a34a';
@@ -2294,7 +2294,7 @@ async function dmDoImport(){
     document.getElementById('dm-title').value='';
     dmLoadReports();
     // 自动跳转到第一个报告
-    if(data.ids&&data.ids.length)setTimeout(()=>window.location='/?id='+data.ids[0],800);
+    if(data.ids&&data.ids.length)setTimeout(()=>window.location='?id='+data.ids[0],800);
   }catch(e){
     st.style.color='#dc2626';st.textContent='错误: '+e.message;
     btn.disabled=!(_dmFiles.camp&&_dmFiles.port);
@@ -2305,7 +2305,7 @@ async function dmLoadReports(){
   const list=document.getElementById('dm-report-list');
   const currentId=typeof REPORT_ID!=='undefined'?REPORT_ID:null;
   try{
-    const reports=await fetch('/api/reports').then(r=>r.json());
+    const reports=await fetch('api/reports').then(r=>r.json());
     if(!reports.length){
       list.innerHTML='<div style="padding:24px;text-align:center;color:#94a3b8;font-size:12px">暂无报告，请先导入 Excel 文件</div>';
       return;
@@ -2323,10 +2323,10 @@ async function dmLoadReports(){
         <div style="flex:1;font-weight:600;font-size:12px;color:#111827">${r.title}${cur?' <span style="font-size:10px;color:#3b82f6;font-weight:400">（当前）</span>':''}</div>
         <div style="font-size:11px;color:#9ca3af;white-space:nowrap">${date}</div>
         <div style="display:flex;gap:5px;flex-shrink:0">
-          ${!cur?`<button onclick="location='/?id=${r.id}'" style="padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#eff6ff;color:#2563eb">查看</button>`:''}
-          <button onclick="location='/api/reports/${r.id}/export/html'" style="padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#f0fdf4;color:#16a34a">HTML</button>
-          <button onclick="location='/api/reports/${r.id}/export/json'" style="padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#f5f3ff;color:#7c3aed">JSON</button>
-          <button onclick="location='/api/reports/${r.id}/export/csv'" style="padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#fff7ed;color:#c2410c">CSV</button>
+          ${!cur?`<button onclick="location='?id=${r.id}'" style="padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#eff6ff;color:#2563eb">查看</button>`:''}
+          <button onclick="location='api/reports/${r.id}/export/html'" style="padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#f0fdf4;color:#16a34a">HTML</button>
+          <button onclick="location='api/reports/${r.id}/export/json'" style="padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#f5f3ff;color:#7c3aed">JSON</button>
+          <button onclick="location='api/reports/${r.id}/export/csv'" style="padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#fff7ed;color:#c2410c">CSV</button>
           <button onclick="dmDel(${r.id},'${safeTitle}',${cur})" style="padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:#fef2f2;color:#dc2626">删除</button>
         </div>
       </div>`;
@@ -2338,8 +2338,8 @@ async function dmLoadReports(){
 
 async function dmDel(id,title,isCurrent){
   if(!confirm('确认删除报告「'+title+'」？此操作不可恢复。'))return;
-  await fetch('/api/reports/'+id,{method:'DELETE'});
-  if(isCurrent)window.location='/?';
+  await fetch('api/reports/'+id,{method:'DELETE'});
+  if(isCurrent)window.location='./';
   else dmLoadReports();
 }
 
