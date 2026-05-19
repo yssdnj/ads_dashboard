@@ -1,37 +1,62 @@
 #!/bin/bash
 # deploy.sh — 拉取最新代码并重启 ads_funnel 服务
-# 用法：bash deploy.sh
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-APP_DIR="$SCRIPT_DIR/ads_funnel"
-PORT=5001
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+APP_DIR="$PROJECT_DIR/ads_funnel"
+VENV="$PROJECT_DIR/venv"
+APP="start.py"
 LOG="$APP_DIR/app.log"
+BRANCH="dev"
+PORT=5001
 
-echo "=== [1/3] 拉取最新代码 ==="
-cd "$SCRIPT_DIR"
-git pull origin dev
+echo "========================================"
+echo "  Ads Dashboard 部署脚本"
+echo "  目录: $PROJECT_DIR"
+echo "========================================"
 
-echo "=== [2/3] 停止旧服务（端口 $PORT）==="
-OLD_PID=$(lsof -t -i:$PORT 2>/dev/null || true)
-if [ -n "$OLD_PID" ]; then
-  kill "$OLD_PID"
-  sleep 1
-  echo "已停止 PID $OLD_PID"
-else
-  echo "端口 $PORT 无运行中的服务"
-fi
+# 1. 拉取最新代码
+echo ""
+echo "▶ 拉取代码 (origin/$BRANCH)..."
+cd "$PROJECT_DIR"
+git pull origin "$BRANCH"
 
-echo "=== [3/3] 启动服务 ==="
+# 2. 激活虚拟环境
+echo ""
+echo "▶ 激活虚拟环境..."
+source "$VENV/bin/activate"
+
+# 3. 更新依赖
+echo ""
+echo "▶ 更新依赖..."
+pip install -r "$APP_DIR/requirements.txt" -q
+
+# 4. 停止旧进程
+echo ""
+echo "▶ 停止旧服务..."
+pkill -f "python3 $APP" 2>/dev/null && echo "  旧进程已停止" || echo "  无运行中的旧进程"
+sleep 1
+
+# 5. 启动新进程
+echo ""
+echo "▶ 启动服务..."
 cd "$APP_DIR"
-nohup python3 start.py > "$LOG" 2>&1 &
-NEW_PID=$!
-echo "已启动 PID $NEW_PID，日志：$LOG"
+nohup python3 "$APP" > "$LOG" 2>&1 &
+sleep 2
 
-sleep 3
-if curl -s http://localhost:$PORT/api/health > /dev/null 2>&1; then
-  echo "=== 部署成功 ✓ http://localhost:$PORT ==="
+# 6. 检查是否成功启动
+if pgrep -f "python3 $APP" > /dev/null; then
+    echo ""
+    echo "✅ 服务启动成功！"
+    echo "   PID: $(pgrep -f "python3 $APP")"
+    echo "   端口: $PORT"
+    echo "   日志: tail -f $LOG"
 else
-  echo "=== 警告：服务可能尚未就绪，请检查日志：tail -f $LOG ==="
+    echo ""
+    echo "❌ 服务启动失败，查看日志："
+    tail -20 "$LOG"
+    exit 1
 fi
+
+echo "========================================"
