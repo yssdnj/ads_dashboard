@@ -19,6 +19,7 @@ echo "========================================"
 echo ""
 echo "▶ 拉取代码 (origin/$BRANCH)..."
 cd "$PROJECT_DIR"
+git checkout -- deploy.sh
 git pull origin "$BRANCH"
 
 # 2. 停止旧进程
