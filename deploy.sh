@@ -38,7 +38,7 @@ echo ""
 echo "▶ 启动服务..."
 cd "$APP_DIR"
 nohup python3 "$APP" > "$LOG" 2>&1 &
-sleep 2
+sleep 5
 
 # 4. 检查是否成功启动
 NEW_PID=$(lsof -t -i:$PORT 2>/dev/null || true)
