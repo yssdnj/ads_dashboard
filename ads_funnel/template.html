@@ -447,7 +447,7 @@ body.dark .drs-lbl{color:#64748b}
   <button class="tab-btn" onclick="switchTab('l3')">L3 广告活动</button>
   <button class="tab-btn" onclick="switchTab('ana')">分析与建议</button>
   <button class="tab-btn" onclick="switchTab('cfg')">ACoS配置</button>
-  <button class="tab-btn" onclick="switchTab('data')">数据管理</button>
+  <button class="tab-btn" onclick="switchTab('data')">国家切换</button>
   <button class="tab-btn" onclick="switchTab('help')">使用说明</button>
 </div>
 
@@ -818,7 +818,8 @@ body.dark .drs-lbl{color:#64748b}
       <div class="tgt-param-grid">
         <div class="tgt-pg">
           <label>产品标识 <span class="lh">Product Target</span></label>
-          <input id="tgt-product-target" type="text" placeholder="如 SL_SP_KW、SL_SP_ASIN" oninput="tgtAutoFill(this.value)">
+          <input id="tgt-product-target" type="text" placeholder="如 SL" oninput="tgtAutoFill(this.value)">
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px">填写产品代码（如 <code style="background:#f1f5f9;padding:1px 4px;border-radius:3px">SL_任意后缀</code>），下划线后可附加备注，需与产品筛选的产品代码描述一致，大小写敏感</div>
         </div>
         <div class="tgt-pg">
           <label>目标 ACoS (%) <span class="lh">数字</span></label>
@@ -2800,7 +2801,7 @@ function initTargetingDefaults(){
     if(el&&!el.value) el.value=window.AVG_CLICKS[prod];
   }
   // 加载库内数据范围（异步，不阻塞）
-  fetch('api/analysis/mode1/data-stats')
+  fetch('api/analysis/mode1/data-stats?country='+encodeURIComponent(REPORT_COUNTRY))
     .then(r=>r.json())
     .then(s=>_renderDbStats(s))
     .catch(()=>{});
@@ -2820,6 +2821,7 @@ async function importTarApData(){
   const fd = new FormData();
   fd.append('ap_file',  apFile);
   fd.append('tar_file', tarFile);
+  fd.append('report_country', REPORT_COUNTRY);
 
   try{
     const resp = await fetch('api/analysis/mode1/import-data', {method:'POST', body:fd});

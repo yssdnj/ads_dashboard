@@ -5,6 +5,7 @@ targeting_analysis.py
 """
 from __future__ import annotations
 
+import time
 import warnings
 from pathlib import Path
 
@@ -175,15 +176,22 @@ def layer_summary(agg: pd.DataFrame, label_kw: str) -> tuple:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 CATALOG_PATH = Path(__file__).parent.parent.parent / 'data' / 'product_catalog.xlsx'
+_CATALOG_TTL = 3600  # 缓存 1 小时
+
+_catalog_df: pd.DataFrame | None = None
+_catalog_loaded_at: float = 0.0
 
 
 def get_asins_for_product(product_target: str) -> list[str]:
     """从 product_target 解析产品代码，查 product_catalog.xlsx 返回 ASIN 列表。"""
-    if not CATALOG_PATH.exists():
-        raise FileNotFoundError(f'产品目录不存在: {CATALOG_PATH}')
-    df = pd.read_excel(CATALOG_PATH)
+    global _catalog_df, _catalog_loaded_at
+    if _catalog_df is None or (time.time() - _catalog_loaded_at) > _CATALOG_TTL:
+        if not CATALOG_PATH.exists():
+            raise FileNotFoundError(f'产品目录不存在: {CATALOG_PATH}')
+        _catalog_df = pd.read_excel(CATALOG_PATH)
+        _catalog_loaded_at = time.time()
     product_code = product_target.split('_')[0]
-    return df[df['款号'] == product_code]['ASIN'].dropna().tolist()
+    return _catalog_df[_catalog_df['款号'] == product_code]['ASIN'].dropna().tolist()
 
 
 def run_analysis(

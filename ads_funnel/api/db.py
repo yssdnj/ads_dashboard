@@ -127,9 +127,9 @@ def save_report(title: str, weeks: list, wk_dates: dict, data: dict,
 
 # ── 增量原始数据 ──────────────────────────────────────────────────────────────
 
-# raw_camp 唯一主键列：国家 + 广告组合 + 广告活动 + 日期 + 类型
+# raw_camp_lx 唯一主键列：国家 + 广告组合 + 广告活动 + 日期 + 类型
 _KEYS_C = ['国家', '广告组合', '广告活动', '日期', '类型']
-# raw_port 唯一主键列：国家 + 广告组合 + 日期
+# raw_port_lx 唯一主键列：国家 + 广告组合 + 日期
 _KEYS_P = ['国家', '广告组合', '日期']
 
 
@@ -147,7 +147,7 @@ def _prep_raw(df: pd.DataFrame) -> pd.DataFrame:
 
 def upsert_raw(df_c: pd.DataFrame, df_p: pd.DataFrame):
     """
-    增量写入 raw_camp / raw_port：
+    增量写入 raw_camp_lx / raw_port_lx：
     新数据与库内数据按唯一主键合并，新行覆盖旧行，不同键的旧行保留。
     """
     dc = _prep_raw(df_c)
@@ -155,8 +155,8 @@ def upsert_raw(df_c: pd.DataFrame, df_p: pd.DataFrame):
 
     with sqlite3.connect(DB_PATH) as conn:
         for tbl, df_new, keys in [
-            ('raw_camp', dc, _KEYS_C),
-            ('raw_port', dp, _KEYS_P),
+            ('raw_camp_lx', dc, _KEYS_C),
+            ('raw_port_lx', dp, _KEYS_P),
         ]:
             tbl_exists = conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (tbl,)
@@ -199,17 +199,17 @@ def upsert_raw(df_c: pd.DataFrame, df_p: pd.DataFrame):
 
 def get_raw_dfs():
     """
-    从 raw_camp / raw_port 读回完整 DataFrame，供 rebuild_from_raw 使用。
+    从 raw_camp_lx / raw_port_lx 读回完整 DataFrame，供 rebuild_from_raw 使用。
     表不存在或为空时返回 (None, None)。
     """
     with sqlite3.connect(DB_PATH) as conn:
         tables = {r[0] for r in conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'"
         ).fetchall()}
-        if 'raw_camp' not in tables or 'raw_port' not in tables:
+        if 'raw_camp_lx' not in tables or 'raw_port_lx' not in tables:
             return None, None
-        df_c = pd.read_sql('SELECT * FROM raw_camp', conn)
-        df_p = pd.read_sql('SELECT * FROM raw_port', conn)
+        df_c = pd.read_sql('SELECT * FROM raw_camp_lx', conn)
+        df_p = pd.read_sql('SELECT * FROM raw_port_lx', conn)
 
     if df_c.empty or df_p.empty:
         return None, None
@@ -224,7 +224,7 @@ def get_raw_dfs():
 
 def rebuild_from_raw() -> list:
     """
-    按国家分组，从 raw_camp / raw_port 重建每个国家的报告 JSON。
+    按国家分组，从 raw_camp_lx / raw_port_lx 重建每个国家的报告 JSON。
     - 每次导入后调用
     - 服务器重启时调用
     返回本次更新的 report_id 列表；raw 表为空时返回 []。
@@ -238,7 +238,7 @@ def rebuild_from_raw() -> list:
     col_c = '国家' if '国家' in df_c.columns else None
     col_p = '国家' if '国家' in df_p.columns else None
 
-    # 获取所有国家（以 raw_camp 为准）
+    # 获取所有国家（以 raw_camp_lx 为准）
     countries = df_c[col_c].unique().tolist() if col_c else ['']
 
     report_ids = []
@@ -296,7 +296,7 @@ def rebuild_from_raw() -> list:
 
 
 def delete_report(report_id: int):
-    """删除报告。raw_camp / raw_port 是原始数据源，不随报告删除。"""
+    """删除报告。raw_camp_lx / raw_port_lx 是原始数据源，不随报告删除。"""
     with get_conn() as conn:
         conn.execute('DELETE FROM reports WHERE id=?', (report_id,))
 
@@ -524,22 +524,31 @@ def get_tar_ap_for_analysis(n_weeks: int = 6) -> tuple:
     return tar_df, ap_df, week_sundays
 
 
-def get_tar_ap_stats() -> dict:
-    """返回 raw_tar / raw_ap 的数据覆盖范围，供前端展示。"""
+def get_tar_ap_stats(country_values: set | None = None) -> dict:
+    """返回 raw_tar / raw_ap 的数据覆盖范围，供前端展示。
+    country_values: 若提供，则只统计 Country 列在该集合内的行。
+    """
     with sqlite3.connect(DB_PATH) as conn:
         tables = {r[0] for r in conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'"
         ).fetchall()}
         result = {}
         for tbl, dcol in [('raw_tar', 'Date'), ('raw_ap', '日期')]:
-            if tbl in tables:
-                row = conn.execute(
-                    f'SELECT COUNT(*) as n, MIN("{dcol}") as mn, MAX("{dcol}") as mx '
-                    f'FROM "{tbl}"'
-                ).fetchone()
-                result[tbl] = {'count': row[0], 'min_date': row[1], 'max_date': row[2]}
-            else:
+            if tbl not in tables:
                 result[tbl] = {'count': 0, 'min_date': None, 'max_date': None}
+                continue
+            if country_values:
+                placeholders = ','.join('?' * len(country_values))
+                sql = (
+                    f'SELECT COUNT(*), MIN("{dcol}"), MAX("{dcol}") '
+                    f'FROM "{tbl}" WHERE Country IN ({placeholders})'
+                )
+                row = conn.execute(sql, list(country_values)).fetchone()
+            else:
+                row = conn.execute(
+                    f'SELECT COUNT(*), MIN("{dcol}"), MAX("{dcol}") FROM "{tbl}"'
+                ).fetchone()
+            result[tbl] = {'count': row[0], 'min_date': row[1], 'max_date': row[2]}
     return result
 
 

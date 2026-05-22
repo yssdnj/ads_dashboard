@@ -28,6 +28,38 @@ app.add_middleware(
 
 FRONTEND = Path(__file__).parent.parent / 'frontend'
 
+# 国家别名映射：中文 → 所有等价写法（英文全称、短码、中文）
+_COUNTRY_ALIASES: dict[str, set[str]] = {
+    '美国':  {'United States', 'US', '美国'},
+    '英国':  {'United Kingdom', 'UK', '英国'},
+    '德国':  {'Germany', 'DE', '德国'},
+    '法国':  {'France', 'FR', '法国'},
+    '加拿大': {'Canada', 'CA', '加拿大'},
+    '日本':  {'Japan', 'JP', '日本'},
+    '意大利': {'Italy', 'IT', '意大利'},
+    '西班牙': {'Spain', 'ES', '西班牙'},
+}
+
+
+def _check_file_country(df: pd.DataFrame, report_country: str, label: str):
+    """校验 DataFrame 的 Country / 国家/地区 列是否与 report_country（中文）一致。"""
+    col = next(
+        (c for c in df.columns if c.strip() in ('Country', '国家/地区')),
+        None,
+    )
+    if col is None:
+        return
+    aliases = _COUNTRY_ALIASES.get(report_country, set())
+    if not aliases:
+        return
+    file_countries = set(str(v) for v in df[col].dropna().unique())
+    if not aliases.intersection(file_countries):
+        raise HTTPException(
+            400,
+            f'{label} 国家不匹配：当前页面 {report_country}，'
+            f'文件中包含：{", ".join(sorted(file_countries))}',
+        )
+
 
 @app.on_event('startup')
 def startup():
@@ -202,8 +234,9 @@ def api_set_acos_targets(targets: dict):
 
 @app.post('/api/analysis/mode1/import-data')
 async def api_mode1_import_data(
-    ap_file:  UploadFile = File(..., description='推广商品报告 xlsx（每日格式）'),
-    tar_file: UploadFile = File(..., description='投放报告 xlsx（每日格式，含 Date 列）'),
+    ap_file:       UploadFile = File(..., description='推广商品报告 xlsx（每日格式）'),
+    tar_file:      UploadFile = File(..., description='投放报告 xlsx（每日格式，含 Date 列）'),
+    report_country: str       = Form(..., description='当前页面国家（中文，如 美国）'),
 ):
     """
     将每周的推广商品报告 + 投放报告增量写入数据库（raw_ap / raw_tar）。
@@ -215,13 +248,17 @@ async def api_mode1_import_data(
     except Exception as e:
         raise HTTPException(400, f'文件读取失败: {e}')
 
+    _check_file_country(ap_df,  report_country, 'AP 文件')
+    _check_file_country(tar_df, report_country, 'TAR 文件')
+
     try:
         stats = db.upsert_tar_ap(tar_df, ap_df)
     except Exception as e:
         raise HTTPException(500, f'入库失败: {e}')
 
-    # 入库后返回当前库内数据范围
-    db_stats = db.get_tar_ap_stats()
+    # 入库后返回当前库内数据范围（按国家过滤）
+    country_values = _COUNTRY_ALIASES.get(report_country.strip())
+    db_stats = db.get_tar_ap_stats(country_values)
     return {
         'ok':       True,
         'imported': stats,
@@ -230,9 +267,10 @@ async def api_mode1_import_data(
 
 
 @app.get('/api/analysis/mode1/data-stats')
-def api_mode1_data_stats():
-    """返回库内 raw_tar / raw_ap 的数据覆盖范围。"""
-    return db.get_tar_ap_stats()
+def api_mode1_data_stats(country: str = ''):
+    """返回库内 raw_tar / raw_ap 的数据覆盖范围（按国家过滤）。"""
+    country_values = _COUNTRY_ALIASES.get(country.strip()) if country.strip() else None
+    return db.get_tar_ap_stats(country_values)
 
 
 # ── API: 多轮投放结构分析（Mode 1）───────────────────────────────────────────
