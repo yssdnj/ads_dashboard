@@ -3,7 +3,8 @@ main.py — FastAPI 后端
 启动: uvicorn api.main:app --reload  （从 ads_funnel/ 目录执行）
 """
 
-import io, json
+import base64, io, json, traceback, uuid
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -12,7 +13,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import db, export, gen_data
+from . import db, export, gen_data, targeting_analysis, bulk_update
+
+# ── Mode 1 结果服务端缓存（避免前端回传大量 JSON）────────────────────────────────
+_mode1_cache: dict[str, dict] = {}   # { cache_id: {rows, product_target, report_start, report_end} }
 
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(title='广告漏斗分析 v2.0', version='2.0.0')
@@ -192,6 +196,203 @@ def api_get_acos_targets():
 def api_set_acos_targets(targets: dict):
     db.set_config('acos_targets', targets)
     return {'ok': True}
+
+
+# ── API: 投放数据入库（Mode 1 前置步骤）─────────────────────────────────────
+
+@app.post('/api/analysis/mode1/import-data')
+async def api_mode1_import_data(
+    ap_file:  UploadFile = File(..., description='推广商品报告 xlsx（每日格式）'),
+    tar_file: UploadFile = File(..., description='投放报告 xlsx（每日格式，含 Date 列）'),
+):
+    """
+    将每周的推广商品报告 + 投放报告增量写入数据库（raw_ap / raw_tar）。
+    不做分析，仅入库。每周上传一次上周数据即可。
+    """
+    try:
+        ap_df  = pd.read_excel(io.BytesIO(await ap_file.read()))
+        tar_df = pd.read_excel(io.BytesIO(await tar_file.read()))
+    except Exception as e:
+        raise HTTPException(400, f'文件读取失败: {e}')
+
+    try:
+        stats = db.upsert_tar_ap(tar_df, ap_df)
+    except Exception as e:
+        raise HTTPException(500, f'入库失败: {e}')
+
+    # 入库后返回当前库内数据范围
+    db_stats = db.get_tar_ap_stats()
+    return {
+        'ok':       True,
+        'imported': stats,
+        'db_stats': db_stats,
+    }
+
+
+@app.get('/api/analysis/mode1/data-stats')
+def api_mode1_data_stats():
+    """返回库内 raw_tar / raw_ap 的数据覆盖范围。"""
+    return db.get_tar_ap_stats()
+
+
+# ── API: 多轮投放结构分析（Mode 1）───────────────────────────────────────────
+
+@app.post('/api/analysis/mode1')
+async def api_mode1_analysis(
+    product_target:       str   = Form(...),
+    target_acos:          float = Form(...),        # 百分比值，如 20.0 表示 20%
+    avg_clicks_per_order: float = Form(...),
+    core_sales_share:     float = Form(0.2),
+):
+    """
+    Mode 1 多轮分析：从数据库读取最近 6 个日历周数据，
+    跑 R1(1周) / R2(3周) / R3(6周) 三轮，投票得出 consensus。
+    请先通过 /api/analysis/mode1/import-data 导入数据。
+    """
+    try:
+        asins = targeting_analysis.get_asins_for_product(product_target)
+    except FileNotFoundError as e:
+        raise HTTPException(500, str(e))
+    if not asins:
+        raise HTTPException(400, f'产品目录中未找到 {product_target.split("_")[0]} 的 ASIN，请检查 product_catalog.xlsx')
+
+    tar_df, ap_df, week_sundays = db.get_tar_ap_for_analysis(n_weeks=6)
+    if tar_df is None:
+        raise HTTPException(400, '数据库中暂无投放数据，请先通过「导入数据」上传报告文件')
+    if len(week_sundays) < 1:
+        raise HTTPException(400, '数据不足，无法确定完整日历周，请补充上传数据')
+
+    try:
+        result = targeting_analysis.run_multi_round_analysis(
+            tar_df               = tar_df,
+            ap_df                = ap_df,
+            week_sundays         = week_sundays,
+            product_target       = product_target,
+            asins                = asins,
+            target_acos          = target_acos / 100,
+            avg_clicks_per_order = avg_clicks_per_order,
+            core_sales_share     = core_sales_share,
+        )
+    except Exception as e:
+        traceback.print_exc()   # 完整堆栈打印到 uvicorn 控制台
+        raise HTTPException(500, f'分析失败: {e}')
+
+    # R3 error 检查（最宽时间窗口，若报错通常是数据问题）
+    if result.get('R3', {}).get('error'):
+        raise HTTPException(400, result['R3']['error'])
+
+    # 缓存 consensus rows，供 export-bulk 端点使用
+    cid = str(uuid.uuid4())
+    _mode1_cache[cid] = {
+        'rows':           result['consensus']['rows'],
+        'product_target': result.get('product_target', ''),
+        'report_start':   result.get('report_start', ''),
+        'report_end':     result.get('report_end', ''),
+    }
+    result['cache_id'] = cid
+    return result
+
+
+# ── API: Mode 1 → 更新 Bulk 文件 ──────────────────────────────────────────────
+
+@app.post('/api/analysis/mode1/export-bulk')
+async def api_mode1_export_bulk(
+    bulk_file:        UploadFile = File(..., description='Amazon Bulk 文件（xlsx，文件名须以 Bulk 开头）'),
+    cache_id:         str        = Form(..., description='Mode 1 分析结果的缓存 ID'),
+    orders_threshold: int        = Form(10,  description='订单数筛选阈值，默认 10'),
+):
+    """
+    将 Mode 1 分析结果写回 Amazon Bulk 文件，同时生成更新版 targeting_labels CSV。
+    筛选条件：label 含 "高ACoS出单" 或 "高点击不出单"，且 orders < 10。
+
+    返回 JSON（两个文件均以 base64 编码）：
+      { bulk_b64, bulk_filename, label_b64, label_filename, log }
+    """
+    cached = _mode1_cache.get(cache_id)
+    if not cached:
+        raise HTTPException(400, '分析结果已过期，请重新运行 Mode 1 分析')
+
+    bulk_bytes     = await bulk_file.read()
+    rows           = cached['rows']
+    product_target = cached['product_target']
+    report_start   = cached.get('report_start', '')
+    report_end     = cached.get('report_end', '')
+
+    try:
+        bulk_out_bytes, label_csv_bytes, log, details = bulk_update.apply_mode1_to_bulk(
+            bulk_bytes, rows,
+            product_target   = product_target,
+            report_start     = report_start,
+            report_end       = report_end,
+            orders_threshold = orders_threshold,
+        )
+    except Exception as e:
+        raise HTTPException(500, f'Bulk 更新失败: {e}')
+
+    today   = datetime.now().strftime('%Y%m%d')
+    pt_part = f'_{product_target}' if product_target else ''
+
+    bulk_filename  = f'bulk{pt_part}_{today}_updated.xlsx'
+    label_filename = f'targeting_labels{pt_part}_{report_start}_{report_end}_updated.csv'
+
+    return {
+        'bulk_b64':       base64.b64encode(bulk_out_bytes).decode('ascii'),
+        'bulk_filename':  bulk_filename,
+        'label_b64':      base64.b64encode(label_csv_bytes).decode('ascii'),
+        'label_filename': label_filename,
+        'log':            log[:50],
+        'details':        details,      # 结构化明细，供 confirm-update 写库
+    }
+
+
+# ── API: 平均出单点击数配置 ────────────────────────────────────────────────────
+
+@app.get('/api/config/avg-clicks')
+def api_get_avg_clicks():
+    return db.get_config('avg_clicks', {})
+
+
+@app.post('/api/config/avg-clicks')
+def api_set_avg_clicks(data: dict):
+    db.set_config('avg_clicks', data)
+    return {'ok': True}
+
+
+@app.post('/api/analysis/mode1/confirm-update')
+async def api_mode1_confirm_update(body: dict):
+    """
+    用户确认已将 Bulk 文件上传到亚马逊广告后台，记录本次调价操作。
+    请求体字段：product_target, bulk_filename, label_filename,
+               orders_threshold, updated_count, log_lines
+    """
+    try:
+        log_id = db.save_bid_update_log(
+            product_target   = body.get('product_target', ''),
+            bulk_filename    = body.get('bulk_filename',  ''),
+            label_filename   = body.get('label_filename', ''),
+            report_start     = body.get('report_start',  ''),
+            report_end       = body.get('report_end',    ''),
+            orders_threshold = int(body.get('orders_threshold', 10)),
+            updated_count    = int(body.get('updated_count', 0)),
+            log_lines        = body.get('log_lines', []),
+        )
+        db.save_bid_update_details(log_id, body.get('details', []))
+    except Exception as e:
+        raise HTTPException(500, f'记录失败: {e}')
+
+    return {'ok': True, 'log_id': log_id}
+
+
+@app.get('/api/analysis/mode1/update-logs')
+def api_mode1_update_logs(limit: int = 100):
+    """返回竞价更新历史记录列表（不含明细）。"""
+    return db.list_bid_update_logs(limit=limit)
+
+
+@app.get('/api/analysis/mode1/update-logs/{log_id}/details')
+def api_mode1_update_log_details(log_id: int):
+    """返回某次竞价更新的所有明细行（每行对应 Bulk 中一个 Operation=Update 的条目）。"""
+    return db.get_bid_update_details(log_id)
 
 
 @app.get('/api/health')

@@ -37,6 +37,37 @@ def init_db():
                 value       TEXT    NOT NULL,
                 updated_at  TEXT    DEFAULT (datetime('now','localtime'))
             );
+
+            CREATE TABLE IF NOT EXISTS bid_update_log (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                confirmed_at     TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+                product_target   TEXT    DEFAULT '',
+                bulk_filename    TEXT    DEFAULT '',
+                label_filename   TEXT    DEFAULT '',
+                report_start     TEXT    DEFAULT '',
+                report_end       TEXT    DEFAULT '',
+                orders_threshold INTEGER DEFAULT 10,
+                updated_count    INTEGER DEFAULT 0,
+                log_lines        TEXT    DEFAULT '[]'
+            );
+
+            CREATE TABLE IF NOT EXISTS bid_update_detail (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                log_id       INTEGER NOT NULL,
+                campaign     TEXT    DEFAULT '',
+                ad_group     TEXT    DEFAULT '',
+                strategy     TEXT    DEFAULT '',
+                top          REAL,
+                rest         REAL,
+                product_page REAL,
+                label        TEXT    DEFAULT '',
+                targeting    TEXT    DEFAULT '',
+                old_bid      REAL,
+                new_bid      REAL,
+                adj_pct      REAL,
+                datetime     TEXT    DEFAULT ''
+            );
+            CREATE INDEX IF NOT EXISTS idx_bid_detail_log_id ON bid_update_detail(log_id);
         ''')
         # 迁移：旧表若缺少 country 列则补加
         cols = {r[1] for r in conn.execute('PRAGMA table_info(reports)').fetchall()}
@@ -285,3 +316,241 @@ def set_config(key: str, value):
                VALUES (?, ?, datetime('now','localtime'))''',
             (key, json.dumps(value, ensure_ascii=False))
         )
+
+
+# ── Bid Update Log ────────────────────────────────────────────────────────────
+
+def save_bid_update_log(
+    product_target:   str,
+    bulk_filename:    str,
+    label_filename:   str,
+    report_start:     str,
+    report_end:       str,
+    orders_threshold: int,
+    updated_count:    int,
+    log_lines:        list,
+) -> int:
+    """记录一次已确认上传到亚马逊的竞价更新操作，返回新记录 id。"""
+    with get_conn() as conn:
+        cur = conn.execute(
+            '''INSERT INTO bid_update_log
+               (product_target, bulk_filename, label_filename,
+                report_start, report_end, orders_threshold, updated_count, log_lines)
+               VALUES (?,?,?,?,?,?,?,?)''',
+            (
+                product_target,
+                bulk_filename,
+                label_filename,
+                report_start,
+                report_end,
+                orders_threshold,
+                updated_count,
+                json.dumps(log_lines, ensure_ascii=False),
+            )
+        )
+        return cur.lastrowid
+
+
+def save_bid_update_details(log_id: int, details: list):
+    """批量写入竞价更新明细行（每条对应一条被改竞价的投放——关键词或 ASIN）。"""
+    if not details:
+        return
+    with get_conn() as conn:
+        conn.executemany(
+            '''INSERT INTO bid_update_detail
+               (log_id, campaign, ad_group,
+                strategy, top, rest, product_page,
+                label, targeting, old_bid, new_bid, adj_pct, datetime)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+            [
+                (
+                    log_id,
+                    d.get('campaign',     ''),
+                    d.get('ad_group',     ''),
+                    d.get('strategy',     ''),
+                    d.get('top'),
+                    d.get('rest'),
+                    d.get('product_page'),
+                    d.get('label',        ''),
+                    d.get('targeting',    ''),
+                    d.get('old_bid'),
+                    d.get('new_bid'),
+                    d.get('adj_pct'),
+                    d.get('datetime',     ''),
+                )
+                for d in details
+            ]
+        )
+
+
+def list_bid_update_logs(limit: int = 100) -> list:
+    """返回最近的竞价更新记录列表（不含 log_lines 详情）。"""
+    with get_conn() as conn:
+        rows = conn.execute(
+            '''SELECT id, confirmed_at, product_target, bulk_filename,
+                      report_start, report_end, orders_threshold, updated_count
+               FROM bid_update_log ORDER BY id DESC LIMIT ?''',
+            (limit,)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+# ── 分析原始数据（raw_tar / raw_ap）──────────────────────────────────────────
+
+_KEYS_TAR = ['Date', 'Campaign Name', 'Ad Group Name', 'Targeting', 'Match Type']
+_KEYS_AP  = ['日期', '广告活动名称', '广告组名称', '广告ASIN']
+
+
+def _prep_tar(df: pd.DataFrame) -> pd.DataFrame:
+    """标准化 tar DataFrame：列名 strip，Date 转 YYYY-MM-DD 字符串"""
+    d = df.copy()
+    d.columns = [c.strip() for c in d.columns]
+    if 'Date' in d.columns:
+        d['Date'] = pd.to_datetime(d['Date']).dt.strftime('%Y-%m-%d')
+    return d
+
+
+def _prep_ap_daily(df: pd.DataFrame) -> pd.DataFrame:
+    """标准化 ap 每日 DataFrame：列名 strip，日期列转 YYYY-MM-DD 字符串"""
+    d = df.copy()
+    d.columns = [c.strip() for c in d.columns]
+    if '日期' in d.columns:
+        d['日期'] = pd.to_datetime(d['日期']).dt.strftime('%Y-%m-%d')
+    elif 'Date' in d.columns:
+        d = d.rename(columns={'Date': '日期'})
+        d['日期'] = pd.to_datetime(d['日期']).dt.strftime('%Y-%m-%d')
+    return d
+
+
+def _upsert_df(conn, tbl: str, df_new: pd.DataFrame, keys: list, date_col: str):
+    """通用 upsert：按唯一键合并新旧数据，新行覆盖旧行"""
+    tbl_exists = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (tbl,)
+    ).fetchone()
+    row_count = conn.execute(
+        f'SELECT COUNT(*) FROM "{tbl}"'
+    ).fetchone()[0] if tbl_exists else 0
+
+    if not tbl_exists or row_count == 0:
+        df_new.to_sql(tbl, conn, if_exists='replace', index=False)
+    else:
+        df_old = pd.read_sql(f'SELECT * FROM "{tbl}"', conn)
+        avail_keys = [k for k in keys if k in df_old.columns and k in df_new.columns]
+        if avail_keys:
+            sep = '\x00'
+            old_comp = df_old[avail_keys].astype(str).agg(sep.join, axis=1)
+            new_comp = df_new[avail_keys].astype(str).agg(sep.join, axis=1)
+            df_old = df_old[~old_comp.isin(set(new_comp))]
+        df_merged = pd.concat([df_old, df_new], ignore_index=True)
+        df_merged.to_sql(tbl, conn, if_exists='replace', index=False)
+
+    try:
+        conn.execute(
+            f'CREATE INDEX IF NOT EXISTS idx_{tbl}_{date_col.replace("日期","rq")} '
+            f'ON "{tbl}"("{date_col}")'
+        )
+    except Exception:
+        pass
+
+
+def upsert_tar_ap(tar_df: pd.DataFrame, ap_df: pd.DataFrame) -> dict:
+    """
+    增量写入 raw_tar（投放报告每日）/ raw_ap（推广商品报告每日）。
+    返回 {'tar_rows', 'ap_rows', 'tar_min', 'tar_max', 'ap_min', 'ap_max'}
+    """
+    tar = _prep_tar(tar_df)
+    ap  = _prep_ap_daily(ap_df)
+
+    # AP 的 key 列：中文或英文兼容
+    ap_keys = _KEYS_AP if '广告活动名称' in ap.columns else [
+        '日期', 'Campaign Name', 'Ad Group Name', 'Advertised ASIN'
+    ]
+
+    with sqlite3.connect(DB_PATH) as conn:
+        _upsert_df(conn, 'raw_tar', tar, _KEYS_TAR, 'Date')
+        _upsert_df(conn, 'raw_ap',  ap,  ap_keys,   '日期')
+
+    return {
+        'tar_rows': len(tar),
+        'ap_rows':  len(ap),
+        'tar_min':  tar['Date'].min() if 'Date' in tar.columns else None,
+        'tar_max':  tar['Date'].max() if 'Date' in tar.columns else None,
+        'ap_min':   ap['日期'].min()  if '日期' in ap.columns  else None,
+        'ap_max':   ap['日期'].max()  if '日期' in ap.columns  else None,
+    }
+
+
+def _week_start(date: pd.Timestamp) -> pd.Timestamp:
+    """返回该日期所在日历周（周日开始）的周日"""
+    days_since_sunday = (date.dayofweek + 1) % 7  # Mon=1 … Sun=0
+    return (date - pd.Timedelta(days=days_since_sunday)).normalize()
+
+
+def get_tar_ap_for_analysis(n_weeks: int = 6) -> tuple:
+    """
+    从 raw_tar / raw_ap 读取最近 n_weeks 个完整日历周（周日开始）的数据。
+    返回 (tar_df, ap_df, week_sundays) 或 (None, None, []) 若数据不足。
+    week_sundays: 升序 Timestamp 列表，每个元素为对应周的周日。
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        tables = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        if 'raw_tar' not in tables or 'raw_ap' not in tables:
+            return None, None, []
+        tar_df = pd.read_sql('SELECT * FROM raw_tar', conn)
+        ap_df  = pd.read_sql('SELECT * FROM raw_ap',  conn)
+
+    if tar_df.empty or ap_df.empty:
+        return None, None, []
+
+    tar_df['Date'] = pd.to_datetime(tar_df['Date'])
+    ap_df['日期']  = pd.to_datetime(ap_df['日期'])
+
+    # 以 tar 最大日期为基准，往前推 n_weeks 个周
+    max_date    = tar_df['Date'].max()
+    base_sunday = _week_start(max_date)
+
+    week_sundays = sorted([
+        base_sunday - pd.Timedelta(weeks=i)
+        for i in range(n_weeks - 1, -1, -1)
+    ])  # 从最远到最近，升序
+
+    # 截取到最近 n_weeks 周
+    cutoff = week_sundays[0]
+    tar_df = tar_df[tar_df['Date'] >= cutoff].copy()
+    ap_df  = ap_df[ap_df['日期']   >= cutoff].copy()
+
+    return tar_df, ap_df, week_sundays
+
+
+def get_tar_ap_stats() -> dict:
+    """返回 raw_tar / raw_ap 的数据覆盖范围，供前端展示。"""
+    with sqlite3.connect(DB_PATH) as conn:
+        tables = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        result = {}
+        for tbl, dcol in [('raw_tar', 'Date'), ('raw_ap', '日期')]:
+            if tbl in tables:
+                row = conn.execute(
+                    f'SELECT COUNT(*) as n, MIN("{dcol}") as mn, MAX("{dcol}") as mx '
+                    f'FROM "{tbl}"'
+                ).fetchone()
+                result[tbl] = {'count': row[0], 'min_date': row[1], 'max_date': row[2]}
+            else:
+                result[tbl] = {'count': 0, 'min_date': None, 'max_date': None}
+    return result
+
+
+def get_bid_update_details(log_id: int) -> list:
+    """返回某次调价记录的所有明细行（每行一条被改竞价的投放）。"""
+    with get_conn() as conn:
+        rows = conn.execute(
+            '''SELECT campaign, ad_group,
+                      strategy, top, rest, product_page,
+                      label, targeting, old_bid, new_bid, adj_pct, datetime
+               FROM bid_update_detail WHERE log_id=? ORDER BY id''',
+            (log_id,)
+        ).fetchall()
+    return [dict(r) for r in rows]

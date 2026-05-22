@@ -196,12 +196,249 @@ details.funnel-detail>summary::-webkit-details-marker{display:none}
 details.funnel-detail>summary::before{content:'▶';font-size:9px;color:#94a3b8;transition:transform .15s;display:inline-block;width:12px}
 details.funnel-detail[open]>summary::before{transform:rotate(90deg)}
 
+/* ── Mode 1 投放结构 ─────────────────────────────────────────── */
+.tgt-wrap{--tg:#FF9900;--tgd:#c97700;--tgbg:#fff8ec;--gn:#1a7f4f;--gnbg:#edfaf3;--rd:#c0392b;--rdbg:#fdf0ef;--yw:#b45309;--ywbg:#fffbeb;--g0:#f8f9fa;--g1:#f1f3f5;--g2:#dee2e6;--g4:#adb5bd;--g6:#495057;--g7:#343a40;--g9:#212529;--r:10px;--sh:0 1px 4px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.05);}
+.tgt-card{background:#fff;border:1px solid var(--g2);border-radius:var(--r);padding:20px;margin-bottom:14px;box-shadow:var(--sh);}
+.tgt-sec-hd{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.tgt-sec-hd h3{font-size:14px;font-weight:700;color:var(--g9);margin:0;}
+.tgt-num{width:22px;height:22px;background:var(--tg);color:#fff;border-radius:50%;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.tgt-hint{font-size:12px;color:var(--g4);margin-left:auto;}
+.tgt-dz-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.tgt-dz{border:2px dashed var(--g2);border-radius:var(--r);padding:20px 14px;text-align:center;cursor:pointer;transition:all .15s;background:var(--g0);}
+.tgt-dz:hover,.tgt-dz.over{border-color:var(--tg);background:var(--tgbg);}
+.tgt-dz.loaded{border-color:var(--gn);background:var(--gnbg);}
+.tgt-dz .dz-icon{font-size:26px;margin-bottom:6px;}
+.tgt-dz .dz-label{font-size:13px;font-weight:600;color:var(--g7);margin-bottom:2px;}
+.tgt-dz.loaded .dz-label{color:var(--gn);}
+.tgt-dz .dz-sub{font-size:11px;color:var(--g4);}
+.tgt-dz input[type=file]{display:none;}
+.tgt-param-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:14px;}
+.tgt-pg{display:flex;flex-direction:column;gap:5px;}
+.tgt-pg label{font-size:12px;font-weight:600;color:var(--g7);}
+.tgt-pg .lh{font-weight:400;color:var(--g4);margin-left:3px;}
+.tgt-pg input[type=number],.tgt-pg input[type=text]{width:100%;padding:9px 11px;font-size:13px;border:1.5px solid var(--g2);border-radius:8px;background:var(--g0);color:var(--g9);outline:none;transition:border-color .15s;}
+.tgt-pg input:focus{border-color:var(--tg);background:#fff;}
+.tgt-acos-row{display:flex;align-items:center;gap:10px;}
+.tgt-acos-row input[type=range]{flex:1;accent-color:var(--tg);height:4px;padding:0;border:none;background:transparent;cursor:pointer;}
+.tgt-acos-val{min-width:44px;text-align:center;font-size:14px;font-weight:700;color:var(--tgd);background:var(--tgbg);border-radius:6px;padding:4px 8px;}
+.tgt-run-btn{width:100%;padding:13px;background:var(--tg);color:#fff;font-size:14px;font-weight:700;border:none;border-radius:var(--r);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s,transform .1s;}
+.tgt-run-btn:hover{background:var(--tgd);}
+.tgt-run-btn:active{transform:scale(.98);}
+.tgt-run-btn:disabled{background:var(--g4);cursor:not-allowed;transform:none;}
+.tgt-prog{height:4px;background:var(--g1);border-radius:2px;overflow:hidden;margin-top:10px;display:none;}
+.tgt-prog.show{display:block;}
+.tgt-prog-fill{height:100%;background:var(--tg);transition:width .3s;}
+.tgt-result-hd{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border-radius:var(--r);padding:20px 22px;margin-bottom:16px;color:#fff;}
+.tgt-rh-title{font-size:17px;font-weight:800;margin-bottom:5px;}
+.tgt-rh-meta{font-size:12px;color:#94a3b8;display:flex;flex-wrap:wrap;gap:14px;}
+.tgt-metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:14px;}
+.tgt-metric{background:#fff;border:1px solid var(--g2);border-radius:var(--r);padding:12px;box-shadow:var(--sh);}
+.tgt-metric .ml{font-size:11px;color:var(--g4);margin-bottom:3px;}
+.tgt-metric .mv{font-size:18px;font-weight:800;}
+.tgt-metric .ms{font-size:11px;color:var(--g4);margin-top:2px;}
+.tgt-metric.ok .mv{color:var(--gn);}
+.tgt-metric.warn .mv{color:var(--yw);}
+.tgt-metric.bad .mv{color:var(--rd);}
+.tgt-metric.orange .mv{color:var(--tgd);}
+.tgt-layer-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:8px 0 14px;}
+.tgt-lb{border-radius:8px;padding:10px 8px;text-align:center;}
+.tgt-lb .lb-label{font-size:10px;color:var(--g6);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tgt-lb .lb-cnt{font-size:18px;font-weight:800;}
+.tgt-lb .lb-sp{font-size:11px;color:var(--g4);margin-top:2px;}
+.lb-low{background:var(--gnbg);} .lb-low .lb-cnt{color:var(--gn);}
+.lb-high{background:var(--ywbg);} .lb-high .lb-cnt{color:var(--yw);}
+.lb-hcno{background:var(--rdbg);} .lb-hcno .lb-cnt{color:var(--rd);}
+.lb-lcno{background:var(--g1);} .lb-lcno .lb-cnt{color:var(--g6);}
+.lb-nc{background:var(--g0);} .lb-nc .lb-cnt{color:var(--g4);}
+.tgt-sec-div{font-size:13px;font-weight:700;color:var(--g7);margin:18px 0 8px;padding-bottom:5px;border-bottom:2px solid var(--g2);}
+.tgt-tbl-wrap{overflow-x:auto;}
+.tgt-tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.tgt-tbl th{background:var(--g0);color:var(--g6);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:8px 10px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:2px solid var(--g2);}
+.tgt-tbl td{padding:8px 10px;border-bottom:1px solid var(--g1);vertical-align:middle;}
+.tgt-tbl tr:hover td{background:#fafafa;}
+.tgt-tbl tr:last-child td{border-bottom:none;}
+.tgt-gh{background:var(--g0);color:var(--g6);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:8px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:2px solid var(--g2);}
+.tgt-gd{padding:8px 10px;border-bottom:1px solid var(--g1);display:flex;align-items:center;min-height:36px;overflow:hidden;font-size:12px;}
+.tgt-gd.r{justify-content:flex-end;font-family:monospace;}
+.tgt-grid-wrap{overflow-x:auto;}
+.tgt-grid-wrap>div>div.tgt-gd:nth-last-child(-n+8){border-bottom:none;}
+.tgt-tag{display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600;}
+.tgt-tag.g{background:var(--gnbg);color:var(--gn);}
+.tgt-tag.r{background:var(--rdbg);color:var(--rd);}
+.tgt-tag.y{background:var(--ywbg);color:var(--yw);}
+.tgt-tag.gr{background:var(--g1);color:var(--g6);}
+.tgt-tag.or{background:var(--tgbg);color:var(--tgd);}
+.tgt-tag.dk{background:#1a1a2e;color:#fff;}
+.tgt-prot{display:inline-block;background:#1a1a2e;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;}
+.tgt-conc-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.tgt-conc-row .cl{font-size:12px;color:var(--g6);width:46px;flex-shrink:0;}
+.tgt-conc-row .cbw{flex:1;background:var(--g1);border-radius:4px;height:10px;overflow:hidden;}
+.tgt-conc-row .cbf{height:100%;background:var(--tg);border-radius:4px;transition:width .4s;}
+.tgt-conc-row .cp{font-size:12px;font-weight:700;color:var(--tgd);width:42px;text-align:right;flex-shrink:0;}
+.tgt-conc-row .ca{font-size:11px;color:var(--g4);width:66px;text-align:right;flex-shrink:0;}
+.tgt-bulk-card{background:#fff;border:1px solid var(--g2);border-radius:var(--r);padding:18px 20px;margin-top:14px;box-shadow:var(--sh);}
+.tgt-bulk-btn{padding:10px 20px;background:var(--gn);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;}
+.tgt-bulk-btn:hover{background:#15703f;}
+/* ── 三模块区块标题（可折叠） ── */
+.tgt-module-hd{display:flex;align-items:center;gap:12px;margin:16px 0 0;padding:13px 18px;background:var(--g0);border:1px solid var(--g2);border-radius:var(--r);cursor:pointer;user-select:none;transition:background .15s;}
+.tgt-module-hd:hover{background:var(--g1);}
+.tgt-module-badge{width:32px;height:32px;border-radius:50%;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;}
+.tgt-module-badge.m1{background:var(--tg);}
+.tgt-module-badge.m2{background:#4f46e5;}
+.tgt-module-badge.m3{background:var(--gn);}
+.tgt-module-title{font-size:16px;font-weight:800;color:var(--g9);letter-spacing:-.2px;}
+.tgt-module-sub{font-size:12px;color:var(--g4);margin-left:4px;}
+.tgt-module-chev{margin-left:auto;font-size:14px;color:var(--g4);transition:transform .2s;line-height:1;}
+.tgt-module-chev.open{transform:rotate(90deg);}
+.tgt-module-body{overflow:hidden;}
+.tgt-module-body.closed{display:none;}
+/* ── 模块三信息块 ── */
+.tgt-info-section{border-bottom:1px solid var(--g1);padding:14px 0;}
+.tgt-info-section:last-child{border-bottom:none;padding-bottom:0;}
+.tgt-info-hd{font-size:12px;font-weight:700;color:var(--g7);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.tgt-info-row{display:flex;align-items:baseline;gap:8px;font-size:12px;color:var(--g6);margin-bottom:5px;line-height:1.5;}
+.tgt-info-row .ir-label{font-weight:600;color:var(--g7);flex-shrink:0;min-width:120px;}
+.tgt-info-tag{display:inline-block;padding:1px 6px;border-radius:5px;font-size:11px;font-weight:600;margin-right:4px;}
+.tgt-info-tag.r{background:var(--rdbg);color:var(--rd);}
+.tgt-info-tag.y{background:var(--ywbg);color:var(--yw);}
+.tgt-info-tag.g{background:var(--gnbg);color:var(--gn);}
+.tgt-info-tag.b{background:#ede9fe;color:#4f46e5;}
+.tgt-info-tag.gr{background:var(--g1);color:var(--g6);}
+.tgt-placeholder{text-align:center;padding:32px 0;color:var(--g4);font-size:13px;}
+/* ── 轮次 Tab ── */
+.round-tabs{display:flex;gap:6px;flex-wrap:wrap;padding:10px 0 6px;}
+.round-tab{padding:6px 16px;border-radius:20px;border:1.5px solid var(--g2);background:#fff;font-size:12px;font-weight:600;color:var(--g6);cursor:pointer;transition:all .15s;}
+.round-tab:hover{border-color:var(--tg);color:var(--tg);}
+.round-tab.active{background:var(--tg);border-color:var(--tg);color:#fff;}
+.round-tab .rt-sub{font-weight:400;opacity:.8;margin-left:4px;}
+.round-tab .rt-badge{display:inline-block;margin-left:5px;background:rgba(0,0,0,.15);border-radius:10px;padding:0 6px;font-size:10px;}
+.round-panel{display:none;}.round-panel.active{display:block;}
+/* ── Bulk DZ ── */
+.tgt-bulk-dz{border:2px dashed var(--g2);border-radius:var(--r);padding:18px 14px;text-align:center;cursor:pointer;transition:all .15s;background:var(--g0);}
+.tgt-bulk-dz:hover,.tgt-bulk-dz.over{border-color:var(--gn);background:var(--gnbg);}
+.tgt-bulk-dz.loaded{border-color:var(--gn);background:var(--gnbg);}
+.tgt-bulk-dz.err{border-color:var(--rd);background:var(--rdbg);}
+.tgt-bulk-dz input[type=file]{display:none;}
+.tgt-bulk-dz .dz-label{font-size:13px;font-weight:600;color:var(--g7);margin-bottom:2px;}
+.tgt-bulk-dz.loaded .dz-label{color:var(--gn);}
+.tgt-bulk-dz.err .dz-label{color:var(--rd);}
+.tgt-bulk-dz .dz-sub{font-size:11px;color:var(--g4);}
+/* dark mode for new elements */
+body.dark .tgt-module-hd{background:var(--g1);border-color:var(--g2);}
+body.dark .tgt-module-hd:hover{background:var(--g2);}
+body.dark .tgt-info-section{border-bottom-color:var(--g1);}
+body.dark .tgt-info-tag.b{background:#1e1b4b;color:#a5b4fc;}
+
+/* ── Dark Mode ───────────────────────────────────────────────────────────────── */
+#theme-btn{background:none;border:1px solid rgba(255,255,255,.25);color:#e2e8f0;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;transition:all .15s;flex-shrink:0}
+#theme-btn:hover{background:rgba(255,255,255,.12)}
+body.dark{background:#0f172a;color:#cbd5e1}
+body.dark #tabbar{background:#1e293b;border-bottom-color:#334155}
+body.dark .tab-btn{color:#64748b}
+body.dark .tab-btn:hover{color:#94a3b8}
+body.dark .tab-btn.active{color:#60a5fa;border-bottom-color:#60a5fa}
+body.dark .filter-bar{background:#1e293b;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+body.dark .filter-label{color:#64748b}
+body.dark .filter-sep{background:#334155}
+body.dark .filter-pill{background:#263548;border-color:#334155;color:#94a3b8}
+body.dark .filter-pill:hover{border-color:#60a5fa;color:#93c5fd}
+body.dark .filter-pill.active{background:#3b82f6;border-color:#3b82f6;color:#fff}
+body.dark .wk-chip{background:#263548;border-color:#334155;color:#94a3b8}
+body.dark .wk-chip:hover{border-color:#60a5fa}
+body.dark .wk-chip.active{background:#3b82f6;border-color:#3b82f6;color:#fff}
+body.dark select{background:#1e293b;border-color:#334155;color:#94a3b8}
+body.dark input[type=text],body.dark input[type=number]{background:#263548;border-color:#334155;color:#e2e8f0}
+body.dark .metric-card{background:#1e293b;border-left-color:#334155}
+body.dark .metric-card .m-label{color:#64748b}
+body.dark .metric-card .m-val{color:#e2e8f0}
+body.dark .chart-wrap{background:#1e293b}
+body.dark .chart-title{color:#94a3b8}
+body.dark .mode-btn{background:#263548;border-color:#334155;color:#94a3b8}
+body.dark .mode-btn.active{background:#3b82f6;border-color:#3b82f6;color:#fff}
+body.dark .tbl-wrap{background:#1e293b}
+body.dark .tbl-header{color:#94a3b8;border-bottom-color:#334155}
+body.dark thead th{background:#0f172a;color:#64748b;border-bottom-color:#334155}
+body.dark tbody tr{border-bottom-color:#263548}
+body.dark tbody tr.clickable:hover{background:#263548}
+body.dark tbody tr.expanded-row{background:#1a3050}
+body.dark tbody tr.week-row{background:#1a2d42}
+body.dark tbody tr.week-row:hover{background:#263548}
+body.dark tbody tr.day-row{background:#172333}
+body.dark tbody td{color:#cbd5e1}
+body.dark .exp-row td{background:#0f172a}
+body.dark .exp-content{border-left-color:#3b82f6;color:#94a3b8}
+body.dark .pagination{border-top-color:#334155}
+body.dark .page-btn{background:#1e293b;border-color:#334155;color:#94a3b8}
+body.dark .page-btn:hover{background:#263548;border-color:#3b82f6}
+body.dark .page-btn.active{background:#3b82f6;border-color:#3b82f6;color:#fff}
+body.dark .per-page-select,.body.dark .status-select{background:#1e293b;border-color:#334155;color:#94a3b8}
+body.dark .section-title{color:#64748b;border-bottom-color:#334155}
+body.dark .cat-card{background:#1e293b}
+body.dark .cat-card h3{color:#e2e8f0}
+body.dark .cc-m{background:#0f172a}
+body.dark .cc-m .ccm-l{color:#64748b}
+body.dark .dm-zone{background:#1e293b;border-color:#334155}
+body.dark .dm-zone:hover{border-color:#3b82f6;background:#1a2d42}
+body.dark .acos-item{background:#1e293b}
+body.dark .acos-item label{color:#94a3b8}
+body.dark .acos-item input{background:#0f172a;border-color:#334155;color:#e2e8f0}
+body.dark .toggle{background:#334155}
+body.dark .ana-sum-card{background:#1e293b}
+body.dark .ana-sum-card .asc-label{color:#64748b}
+body.dark .ana-sum-card .asc-val{color:#e2e8f0}
+body.dark .ana-sec-hdr.urgent{background:#2d1515;color:#fca5a5}
+body.dark .ana-sec-hdr.warning{background:#2d2008;color:#fcd34d}
+body.dark .ana-sec-hdr.opportunity{background:#0a2318;color:#6ee7b7}
+body.dark .ana-sec-hdr.neutral{background:#1e293b;color:#94a3b8}
+body.dark .ana-card{background:#1e293b;border-left-color:#334155}
+body.dark .ana-card-title{color:#e2e8f0}
+body.dark .ana-card-desc{color:#94a3b8}
+body.dark .ana-actions{background:#0f172a;border-color:#334155}
+body.dark .ana-action-item{color:#94a3b8}
+body.dark .ana-table th{background:#0f172a;color:#64748b}
+body.dark .ana-table td{border-bottom-color:#263548;color:#cbd5e1}
+body.dark .ana-view-btn{background:#263548;border-color:#334155;color:#94a3b8}
+body.dark .ana-view-btn.active{background:#3b82f6;border-color:#3b82f6;color:#fff}
+body.dark .funnel-card{background:#1e293b}
+body.dark .funnel-prod-hdr.urgent{background:#2d1515;border-left-color:#ef4444}
+body.dark .funnel-prod-hdr.warning{background:#2d2008;border-left-color:#f59e0b}
+body.dark .funnel-prod-hdr.opportunity{background:#0a2318;border-left-color:#10b981}
+body.dark .funnel-prod-hdr.normal{background:#152235;border-left-color:#3b82f6}
+body.dark .funnel-prod-hdr.neutral{background:#263548;border-left-color:#334155}
+body.dark .funnel-prod-name{color:#e2e8f0}
+body.dark .funnel-diag{background:#0f172a;border-color:#334155;color:#94a3b8}
+body.dark .funnel-suggest{color:#60a5fa;border-top-color:#334155}
+body.dark .funnel-section-title{color:#64748b}
+body.dark .funnel-section-title::after{background:#334155}
+body.dark .funnel-cat-table th{background:#0f172a;color:#64748b}
+body.dark .funnel-cat-table td{border-bottom-color:#263548;color:#cbd5e1}
+body.dark .funnel-cat-table tr:hover td{background:#263548}
+body.dark details.funnel-detail>summary{color:#94a3b8}
+/* tgt-wrap: 通过 CSS 变量整体切换 */
+body.dark .tgt-wrap{--g0:#0f172a;--g1:#263548;--g2:#334155;--g4:#64748b;--g6:#94a3b8;--g7:#cbd5e1;--g9:#e2e8f0;--gnbg:#0a2318;--rdbg:#2d1515;--ywbg:#2d2008;--tgbg:#2d1f00;--sh:0 1px 4px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.2)}
+body.dark .tgt-card{background:#1e293b}
+body.dark .tgt-metric{background:#1e293b}
+body.dark .tgt-result-hd{background:linear-gradient(135deg,#070d1a 0%,#0a1020 100%)}
+body.dark .tgt-tbl tr:hover td{background:#263548}
+body.dark .tgt-bulk-card{background:#1e293b}
+body.dark .tgt-pg input[type=range]{accent-color:#FF9900}
+/* tgt 层级树 details */
+body.dark details>summary[style]{color:#cbd5e1!important}
+body.dark details>div[style]{background:#1e293b!important}
+/* cfg / data tab misc */
+body.dark #tab-cfg>div{color:#cbd5e1}
+body.dark .drs-track::before{background:#334155}
+body.dark .drs-fill{background:#60a5fa}
+body.dark .drs-input::-webkit-slider-thumb{background:#3b82f6}
+body.dark .drs-lbl{color:#64748b}
+
 </style>
 </head>
 <body>
 <div id="topbar">
   <h1>📊 广告数据 漏斗分析</h1>
   <span class="sub" id="topbar-sub"></span>
+  <button id="theme-btn" onclick="toggleTheme()" title="切换明暗模式">🌙</button>
 </div>
 <div id="tabbar">
   <button class="tab-btn active" onclick="switchTab('ov')">总览</button>
@@ -506,9 +743,295 @@ details.funnel-detail[open]>summary::before{transform:rotate(90deg)}
     <div style="display:flex;gap:8px;margin:10px 0 8px">
       <button class="ana-view-btn active" onclick="switchAnaView('funnel')" id="anabtn-funnel">漏斗分析</button>
       <button class="ana-view-btn" onclick="switchAnaView('recs')" id="anabtn-recs">建议清单</button>
+      <button class="ana-view-btn" onclick="switchAnaView('targeting')" id="anabtn-targeting">批量竞价优化</button>
+      <button class="ana-view-btn" onclick="switchAnaView('history')" id="anabtn-history">调价历史</button>
     </div>
     <div id="ana-funnel"></div>
     <div id="ana-recs" style="display:none"></div>
+    <div id="ana-history" style="display:none"></div>
+    <div id="ana-targeting" style="display:none">
+
+<div class="tgt-wrap" style="margin-top:12px">
+
+  <!-- ═══ 模块一：分析执行 ═══ -->
+  <div class="tgt-module-hd" onclick="tgtToggleModule(1)">
+    <div class="tgt-module-badge m1">01</div>
+    <div class="tgt-module-title">分析执行</div>
+    <div class="tgt-module-sub">上传两份报告 · 设置参数 · 运行分析</div>
+    <div class="tgt-module-chev open" id="tgt-m1-chev">▶</div>
+  </div>
+  <div class="tgt-module-body" id="tgt-m1-body">
+
+  <!-- ── A. 导入数据 ── -->
+  <div class="tgt-card" style="margin-top:8px">
+    <div class="tgt-sec-hd">
+      <h3>① 导入数据</h3>
+      <div class="tgt-hint" id="tgt-import-status">每周上传上一周的两份报告</div>
+    </div>
+    <!-- 库内数据范围 -->
+    <div id="tgt-db-stats" style="font-size:11px;color:var(--g6);margin-bottom:10px;padding:6px 10px;background:var(--g0);border-radius:6px;display:none"></div>
+    <div class="tgt-dz-grid">
+      <div class="tgt-dz" id="tgt-dz-ap"
+           onclick="document.getElementById('tgt-ap-file').click()"
+           ondragover="tgtDzOver(event,'tgt-dz-ap')"
+           ondragleave="tgtDzLeave('tgt-dz-ap')"
+           ondrop="tgtDzDrop(event,'ap')">
+        <div class="dz-icon">📄</div>
+        <div class="dz-label" id="tgt-ap-label">Advertised Product Report</div>
+        <div class="dz-sub">推广商品报告（每日格式，含 日期 列）· 拖拽或点击上传 .xlsx</div>
+        <input type="file" id="tgt-ap-file" accept=".xlsx,.xls" onchange="tgtFileLoaded('ap',this)">
+      </div>
+      <div class="tgt-dz" id="tgt-dz-tar"
+           onclick="document.getElementById('tgt-tar-file').click()"
+           ondragover="tgtDzOver(event,'tgt-dz-tar')"
+           ondragleave="tgtDzLeave('tgt-dz-tar')"
+           ondrop="tgtDzDrop(event,'tar')">
+        <div class="dz-icon">📄</div>
+        <div class="dz-label" id="tgt-tar-label">Targeting Report（每日）</div>
+        <div class="dz-sub">投放报告（每日格式，含 Date 列）· 拖拽或点击上传 .xlsx</div>
+        <input type="file" id="tgt-tar-file" accept=".xlsx,.xls" onchange="tgtFileLoaded('tar',this)">
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;margin-top:12px">
+      <button class="tgt-run-btn" id="tgt-import-btn" onclick="importTarApData()"
+        style="padding:10px 24px;font-size:13px;margin-top:0">
+        ⬆ 导入数据库
+      </button>
+      <span id="tgt-import-result" style="font-size:12px;color:var(--g6)"></span>
+    </div>
+  </div>
+
+  <!-- ── B. 运行分析参数（左）+ 三轮说明（右）对半分 ── -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;align-items:stretch">
+
+    <!-- 左：运行分析参数表单 -->
+    <div class="tgt-card" style="margin-top:0">
+      <div class="tgt-sec-hd"><h3>② 运行分析</h3><div class="tgt-hint">从库中取最近 6 周数据，跑 R1/R2/R3 三轮后投票</div></div>
+      <div class="tgt-pg" style="margin-bottom:14px">
+        <label>目标 ACoS <span class="lh">Target ACoS</span></label>
+        <div class="tgt-acos-row">
+          <input type="range" id="tgt-acos-slider" min="5" max="60" step="1" value="35"
+                 oninput="document.getElementById('tgt-acos-val').textContent=this.value+'%';document.getElementById('tgt-target-acos').value=this.value">
+          <div class="tgt-acos-val" id="tgt-acos-val">35%</div>
+        </div>
+      </div>
+      <div class="tgt-param-grid">
+        <div class="tgt-pg">
+          <label>产品标识 <span class="lh">Product Target</span></label>
+          <input id="tgt-product-target" type="text" placeholder="如 SL_SP_KW、SL_SP_ASIN" oninput="tgtAutoFill(this.value)">
+        </div>
+        <div class="tgt-pg">
+          <label>目标 ACoS (%) <span class="lh">数字</span></label>
+          <input id="tgt-target-acos" type="number" min="1" max="100" step="0.1" value="35"
+                 oninput="tgtSyncSlider(this.value)">
+        </div>
+        <div class="tgt-pg">
+          <label>平均出单点击数 <span class="lh">Avg Clicks/Order</span></label>
+          <input id="tgt-avg-clicks" type="number" min="1" step="0.5" placeholder="8.5">
+        </div>
+      </div>
+    </div>
+
+    <!-- 右：三轮分析逻辑说明 -->
+    <div style="background:#f8fafc;border:1px solid var(--g2);border-radius:8px;overflow:hidden;display:flex;flex-direction:column">
+      <div style="padding:10px 16px;font-size:13px;font-weight:700;color:var(--g7);border-bottom:1px solid var(--g2)">💡 三轮分析逻辑</div>
+      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:10px;flex:1">
+        <!-- R1/R2/R3 时间窗口 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <div style="background:#ede9fe;border-radius:8px;padding:10px 8px;text-align:center">
+            <div style="font-size:16px;font-weight:800;color:#6366f1">R1</div>
+            <div style="font-size:11px;font-weight:600;color:var(--g7);margin:3px 0">最近 1 周</div>
+            <div style="font-size:11px;color:#a5b4fc">最新状态</div>
+          </div>
+          <div style="background:#e0f2fe;border-radius:8px;padding:10px 8px;text-align:center">
+            <div style="font-size:16px;font-weight:800;color:#0891b2">R2</div>
+            <div style="font-size:11px;font-weight:600;color:var(--g7);margin:3px 0">最近 3 周</div>
+            <div style="font-size:11px;color:#7dd3fc">中期趋势</div>
+          </div>
+          <div style="background:#ccfbf1;border-radius:8px;padding:10px 8px;text-align:center">
+            <div style="font-size:16px;font-weight:800;color:#0f766e">R3</div>
+            <div style="font-size:11px;font-weight:600;color:var(--g7);margin:3px 0">最近 6 周</div>
+            <div style="font-size:11px;color:#5eead4">最稳定</div>
+          </div>
+        </div>
+        <!-- 投票规则 -->
+        <div style="background:#fff8ec;border:1px solid #fde68a;border-radius:8px;padding:10px 12px">
+          <div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:4px">🗳 投票规则</div>
+          <div style="font-size:12px;color:#78350f;line-height:1.7">
+            投放在 <strong style="color:#dc2626">≥ 2 轮</strong> 中命中「高ACoS出单」或「高点击不出单」<br>
+            → 进入 Consensus，确认调价
+            <span style="color:var(--g5);font-size:11px">（仅 1 轮视为偶然，不调）</span>
+          </div>
+        </div>
+        <!-- 调价 & 数据来源 -->
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px">
+          <div style="font-size:12px;font-weight:700;color:#14532d;margin-bottom:4px">📐 调价 &amp; 数据来源</div>
+          <div style="font-size:12px;color:#166534;line-height:1.7">
+            幅度取各命中轮中 <strong>绝对值最小</strong>（最保守）<br>
+            指标（花费/ACoS）← R3（样本最大）<br>
+            标签 ← R1（最新）· 调价幅度 ← 最保守值
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <button class="tgt-run-btn" id="tgt-run-btn" onclick="runMode1Analysis()" style="margin-top:8px">
+    🚀 开始三轮分析
+  </button>
+  <div class="tgt-prog" id="tgt-prog"><div class="tgt-prog-fill" id="tgt-prog-fill" style="width:0%"></div></div>
+  <div id="tgt-status" style="font-size:12px;color:var(--g6);margin-top:6px;min-height:18px"></div>
+
+  </div><!-- /#tgt-m1-body -->
+
+  <!-- ═══ 模块二：分析结果 ═══ -->
+  <div class="tgt-module-hd" onclick="tgtToggleModule(2)" style="margin-top:10px">
+    <div class="tgt-module-badge m2">02</div>
+    <div class="tgt-module-title">分析结果</div>
+    <div class="tgt-module-sub">R1 / R2 / R3 三轮结果 · Consensus 确认调价 · 导出 MD</div>
+    <div class="tgt-module-chev" id="tgt-m2-chev">▶</div>
+  </div>
+  <div class="tgt-module-body closed" id="tgt-m2-body">
+    <!-- 轮次切换 Tab 栏 -->
+    <div class="round-tabs" id="tgt-round-tabs" style="display:none">
+      <button class="round-tab" id="rtab-R1"        onclick="switchRoundTab('R1')">R1<span class="rt-sub">最近1周</span></button>
+      <button class="round-tab" id="rtab-R2"        onclick="switchRoundTab('R2')">R2<span class="rt-sub">最近3周</span></button>
+      <button class="round-tab" id="rtab-R3"        onclick="switchRoundTab('R3')">R3<span class="rt-sub">最近6周</span></button>
+      <button class="round-tab" id="rtab-consensus" onclick="switchRoundTab('consensus')">Consensus<span class="rt-badge" id="rtab-consensus-cnt"></span></button>
+    </div>
+    <!-- 四个内容面板 -->
+    <div class="round-panel" id="tgt-panel-R1"></div>
+    <div class="round-panel" id="tgt-panel-R2"></div>
+    <div class="round-panel" id="tgt-panel-R3"></div>
+    <div class="round-panel" id="tgt-panel-consensus">
+      <div class="tgt-placeholder">运行分析后结果将在此显示</div>
+    </div>
+  </div>
+
+  <!-- ═══ 模块三：竞价批量更新 ═══ -->
+  <div class="tgt-module-hd" onclick="tgtToggleModule(3)" style="margin-top:10px">
+    <div class="tgt-module-badge m3">03</div>
+    <div class="tgt-module-title">竞价批量更新</div>
+    <div class="tgt-module-sub">筛选 → 调价 → 写回 Bulk · 先完成模块一分析再执行</div>
+    <div class="tgt-module-chev" id="tgt-m3-chev">▶</div>
+  </div>
+  <div class="tgt-module-body closed" id="tgt-m3-body">
+  <div class="tgt-card" style="margin-top:8px">
+
+    <!-- 筛选条件 -->
+    <div class="tgt-info-section">
+      <div class="tgt-info-hd">📌 筛选条件</div>
+      <div class="tgt-info-row">
+        <span class="ir-label">条件 ①  标签</span>
+        <span>包含 <span class="tgt-info-tag y">⚠️ 高ACoS出单</span> 或 <span class="tgt-info-tag r">🔴 高点击不出单</span></span>
+      </div>
+      <div class="tgt-info-row" style="align-items:center">
+        <span class="ir-label">条件 ②  订单数</span>
+        <span>orders &lt; </span>
+        <input id="tgt-orders-thresh" type="number" min="1" max="999" value="10"
+          style="width:64px;padding:4px 8px;font-size:13px;font-weight:700;border:1.5px solid var(--tg);border-radius:6px;background:var(--tgbg);color:var(--tgd);text-align:center;outline:none">
+        <span style="color:var(--g4);font-size:11px;margin-left:4px">（默认 10，可修改）</span>
+      </div>
+      <div style="font-size:11px;color:var(--g4);margin-top:6px">两个条件须同时满足，核心流量（出单 Top10 或销售占比 ≥ 20%）即使命中也会被标记为 🔒 保护，不调价。</div>
+    </div>
+
+    <!-- 调价逻辑 -->
+    <div class="tgt-info-section">
+      <div class="tgt-info-hd">📐 调价逻辑（来自分析结果 adj_pct 字段）</div>
+      <div class="tgt-info-row"><span class="ir-label"><span class="tgt-info-tag y">⚠️ 高ACoS出单</span></span><span style="color:var(--g4)">（非核心流量）</span></div>
+      <div style="padding-left:128px;margin-bottom:6px">
+        <div class="tgt-info-row" style="margin-bottom:3px"><span style="min-width:160px;color:var(--g6)">ACoS 超目标 ≤ 20%</span><span class="tgt-info-tag r">降价 −5%</span></div>
+        <div class="tgt-info-row" style="margin-bottom:3px"><span style="min-width:160px;color:var(--g6)">ACoS 超目标 20%–50%</span><span class="tgt-info-tag r">降价 −10%</span></div>
+        <div class="tgt-info-row" style="margin-bottom:3px"><span style="min-width:160px;color:var(--g6)">ACoS 超目标 &gt; 50%</span><span class="tgt-info-tag r">降价 −15%</span></div>
+      </div>
+      <div class="tgt-info-row"><span class="ir-label"><span class="tgt-info-tag r">🔴 高点击不出单</span></span><span style="color:var(--g4)">（非核心流量）</span><span class="tgt-info-tag r" style="margin-left:8px">固定降价 −20%</span></div>
+      <div class="tgt-info-row" style="margin-top:4px"><span class="ir-label"><span class="tgt-info-tag b">🔒 核心流量</span></span><span>出单 Top10 或销售占比 ≥ 20%，<b>保护，不调价</b></span></div>
+    </div>
+
+    <!-- 输出文件 -->
+    <div class="tgt-info-section">
+      <div class="tgt-info-hd">📤 输出文件（共 2 个）</div>
+      <div class="tgt-info-row" style="align-items:flex-start">
+        <span class="ir-label"><span class="tgt-info-tag b">① Bulk xlsx</span></span>
+        <span>在原 Bulk 文件基础上更新 Bid 列为新竞价（黄色高亮），Operation 列 = Update，已自动删除 RAS Search Term Report 工作表</span>
+      </div>
+      <div class="tgt-info-row" style="align-items:flex-start;margin-top:4px">
+        <span class="ir-label"><span class="tgt-info-tag g">② targeting CSV</span></span>
+        <span>原分析结果全部字段（同"导出分析结果 CSV"），末尾追加三列：<b>原竞价 / 新竞价 / 操作日期</b>（仅被处理行填写，其余行留空）</span>
+      </div>
+    </div>
+
+    <!-- 输入文件 & 执行 -->
+    <div class="tgt-info-section" style="padding-bottom:0">
+      <div class="tgt-info-hd">📥 输入文件 &amp; 执行</div>
+      <div style="font-size:12px;color:var(--g6);margin-bottom:10px">
+        上传从亚马逊后台下载的 Bulk 文件，文件名须以 <b>Bulk</b> 开头（大小写不敏感），格式 .xlsx。<br>
+        请确保已先完成模块一的分析（分析结果保存在服务端，刷新页面后需重新分析）。
+      </div>
+      <!-- Bulk 文件拖拽区 -->
+      <div class="tgt-bulk-dz" id="tgt-bulk-dz"
+           onclick="document.getElementById('tgt-bulk-file').click()"
+           ondragover="bulkDzOver(event)" ondragleave="bulkDzLeave()" ondrop="bulkDzDrop(event)">
+        <div style="font-size:22px;margin-bottom:4px">📦</div>
+        <div class="dz-label" id="tgt-bulk-dz-label">Bulk 文件（BulkSheetExport*.xlsx）</div>
+        <div class="dz-sub">文件名须以 Bulk 开头（大小写不敏感） · 拖拽或点击上传</div>
+        <input type="file" id="tgt-bulk-file" accept=".xlsx" onchange="bulkFileLoaded(this)">
+      </div>
+
+      <div style="display:flex;align-items:center;gap:16px;margin-top:14px;flex-wrap:wrap">
+        <button class="tgt-bulk-btn" id="tgt-bulk-btn" onclick="exportBulkFile()" style="padding:11px 28px;font-size:14px">
+          ⬇ 生成更新文件
+        </button>
+        <span id="tgt-bulk-status" style="font-size:12px;color:var(--g6)"></span>
+      </div>
+
+      <!-- Bulk xlsx 下载卡片 -->
+      <div id="tgt-bulk-dl" style="display:none;margin-top:12px;padding:10px 14px;background:var(--gnbg);border:1px solid var(--gn);border-radius:8px;align-items:center;gap:10px">
+        <span style="font-size:18px">📊</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:var(--gn)">Bulk 文件已更新，点击下载</div>
+          <div id="tgt-bulk-dl-name" style="font-size:11px;color:var(--g6);word-break:break-all;margin-top:2px"></div>
+        </div>
+        <a id="tgt-bulk-dl-link" href="#" download
+           style="padding:8px 16px;background:var(--gn);color:#fff;border-radius:7px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0">
+          ⬇ 下载
+        </a>
+      </div>
+      <!-- targeting_labels CSV 下载卡片 -->
+      <div id="tgt-label-dl" style="display:none;margin-top:8px;padding:10px 14px;background:var(--gnbg);border:1px solid var(--gn);border-radius:8px;align-items:center;gap:10px">
+        <span style="font-size:18px">📋</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:var(--gn)">targeting_labels 已更新（含 原竞价/新竞价/操作日期），点击下载</div>
+          <div id="tgt-label-dl-name" style="font-size:11px;color:var(--g6);word-break:break-all;margin-top:2px"></div>
+        </div>
+        <a id="tgt-label-dl-link" href="#" download
+           style="padding:8px 16px;background:var(--gn);color:#fff;border-radius:7px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0">
+          ⬇ 下载
+        </a>
+      </div>
+      <div id="tgt-bulk-log" style="display:none;margin-top:10px;background:var(--g0);border-radius:6px;padding:10px 14px;font-size:11px;color:var(--g7);line-height:1.7;max-height:200px;overflow-y:auto;white-space:pre-wrap;font-family:monospace"></div>
+
+      <!-- 确认更新亚马逊广告 -->
+      <div id="tgt-confirm-section" style="display:none;margin-top:14px;padding:14px 16px;background:var(--ywbg);border:1px solid #f59e0b;border-radius:8px">
+        <div style="font-size:13px;font-weight:700;color:var(--yw);margin-bottom:5px">📤 确认已上传到亚马逊后台？</div>
+        <div style="font-size:12px;color:var(--g6);margin-bottom:10px">将 Bulk 文件成功上传到亚马逊广告后台后，点击下方按钮记录本次调价。</div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <button id="tgt-confirm-btn" onclick="confirmBidUpdate()"
+            style="padding:9px 22px;background:#f59e0b;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:700">
+            ✅ 确认已上传亚马逊，记录本次调价
+          </button>
+          <span id="tgt-confirm-status" style="font-size:12px;color:var(--g6)"></span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.tgt-card -->
+  </div><!-- /#tgt-m3-body -->
+
+</div><!-- /.tgt-wrap -->
+
+    </div>
   </div>
 </div>
 
@@ -812,6 +1335,51 @@ let anaView='funnel';
 let _charts={};
 
 function destroyChart(id){if(_charts[id]){_charts[id].destroy();delete _charts[id];}}
+
+// ── 明暗主题切换 ───────────────────────────────────────────────────────────────
+function applyChartTheme(dark){
+  const grid  = dark ? '#334155' : '#e2e8f0';
+  const tick  = dark ? '#64748b' : '#6b7280';
+  const label = dark ? '#94a3b8' : '#374151';
+  Chart.defaults.color = tick;
+  Chart.defaults.borderColor = grid;
+  // 更新所有已渲染图表
+  Object.values(_charts).forEach(c=>{
+    if(!c) return;
+    const sc = c.options.scales || {};
+    Object.values(sc).forEach(ax=>{
+      if(ax.ticks) ax.ticks.color = tick;
+      if(ax.grid)  ax.grid.color  = grid;
+      if(ax.border) ax.border.color = grid;
+    });
+    // datalabel color
+    if(c.data?.datasets) c.data.datasets.forEach(ds=>{
+      if(ds.datalabels) ds.datalabels.color = label;
+    });
+    c.update('none');
+  });
+}
+
+function toggleTheme(){
+  const dark = document.body.classList.toggle('dark');
+  localStorage.setItem('theme', dark ? 'dark' : 'light');
+  document.getElementById('theme-btn').textContent = dark ? '☀️' : '🌙';
+  applyChartTheme(dark);
+}
+
+// 页面加载时自动应用保存的主题（此脚本在 <body> 后执行，DOM 已就绪）
+(function(){
+  const saved   = localStorage.getItem('theme');
+  const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if(saved === 'dark' || (!saved && sysDark)){
+    document.body.classList.add('dark');
+    const btn = document.getElementById('theme-btn');
+    if(btn) btn.textContent = '☀️';
+    // chart defaults 先设好，待图表创建时就用对色
+    Chart.defaults.color       = '#64748b';
+    Chart.defaults.borderColor = '#334155';
+  }
+})();
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function fmt(v,type){
@@ -1875,9 +2443,13 @@ function setAnaWkRange(){
 }
 function switchAnaView(v){
   anaView=v;
-  document.getElementById('ana-funnel').style.display=v==='funnel'?'':'none';
-  document.getElementById('ana-recs').style.display=v==='recs'?'':'none';
+  document.getElementById('ana-funnel').style.display   = v==='funnel'    ? '' : 'none';
+  document.getElementById('ana-recs').style.display     = v==='recs'      ? '' : 'none';
+  document.getElementById('ana-targeting').style.display= v==='targeting' ? '' : 'none';
+  document.getElementById('ana-history').style.display  = v==='history'   ? '' : 'none';
   document.querySelectorAll('.ana-view-btn').forEach(b=>b.classList.toggle('active',b.id==='anabtn-'+v));
+  if(v==='targeting') initTargetingDefaults();
+  if(v==='history')   renderBidHistory();
 }
 function saveNote(key,val){try{localStorage.setItem('note_'+key,val);}catch(e){}}
 function getNote(key){try{return localStorage.getItem('note_'+key)||'';}catch(e){return'';}}
@@ -2210,6 +2782,1057 @@ function buildFunnelCard(p,desc,tgt,status,agg,last,prev,catRows,portRows,campRo
     <div class="funnel-body">${diagHTML}${catHTML}${portHTML}${campHTML}</div>
   </div>`;
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODE 1 — 投放结构分析
+// ══════════════════════════════════════════════════════════════════════════════
+
+function initTargetingDefaults(){
+  // 填入已有 ACoS 配置默认值
+  const prod = anaProd==='all'?null:anaProd;
+  if(prod && ACOS_TARGETS && ACOS_TARGETS[prod]){
+    const el=document.getElementById('tgt-target-acos');
+    if(el&&!el.value) el.value=ACOS_TARGETS[prod];
+  }
+  // 填入平均出单点击数默认值（从 avg_clicks 配置）
+  if(prod && window.AVG_CLICKS && window.AVG_CLICKS[prod]){
+    const el=document.getElementById('tgt-avg-clicks');
+    if(el&&!el.value) el.value=window.AVG_CLICKS[prod];
+  }
+  // 加载库内数据范围（异步，不阻塞）
+  fetch('api/analysis/mode1/data-stats')
+    .then(r=>r.json())
+    .then(s=>_renderDbStats(s))
+    .catch(()=>{});
+}
+
+async function importTarApData(){
+  const apFile  = document.getElementById('tgt-ap-file').files[0];
+  const tarFile = document.getElementById('tgt-tar-file').files[0];
+  if(!apFile||!tarFile) return alert('请同时上传推广商品报告和投放报告');
+
+  const btn = document.getElementById('tgt-import-btn');
+  const rst = document.getElementById('tgt-import-result');
+  btn.disabled = true;
+  rst.textContent = '⏳ 入库中...';
+  rst.style.color = 'var(--g6)';
+
+  const fd = new FormData();
+  fd.append('ap_file',  apFile);
+  fd.append('tar_file', tarFile);
+
+  try{
+    const resp = await fetch('api/analysis/mode1/import-data', {method:'POST', body:fd});
+    if(!resp.ok){ const e=await resp.json(); throw new Error(e.detail||'入库失败'); }
+    const d = await resp.json();
+    const imp = d.imported;
+    rst.style.color = 'var(--gn)';
+    rst.textContent = `✅ tar ${imp.tar_rows} 行（${imp.tar_min}~${imp.tar_max}）· ap ${imp.ap_rows} 行`;
+    _renderDbStats(d.db_stats);
+  }catch(e){
+    rst.style.color = 'var(--rd)';
+    rst.textContent = '❌ ' + e.message;
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+function _renderDbStats(stats){
+  const el = document.getElementById('tgt-db-stats');
+  if(!stats){ el.style.display='none'; return; }
+  const t = stats.raw_tar || {};
+  const a = stats.raw_ap  || {};
+  if(!t.count && !a.count){ el.style.display='none'; return; }
+  el.style.display = '';
+  el.innerHTML = `📦 库内数据：Targeting ${t.count||0} 行（${t.min_date||'—'} ~ ${t.max_date||'—'}）`
+    + `　· AP ${a.count||0} 行（${a.min_date||'—'} ~ ${a.max_date||'—'}）`;
+}
+
+async function runMode1Analysis(){
+  const pt     = document.getElementById('tgt-product-target').value.trim();
+  const acos   = parseFloat(document.getElementById('tgt-target-acos').value);
+  const clicks = parseFloat(document.getElementById('tgt-avg-clicks').value);
+
+  if(!pt)            return alert('请输入产品标识（如 SL_SP_KW）');
+  if(!acos||!clicks) return alert('请填写目标 ACoS 和平均出单点击数');
+
+  const status = document.getElementById('tgt-status');
+  status.style.color = 'var(--g6)';
+  status.textContent = '⏳ 三轮分析中...';
+  document.getElementById('tgt-run-btn').disabled=true;
+  document.getElementById('tgt-prog').classList.add('show');
+  document.getElementById('tgt-prog-fill').style.width='60%';
+
+  const fd = new FormData();
+  fd.append('product_target',       pt);
+  fd.append('target_acos',          acos);
+  fd.append('avg_clicks_per_order', clicks);
+
+  try {
+    const resp = await fetch('api/analysis/mode1', {method:'POST', body:fd});
+    if(!resp.ok){
+      const err = await resp.json();
+      throw new Error(err.detail || '请求失败');
+    }
+    const data = await resp.json();
+
+    // 渲染四个轮次面板
+    const commonMeta = {
+      cache_id:       data.cache_id,
+      product_target: data.product_target,
+      report_start:   data.report_start,
+      report_end:     data.report_end,
+    };
+    ['R1','R2','R3'].forEach(key => {
+      const rd = data[key];
+      if(!rd) return;
+      renderTargetingResult({...rd, ...commonMeta}, `tgt-panel-${key}`);
+    });
+    // consensus：指标用 R3，rows 用 consensus
+    const consensusData = {
+      ...(data.R3 || {}),
+      rows:         data.consensus?.rows || [],
+      label_counts: data.consensus?.label_counts || data.R3?.label_counts || {},
+      ...commonMeta,
+    };
+    renderTargetingResult(consensusData, 'tgt-panel-consensus');
+
+    // 显示 Tab 栏，默认激活 consensus
+    const nConsensus = data.consensus?.rows?.length || 0;
+    const cnBadge = document.getElementById('rtab-consensus-cnt');
+    if(cnBadge) cnBadge.textContent = nConsensus;
+    document.getElementById('tgt-round-tabs').style.display = '';
+    _renderRoundCsvBtns(data);
+    switchRoundTab('consensus');
+
+    const nConsensusCount = data.consensus?.count || nConsensus;
+    status.textContent = `✅ 完成 · consensus ${nConsensusCount} 个投放命中 ≥2 轮`;
+
+    // 保存配置
+    const prod = pt.split('_')[0];
+    saveAvgClicksConfig(prod, clicks);
+    // 缓存到 localStorage（不含文件，cache_id 留空防止跨页复用）
+    window._lastMode1Data = data;
+  } catch(e){
+    status.style.color='var(--rd)';
+    status.textContent = '❌ ' + e.message;
+  } finally {
+    document.getElementById('tgt-run-btn').disabled=false;
+    document.getElementById('tgt-prog').classList.remove('show');
+  }
+}
+
+function switchRoundTab(key){
+  ['R1','R2','R3','consensus'].forEach(k => {
+    document.getElementById(`rtab-${k}`)?.classList.toggle('active', k === key);
+    document.getElementById(`tgt-panel-${k}`)?.classList.toggle('active', k === key);
+  });
+}
+
+function _renderRoundCsvBtns(data){
+  const defs = [
+    { key:'R1',        label:'R1（1周）',  color:'#6366f1', isConsensus:false },
+    { key:'R2',        label:'R2（3周）',  color:'#0891b2', isConsensus:false },
+    { key:'R3',        label:'R3（全量）', color:'#0f766e', isConsensus:false },
+    { key:'consensus', label:'Consensus',  color:'#b45309', isConsensus:true  },
+  ];
+  defs.forEach(({key, label, color, isConsensus}) => {
+    const panel = document.getElementById(`tgt-panel-${key}`);
+    if(!panel) return;
+    const rdata = isConsensus ? data.consensus : data[key];
+    const n  = rdata?.rows?.length ?? 0;
+    const wl = rdata?.week_label ? ` · ${rdata.week_label}` : '';
+    const bar = document.createElement('div');
+    bar.style.cssText = 'display:flex;align-items:center;justify-content:flex-end;padding:6px 0 2px;';
+    bar.innerHTML = `<button onclick="exportRoundCSV('${key}')"
+      style="padding:5px 14px;font-size:12px;font-weight:600;border:1.5px solid ${color};
+             border-radius:7px;background:#fff;color:${color};cursor:pointer">
+      ⬇ 导出 ${label}${wl}（${n} 条）
+    </button>`;
+    panel.insertBefore(bar, panel.firstChild);
+  });
+}
+
+function exportRoundCSV(roundKey){
+  const data = window._lastMode1Data;
+  if(!data) return alert('请先运行分析');
+
+  const rdata = roundKey==='consensus' ? data.consensus : data[roundKey];
+  const rows  = rdata?.rows || [];
+  if(!rows.length) return alert('该轮无数据');
+
+  const COLS = [
+    ['Campaign Name', r=>r.campaign],
+    ['Ad Group Name', r=>r.ad_group],
+    ['Targeting',     r=>r.targeting],
+    ['Match Type',    r=>r.match_type],
+    ['impressions',   r=>r.impressions??''],
+    ['clicks',        r=>r.clicks],
+    ['orders',        r=>r.orders],
+    ['spend',         r=>r.spend],
+    ['sales',         r=>r.sales],
+    ['ACoS(%)',       r=>r.acos??''],
+    ['CVR(%)',        r=>r.cvr??''],
+    ['CPC($)',        r=>r.cpc??''],
+    ['销售占比(%)',   r=>r.sales_share??''],
+    ['花费占比(%)',   r=>r.spend_share??''],
+    ['label',         r=>r.label],
+    ['action',        r=>r.action],
+    ['adj_pct',       r=>r.adj_pct],
+    ['adj_dollar',    r=>r.adj_dollar],
+    ['reason',        r=>r.reason],
+    ...(roundKey==='consensus'?[['hit_rounds',r=>r.hit_rounds??'']]:[]),
+  ];
+
+  const esc = v=>{ const s=String(v??''); return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:''+s; };
+  const header = COLS.map(([h])=>h).join(',');
+  const body   = rows.map(r=>COLS.map(([,fn])=>esc(fn(r))).join(',')).join('\n');
+  const csv    = '﻿' + header + '\n' + body;
+
+  const pt      = data.product_target||'';
+  const wl      = roundKey==='consensus' ? 'consensus' : (rdata.week_label||roundKey).replace(/\//g,'-');
+  const fname   = `targeting_labels_${pt}_${wl}.csv`;
+  const blob    = new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url     = URL.createObjectURL(blob);
+  const a       = document.createElement('a'); a.href=url; a.download=fname; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportRoundMD(roundKey){
+  const data = window._lastMode1Data;
+  if(!data) return alert('请先运行分析');
+
+  const isConsensus = roundKey === 'consensus';
+  const metaRound = isConsensus ? data.R3 : data[roundKey];
+  const rows      = isConsensus ? (data.consensus?.rows || []) : (data[roundKey]?.rows || []);
+  if(!rows.length) return alert('该轮无数据');
+
+  const s   = metaRound?.summary      || {};
+  const L   = metaRound?.layers       || {};
+  const lc  = metaRound?.label_counts || {};
+  const wl  = isConsensus ? 'Consensus' : (metaRound?.week_label || roundKey);
+  const pt  = data.product_target || '';
+  const today = new Date().toISOString().slice(0,10);
+
+  const usd = v=>'$'+(+v||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+  const usd2= v=>'$'+(+v||0).toFixed(2);
+  const pct = v=>v!=null?`${(+v).toFixed(1)}%`:'—';
+  const esc = s=>String(s||'').replace(/\|/g,'｜');
+  const trn = (s,n)=>{s=String(s||'');return s.length>n?s.slice(0,n-1)+'…':s;};
+
+  const ts  = s.total_spend || 0;
+  const tsl = s.total_sales || 1;
+
+  const lines = [];
+  const t  = s => lines.push(s);
+  const nl = () => lines.push('');
+
+  // ── 1. 标题 ────────────────────────────────────────────
+  t(`# Targeting 结构分析 · ${pt}`);
+  nl();
+  t(`📅 ${s.date_range||wl} | 🎯 目标 ACoS ${s.target_acos||'—'}% | 📦 ${s.analysis_days||'—'} 天 | 📋 ${rows.length} 个投放`);
+  nl();
+  t('---');
+  nl();
+
+  // ── 2. 核心指标 ──────────────────────────────────────────────
+  t('## 核心指标');
+  nl();
+  const effPct = s.n_total>0?((s.n_effective/s.n_total)*100).toFixed(0):'0';
+  const acosGap = s.acos_gap!=null?`缺口 ${s.acos_gap>=0?'+':''}${s.acos_gap}pp`:'';
+  t('| 指标 | 数値 | 补充 |');
+  t('|---|---|---|');
+  t(`| 整体 ACoS | ${pct(s.overall_acos)} | ${acosGap} |`);
+  t(`| 目标 ACoS | ${pct(s.target_acos)} | — |`);
+  t(`| 总花费 | ${usd(ts)} | — |`);
+  t(`| 总销售额 | ${usd(tsl)} | — |`);
+  t(`| 总订单 / CVR | ${s.total_orders||0} 单 | CVR ${s.avg_cvr||0}% |`);
+  t(`| 有效投放 | ${s.n_effective||0}/${s.n_total||0} | ${effPct}% 出单率 |`);
+  nl();
+  t('---');
+  nl();
+
+  // ── 3. 流量集中度 ────────────────────────────────────────────
+  t('## 流量集中度');
+  nl();
+  const sortedBySales = [...rows].sort((a,b)=>b.sales-a.sales);
+  const topN = n => sortedBySales.slice(0,n).reduce((s,r)=>s+r.sales,0);
+  const topP = n => tsl>0?(topN(n)/tsl*100).toFixed(1)+'%':'—';
+  t('| 排名区间 | 销售额 | 占比 |');
+  t('|---|---|---|');
+  t(`| Top 3  | ${usd(topN(3))}  | ${topP(3)} |`);
+  t(`| Top 5  | ${usd(topN(5))}  | ${topP(5)} |`);
+  t(`| Top 10 | ${usd(topN(10))} | ${topP(10)} |`);
+  t(`| Top 20 | ${usd(topN(20))} | ${topP(20)} |`);
+  t(`| 全部 ${rows.length} 个 | ${usd(tsl)} | 100% |`);
+  nl();
+  t('---');
+  nl();
+
+  // ── 4. 投放结构分层 ────────────────────────────────────────────
+  t('## 投放结构分层');
+  nl();
+  t('| 层级 | 投放数 | 花费 | 花费% | 销售额 | 销售% | 订单 |');
+  t('|---|---|---|---|---|---|---|');
+  [
+    ['✅ 低ACoS出单',   L.low_acos            || {}],
+    ['⚠️ 高ACoS出单',  L.high_acos           || {}],
+    ['🔴 高点击不出单', L.high_click_no_order || {}],
+    ['⚪ 低点击不出单', L.low_click_no_order  || {}],
+    ['— 无点击',        L.no_click            || {}],
+  ].forEach(([lbl,d])=>{
+    const spPct = ts>0?(d.spend/ts*100).toFixed(1)+'%':'—';
+    const slPct = tsl>0&&d.sales>0?(d.sales/tsl*100).toFixed(1)+'%':'—';
+    t(`| ${lbl} | ${d.count||0} | ${usd(d.spend||0)} | ${spPct} | ${d.sales>0?usd(d.sales):'—'} | ${slPct} | ${d.orders||0} |`);
+  });
+  nl();
+  t('---');
+  nl();
+
+  // ── 5. 核心流量保护名单 ──────────────────────────────────────────
+  t('## 核心流量保护名单（出单前 10）');
+  nl();
+  t('| # | Targeting | Match | 订单 | 销售额 | 销售% | 累计% | 建议 |');
+  t('|---|---|---|---|---|---|---|---|');
+  const protList = [...rows].sort((a,b)=>b.orders-a.orders).slice(0,10);
+  let cumS=0;
+  protList.forEach((r,i)=>{
+    cumS += r.sales;
+    const sp = tsl>0?(r.sales/tsl*100).toFixed(1)+'%':'—';
+    const cum= tsl>0?(cumS/tsl*100).toFixed(1)+'%':'—';
+    t(`| ${i+1} | ${esc(trn(r.targeting,36))} | ${esc(r.match_type||'')} | ${r.orders||0} | ${usd2(r.sales)} | ${sp} | ${cum} | 🔒 PROTECT |`);
+  });
+  nl();
+  t('---');
+  nl();
+
+  // ── 6. 优化建议摘要 ────────────────────────────────────────────
+  t('## 优化建议摘要');
+  nl();
+  t('**优先行动（按影响程度排序）**');
+  nl();
+  const zeroSpend = (L.high_click_no_order?.spend||0) + (L.low_click_no_order?.spend||0) + (L.no_click?.spend||0);
+  const nZero = (L.high_click_no_order?.count||0) + (L.low_click_no_order?.count||0);
+  t(`1. **清理不出单花费** — 共 ${nZero} 个投放，花费 ${usd2(zeroSpend)}，建议降价 10–20%`);
+  t(`2. **压缩高 ACoS 出单** — 共 ${L.high_acos?.count||0} 个投放（已排除核心流量），花费 ${usd2(L.high_acos?.spend||0)}，按超出幅度降价 5–15%`);
+  t(`3. **保护核心流量** — 前 10 出单投放贡献 ${topP(10)} 销售额，谨慎动价`);
+  nl();
+
+  // ── 7. 高ACoS Top 10（非保护）────────────────────────────────────────────
+  t('### 高 ACoS 出单 Top 10（非保护）');
+  nl();
+  const highAcosTop10 = [...rows]
+    .filter(r=>r.label?.includes('高ACoS出单') && !r.is_core)
+    .sort((a,b)=>b.spend-a.spend).slice(0,10);
+  if(highAcosTop10.length===0){
+    t('（暂无非保护的高 ACoS 出单）');
+  } else {
+    t('| Targeting | Match | ACoS | 销售% | 建议 | 调价 |');
+    t('|---|---|---|---|---|---|');
+    highAcosTop10.forEach(r=>{
+      const sp = tsl>0?(r.sales/tsl*100).toFixed(1)+'%':'—';
+      t(`| ${esc(trn(r.targeting,32))} | ${esc(r.match_type||'')} | ${r.acos!=null?r.acos+'%':'—'} | ${sp} | ${esc(r.action||'')} | ${esc(r.adj_pct||'')} |`);
+    });
+  }
+  nl();
+  t('---');
+  nl();
+
+  // ── 8. 标签分布 ────────────────────────────────────────────────
+  t('## 标签分布');
+  nl();
+  t('| 标签 | 数量 | 占比 |');
+  t('|---|---|---|');
+  ['✅ 低ACoS出单','⚠️ 高ACoS出单','🔴 高点击不出单','⚪ 低点击不出单','— 无点击'].forEach(lbl=>{
+    const cnt = lc[lbl]||0;
+    const p   = (s.n_total||0)>0?(cnt/s.n_total*100).toFixed(1)+'%':'—';
+    t(`| ${lbl} | ${cnt} | ${p} |`);
+  });
+  nl();
+  t('---');
+  nl();
+
+  // ── 9. 层级明细 ────────────────────────────────────────────────
+  t(`## 层级明细（${rows.length} 条）`);
+  nl();
+  const byCategory={};
+  rows.forEach(r=>{
+    const cat=r.category||'7_Other';
+    if(!byCategory[cat]) byCategory[cat]={spend:0,sales:0,orders:0,ports:{}};
+    const bc=byCategory[cat];
+    bc.spend+=r.spend; bc.sales+=r.sales; bc.orders+=r.orders;
+    const port=r.portfolio||'(无组合)';
+    if(!bc.ports[port]) bc.ports[port]={spend:0,sales:0,orders:0,camps:{}};
+    const bp=bc.ports[port];
+    bp.spend+=r.spend; bp.sales+=r.sales; bp.orders+=r.orders;
+    if(!bp.camps[r.campaign]) bp.camps[r.campaign]={spend:0,sales:0,orders:0,rows:[]};
+    const bc2=bp.camps[r.campaign];
+    bc2.spend+=r.spend; bc2.sales+=r.sales; bc2.orders+=r.orders;
+    bc2.rows.push(r);
+  });
+  const fmtA=(sp,sl)=>sl>0?(sp/sl*100).toFixed(1)+'%':'—';
+  Object.entries(byCategory).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([cat,cd])=>{
+    t(`### ${cat} — 花费 ${usd(cd.spend)} | ACoS ${fmtA(cd.spend,cd.sales)} | ${cd.orders} 单`);
+    nl();
+    Object.entries(cd.ports).forEach(([port,pd])=>{
+      t(`#### 📁 ${port} — 花费 ${usd(pd.spend)} | ACoS ${fmtA(pd.spend,pd.sales)} | ${pd.orders} 单`);
+      nl();
+      Object.entries(pd.camps).forEach(([camp,cd2])=>{
+        t(`**📣 ${esc(trn(camp,60))}** — 花费 ${usd(cd2.spend)} | ACoS ${fmtA(cd2.spend,cd2.sales)} | ${cd2.orders} 单`);
+        nl();
+        t('| 投放 | 匹配 | 标签 | 建议 | 调价% | 花费 | ACoS | 订单 | CPC | 原因 |');
+        t('|---|---|---|---|---|---|---|---|---|---|');
+        cd2.rows.forEach(r=>{
+          t(`| ${esc(trn(r.targeting,32))} | ${esc(r.match_type||'')} | ${esc(r.label||'')} | ${esc(r.action||'')} | ${esc(r.adj_pct||'')} | ${usd2(r.spend)} | ${r.acos!=null?r.acos+'%':'—'} | ${r.orders||0} | ${r.cpc!=null?'$'+r.cpc.toFixed(2):'—'} | ${esc(r.reason||'')} |`);
+        });
+        nl();
+      });
+    });
+  });
+
+  const md   = lines.join('\n');
+  const wlf  = wl.replace(/\//g,'-').replace(/\s/g,'');
+  const fname= `report_${pt}_${wlf}_${today}.md`;
+  const blob = new Blob(['﻿'+md], {type:'text/markdown;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download=fname;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 5000);
+}
+async function saveAvgClicksConfig(prod, clicks){
+  try{
+    const cur = await fetch('api/config/avg-clicks').then(r=>r.json());
+    cur[prod] = clicks;
+    await fetch('api/config/avg-clicks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cur)});
+    if(!window.AVG_CLICKS) window.AVG_CLICKS={};
+    window.AVG_CLICKS[prod] = clicks;
+  }catch(e){}
+}
+
+const LABEL_COLOR = {
+  '✅ 低ACoS出单':   '#16a34a',
+  '⚠️ 高ACoS出单':  '#d97706',
+  '🔴 高点击不出单': '#dc2626',
+  '⚪ 低点击不出单': '#64748b',
+  '— 无点击':        '#94a3b8',
+};
+const ACTION_COLOR = {
+  '↘ 降价':      '#dc2626',
+  '⛔ 大幅降价/暂停':'#991b1b',
+  '↗ 维持/提价': '#16a34a',
+  '🔒 保护':     '#2563eb',
+  '观察':         '#64748b',
+};
+
+// 全局缓存 Mode 1 结果（供 exportBulkFile 使用）
+window.MODE1_CACHE_ID = '';
+
+function renderTargetingResult(data, targetId='tgt-panel-consensus'){
+  const el = document.getElementById(targetId);
+  if(!el) return;
+  if(!data||!data.rows){el.innerHTML='';return;}
+
+  const roundKey = targetId.replace('tgt-panel-', '');
+
+  // 缓存
+  window.MODE1_CACHE_ID   = data.cache_id||'';
+  window.MODE1_LAST_DATA  = data;          // 供导出 CSV 使用
+
+  // 自动展开模块二（结果区），折叠模块一
+  tgtOpenModule(2);
+  document.getElementById('tgt-bulk-log').style.display='none';
+
+  const s   = data.summary;
+  const L   = data.layers;
+  const rows= data.rows;
+  const pct = v=>(+v).toFixed(1)+'%';
+  const usd = v=>'$'+(+v).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+  const usd2= v=>'$'+(+v).toFixed(2);
+  const trn = (s,n)=>{s=String(s||'');return s.length>n?s.slice(0,n-1)+'…':s;};
+  const tag = (txt,cls)=>`<span class="tgt-tag ${cls}">${txt}</span>`;
+
+  const acosOk  = s.overall_acos <= s.target_acos;
+  const acosSt  = acosOk ? 'ok' : (s.overall_acos > s.target_acos*1.3 ? 'bad' : 'warn');
+  const ts      = s.total_spend||1;
+  const tsl     = s.total_sales||1;
+
+  // ── 1. 结果头 ──────────────────────────────────────────────────────────────
+  let html = `
+  <div class="tgt-wrap">
+  <div class="tgt-result-hd">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div>
+        <div class="tgt-rh-title">Targeting 结构分析 · ${data.product_target}</div>
+        <div class="tgt-rh-meta">
+          <span>📅 ${s.date_range}</span>
+          <span>🎯 目标 ACoS ${s.target_acos}%</span>
+          <span>📦 ${s.analysis_days} 天</span>
+          <span>📋 ${rows.length} 个投放</span>
+        </div>
+      </div>
+      <button onclick="exportRoundMD('${roundKey}')"
+        style="padding:6px 16px;font-size:12px;font-weight:600;border:1.5px solid rgba(255,255,255,.4);border-radius:8px;background:rgba(255,255,255,.1);color:#fff;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background .15s"
+        onmouseover="this.style.background='rgba(255,255,255,.2)'" onmouseout="this.style.background='rgba(255,255,255,.1)'">
+        ⬇ 导出分析结果 MD
+      </button>
+    </div>
+  </div>`;
+
+  // ── 2. 核心指标 ─────────────────────────────────────────────────────────────
+  const effPct = s.n_total>0?((s.n_effective/s.n_total)*100).toFixed(0):'0';
+  html += `<div class="tgt-metric-grid">
+    ${[
+      {l:`整体 ACoS`,      v:s.overall_acos+'%',   sub:`缺口 ${s.acos_gap>=0?'+':''}${s.acos_gap}pp`,  cls:acosSt},
+      {l:`目标 ACoS`,      v:s.target_acos+'%',     sub:'',                                              cls:''},
+      {l:`总花费`,          v:usd(s.total_spend),    sub:'',                                              cls:'orange'},
+      {l:`总销售额`,        v:usd(s.total_sales),    sub:'',                                              cls:''},
+      {l:`总订单 / CVR`,   v:s.total_orders+' 单',  sub:`CVR ${s.avg_cvr}%`,                            cls:''},
+      {l:`有效投放`,        v:`${s.n_effective}/${s.n_total}`, sub:effPct+'% 出单率',                  cls:+effPct>50?'ok':'warn'},
+    ].map(m=>`<div class="tgt-metric ${m.cls}">
+      <div class="ml">${m.l}</div>
+      <div class="mv">${m.v}</div>
+      ${m.sub?`<div class="ms">${m.sub}</div>`:''}
+    </div>`).join('')}
+  </div>`;
+
+  // ── 3. 流量集中度 ──────────────────────────────────────────────────────────
+  const sortedBySales = [...rows].sort((a,b)=>b.sales-a.sales);
+  const topN = n => sortedBySales.slice(0,n).reduce((s,r)=>s+r.sales,0)/tsl;
+  html += `<div class="tgt-sec-div">流量集中度</div>
+  <div class="tgt-card" style="padding:16px 20px">
+    ${[['Top 3',3],['Top 5',5],['Top 10',10],['Top 20',20]].map(([lbl,n])=>{
+      const share=topN(n);
+      const amt=sortedBySales.slice(0,n).reduce((s,r)=>s+r.sales,0);
+      return `<div class="tgt-conc-row">
+        <div class="cl">${lbl}</div>
+        <div class="cbw"><div class="cbf" style="width:${(share*100).toFixed(1)}%"></div></div>
+        <div class="cp">${(share*100).toFixed(1)}%</div>
+        <div class="ca">${usd(amt)}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+
+  // ── 4. 分层条 + 表格 ───────────────────────────────────────────────────────
+  html += `<div class="tgt-sec-div">投放结构分层</div>
+  <div class="tgt-layer-strip">
+    ${[
+      {cls:'lb-low',  icon:'✅', lbl:'低ACoS出单',  d:L.low_acos},
+      {cls:'lb-high', icon:'⚠️', lbl:'高ACoS出单',  d:L.high_acos},
+      {cls:'lb-hcno', icon:'🔴', lbl:'高点击不出单', d:L.high_click_no_order},
+      {cls:'lb-lcno', icon:'⚪', lbl:'低点击不出单', d:L.low_click_no_order},
+      {cls:'lb-nc',   icon:'—',  lbl:'无点击',       d:L.no_click},
+    ].map(l=>`<div class="tgt-lb ${l.cls}">
+      <div class="lb-label">${l.icon} ${l.lbl}</div>
+      <div class="lb-cnt">${l.d.count}</div>
+      <div class="lb-sp">${usd(l.d.spend)}</div>
+    </div>`).join('')}
+  </div>
+  <div class="tgt-card" style="padding:0;width:80%">
+    <div class="tgt-tbl-wrap"><table class="tgt-tbl">
+      <tr><th>层级</th><th style="text-align:right">投放数</th><th style="text-align:right">花费</th><th style="text-align:right">花费%</th><th style="text-align:right">销售额</th><th style="text-align:right">销售%</th><th style="text-align:right">订单</th></tr>
+      ${[
+        ['✅ 低ACoS出单',  L.low_acos,            'g'],
+        ['⚠️ 高ACoS出单', L.high_acos,            'y'],
+        ['🔴 高点击不出单',L.high_click_no_order,  'r'],
+        ['⚪ 低点击不出单',L.low_click_no_order,   'gr'],
+        ['— 无点击',       L.no_click,             'gr'],
+      ].map(([lbl,d,tc])=>`<tr>
+        <td>${tag(lbl,tc)}</td>
+        <td style="text-align:right">${d.count}</td>
+        <td style="text-align:right;font-family:monospace">${usd(d.spend)}</td>
+        <td style="text-align:right;font-family:monospace">${(d.spend/ts*100).toFixed(1)}%</td>
+        <td style="text-align:right;font-family:monospace">${d.sales>0?usd(d.sales):'—'}</td>
+        <td style="text-align:right;font-family:monospace">${d.sales>0?(d.sales/tsl*100).toFixed(1)+'%':'—'}</td>
+        <td style="text-align:right">${d.orders}</td>
+      </tr>`).join('')}
+    </table></div>
+  </div>`;
+
+  // ── 5. 核心保护名单 ────────────────────────────────────────────────────────
+  const protList = [...rows].sort((a,b)=>b.orders-a.orders).slice(0,10);
+  let cumSales=0;
+  protList.forEach(r=>{ cumSales+=r.sales; r._cumPct=(cumSales/tsl*100).toFixed(1); });
+  html += `<div class="tgt-sec-div">核心流量保护名单（出单前 10）</div>
+  <div class="tgt-card" style="padding:0;width:80%"><div class="tgt-grid-wrap"><div style="display:grid;grid-template-columns:36px 2fr 1.2fr 1fr 1.2fr 1fr 1fr 1.2fr"><div class="tgt-gh">#</div><div class="tgt-gh">Targeting</div><div class="tgt-gh">Match</div><div class="tgt-gh" style="justify-content:flex-end;display:flex;align-items:center">订单</div><div class="tgt-gh" style="justify-content:flex-end;display:flex;align-items:center">销售额</div><div class="tgt-gh" style="justify-content:flex-end;display:flex;align-items:center">销售%</div><div class="tgt-gh" style="justify-content:flex-end;display:flex;align-items:center">累计%</div><div class="tgt-gh">建议</div>${protList.map((r,i)=>`<div class="tgt-gd">${i+1}</div><div class="tgt-gd" style="font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.targeting}">${trn(r.targeting,36)}</div><div class="tgt-gd">${tag(r.match_type,'gr')}</div><div class="tgt-gd r">${r.orders}</div><div class="tgt-gd r">${usd2(r.sales)}</div><div class="tgt-gd r">${(r.sales/tsl*100).toFixed(1)}%</div><div class="tgt-gd r">${r._cumPct}%</div><div class="tgt-gd"><span class="tgt-prot">🔒 PROTECT</span></div>`).join('')}</div></div></div>`;
+
+  // ── 6. 优化建议摘要 ────────────────────────────────────────────────────────
+  const zeroSpend = L.high_click_no_order.spend + L.low_click_no_order.spend + L.no_click.spend;
+  const nZero     = L.high_click_no_order.count + L.low_click_no_order.count;
+  html += `<div class="tgt-sec-div">优化建议摘要</div>
+  <div class="tgt-card">
+    <div style="font-size:13px;font-weight:700;color:var(--g9);margin-bottom:10px">优先行动（按影响程度排序）</div>
+    <div style="display:flex;flex-direction:column;gap:10px;font-size:13px">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="background:var(--rdbg);color:var(--rd);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">1</span>
+        <div><strong>清理不出单花费</strong> — 共 ${nZero} 个投放，花费 ${usd2(zeroSpend)}，建议降价 10–20%</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="background:var(--ywbg);color:var(--yw);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">2</span>
+        <div><strong>压缩高 ACoS 出单</strong> — 共 ${L.high_acos.count} 个投放（已排除核心流量），花费 ${usd2(L.high_acos.spend)}，按超出幅度降价 5–15%</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="background:var(--gnbg);color:var(--gn);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">3</span>
+        <div><strong>保护核心流量</strong> — 前 10 出单投放贡献 ${(topN(10)*100).toFixed(1)}% 销售额，谨慎动价</div>
+      </div>
+    </div>
+  </div>`;
+
+  // ── 7. 高ACoS Top 10（非保护）────────────────────────────────────────────
+  const highAcosTop10 = [...rows]
+    .filter(r=>r.label.includes('高ACoS出单') && !r.is_core)
+    .sort((a,b)=>b.spend-a.spend).slice(0,10);
+  html += `<div class="tgt-sec-div">高 ACoS 出单 Top 10（非保护）</div>
+  <div class="tgt-card" style="padding:0;width:80%"><div class="tgt-grid-wrap"><div style="display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1.2fr 1fr"><div class="tgt-gh">Targeting</div><div class="tgt-gh">Match</div><div class="tgt-gh" style="justify-content:flex-end;display:flex;align-items:center">ACoS</div><div class="tgt-gh" style="justify-content:flex-end;display:flex;align-items:center">销售%</div><div class="tgt-gh">建议</div><div class="tgt-gh" style="justify-content:flex-end;display:flex;align-items:center">调价</div>${highAcosTop10.length===0?`<div class="tgt-gd" style="grid-column:1/-1;justify-content:center;color:var(--g4)">暂无非保护的高ACoS出单</div>`:highAcosTop10.map(r=>`<div class="tgt-gd" style="font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.targeting}">${trn(r.targeting,32)}</div><div class="tgt-gd">${tag(r.match_type,'gr')}</div><div class="tgt-gd r" style="color:var(--rd);font-weight:700">${r.acos!=null?r.acos+'%':'—'}</div><div class="tgt-gd r">${(r.sales/tsl*100).toFixed(1)}%</div><div class="tgt-gd">${tag(r.action,r.action.includes('降')?'r':'gr')}</div><div class="tgt-gd r" style="font-weight:700;color:var(--rd)">${r.adj_pct}</div>`).join('')}</div></div></div>`;
+
+  // ── 8. 标签分布 ────────────────────────────────────────────────────────────
+  const lc = data.label_counts;
+  html += `<div class="tgt-sec-div">标签分布</div>
+  <div class="tgt-metric-grid">
+    ${[
+      {lbl:'✅ 低ACoS出单',   cls:'ok'},
+      {lbl:'⚠️ 高ACoS出单',  cls:'warn'},
+      {lbl:'🔴 高点击不出单', cls:'bad'},
+      {lbl:'⚪ 低点击不出单', cls:''},
+      {lbl:'— 无点击',        cls:''},
+    ].map(m=>{
+      const cnt=lc[m.lbl]||0;
+      return `<div class="tgt-metric ${m.cls}">
+        <div class="ml">${m.lbl}</div>
+        <div class="mv">${cnt}</div>
+        <div class="ms">${s.n_total>0?(cnt/s.n_total*100).toFixed(1)+'%':''}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+
+  // ── 9. 层级明细（全部折叠）─────────────────────────────────────────────────
+  const byCategory={};
+  rows.forEach(r=>{
+    const cat=r.category||'7_Other';
+    if(!byCategory[cat]) byCategory[cat]={spend:0,sales:0,orders:0,ports:{}};
+    const bc=byCategory[cat];
+    bc.spend+=r.spend; bc.sales+=r.sales; bc.orders+=r.orders;
+    const pt=r.portfolio||'(无组合)';
+    if(!bc.ports[pt]) bc.ports[pt]={spend:0,sales:0,orders:0,camps:{}};
+    const bp=bc.ports[pt];
+    bp.spend+=r.spend; bp.sales+=r.sales; bp.orders+=r.orders;
+    if(!bp.camps[r.campaign]) bp.camps[r.campaign]={spend:0,sales:0,orders:0,rows:[]};
+    const bc2=bp.camps[r.campaign];
+    bc2.spend+=r.spend; bc2.sales+=r.sales; bc2.orders+=r.orders;
+    bc2.rows.push(r);
+  });
+  const fmtA=(sp,sl)=>sl>0?(sp/sl*100).toFixed(1)+'%':'—';
+  const labelCls={'✅ 低ACoS出单':'g','⚠️ 高ACoS出单':'y','🔴 高点击不出单':'r','⚪ 低点击不出单':'gr','— 无点击':'gr'};
+  const actionCls={'🔒 保护':'dk','↘ 降价':'r','⛔ 大幅降价/暂停':'r','↗ 维持/提价':'g','观察':'gr'};
+
+  html += `<div class="tgt-sec-div">层级明细 <span style="font-weight:400;color:var(--g4)">· 默认折叠，点击展开</span></div>
+  <div style="background:#fff;border:1px solid var(--g2);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)">`;
+
+  Object.entries(byCategory).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([cat,cd])=>{
+    html+=`<details style="border-top:1px solid var(--g1)">
+      <summary style="padding:11px 16px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;background:var(--g0);user-select:none">
+        <span style="font-size:12px;font-weight:700;color:var(--g9);flex:1">▶ ${cat}</span>
+        <span style="font-size:11px;color:var(--g6)">${usd(cd.spend)} · ACoS ${fmtA(cd.spend,cd.sales)} · ${cd.orders} 单</span>
+      </summary>`;
+    Object.entries(cd.ports).forEach(([port,pd])=>{
+      html+=`<details style="border-top:1px solid var(--g1)">
+        <summary style="padding:9px 16px 9px 30px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;background:#fff;user-select:none">
+          <span style="font-size:11px;font-weight:600;color:var(--g7);flex:1">📁 ${port}</span>
+          <span style="font-size:11px;color:var(--g6)">${usd(pd.spend)} · ACoS ${fmtA(pd.spend,pd.sales)} · ${pd.orders} 单</span>
+        </summary>`;
+      Object.entries(pd.camps).forEach(([camp,cd2])=>{
+        html+=`<details style="border-top:1px solid var(--g1)">
+          <summary style="padding:8px 16px 8px 48px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;background:var(--g0);user-select:none">
+            <span style="font-size:11px;color:var(--g6);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${camp}">📣 ${trn(camp,56)}</span>
+            <span style="font-size:11px;color:var(--g6);flex-shrink:0">${usd(cd2.spend)} · ACoS ${fmtA(cd2.spend,cd2.sales)} · ${cd2.orders} 单</span>
+          </summary>
+          <div style="padding-left:64px;overflow-x:auto;background:#fff">
+            <table class="tgt-tbl" style="min-width:780px">
+              <tr><th>投放</th><th>匹配</th><th>标签</th><th>建议</th><th style="text-align:right">调价%</th><th style="text-align:right">花费</th><th style="text-align:right">ACoS</th><th style="text-align:right">订单</th><th style="text-align:right">CPC</th><th>原因</th></tr>
+              ${cd2.rows.map(r=>`<tr>
+                <td style="font-family:monospace;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.targeting}">${r.is_core?'<span class="tgt-prot" style="margin-right:4px">🔒</span>':''}${trn(r.targeting,32)}</td>
+                <td>${tag(r.match_type,'gr')}</td>
+                <td style="white-space:nowrap">${tag(r.label, labelCls[r.label]||'gr')}</td>
+                <td style="white-space:nowrap">${tag(r.action, actionCls[r.action]||'gr')}</td>
+                <td style="text-align:right;font-family:monospace;font-weight:700;color:${r.adj_pct.startsWith('-')?'var(--rd)':r.adj_pct.startsWith('+')?'var(--gn)':'var(--g4)'}">${r.adj_pct}</td>
+                <td style="text-align:right;font-family:monospace">${usd2(r.spend)}</td>
+                <td style="text-align:right;font-family:monospace;${r.acos!=null&&r.acos>s.target_acos?'color:var(--rd);font-weight:700':''}">${r.acos!=null?r.acos+'%':'—'}</td>
+                <td style="text-align:right;font-family:monospace">${r.orders}</td>
+                <td style="text-align:right;font-family:monospace">${r.cpc!=null?'$'+r.cpc.toFixed(2):'—'}</td>
+                <td style="color:var(--g4);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.reason}">${r.reason||''}</td>
+              </tr>`).join('')}
+            </table>
+          </div>
+        </details>`;
+      });
+      html+='</details>';
+    });
+    html+='</details>';
+  });
+  html+='</div></div>';
+  el.innerHTML = html;
+}
+
+// ── 模块一：分析报告文件拖拽区 ──────────────────────────────────────────────
+function tgtDzOver(e,id){e.preventDefault();document.getElementById(id).classList.add('over');}
+function tgtDzLeave(id){document.getElementById(id).classList.remove('over');}
+function tgtDzDrop(e,type){
+  e.preventDefault();
+  const id=type==='ap'?'tgt-dz-ap':'tgt-dz-tar';
+  tgtDzLeave(id);
+  const file=e.dataTransfer.files[0];
+  if(!file)return;
+  const inputId=type==='ap'?'tgt-ap-file':'tgt-tar-file';
+  const dt=new DataTransfer();
+  dt.items.add(file);
+  document.getElementById(inputId).files=dt.files;
+  tgtFileLoaded(type,document.getElementById(inputId));
+}
+function tgtFileLoaded(type,input){
+  const file=input.files[0];
+  if(!file)return;
+  const dzId=type==='ap'?'tgt-dz-ap':'tgt-dz-tar';
+  const lblId=type==='ap'?'tgt-ap-label':'tgt-tar-label';
+  document.getElementById(dzId).classList.add('loaded');
+  document.getElementById(lblId).textContent='✓ '+file.name;
+  const n=(document.getElementById('tgt-dz-ap').classList.contains('loaded')?1:0)
+         +(document.getElementById('tgt-dz-tar').classList.contains('loaded')?1:0);
+  document.getElementById('tgt-files-status').textContent=n+' / 2 就绪';
+}
+// ── 三模块折叠 / 展开 ────────────────────────────────────────────────────────
+function tgtToggleModule(n){
+  const body = document.getElementById('tgt-m'+n+'-body');
+  const chev = document.getElementById('tgt-m'+n+'-chev');
+  const closing = !body.classList.contains('closed');
+  body.classList.toggle('closed', closing);
+  chev.classList.toggle('open', !closing);
+}
+function tgtOpenModule(n){
+  const body = document.getElementById('tgt-m'+n+'-body');
+  const chev = document.getElementById('tgt-m'+n+'-chev');
+  if(body){ body.classList.remove('closed'); }
+  if(chev){ chev.classList.add('open'); }
+}
+
+function tgtSyncSlider(v){
+  const n=parseFloat(v);
+  if(!isNaN(n)&&n>=5&&n<=60){
+    document.getElementById('tgt-acos-slider').value=n;
+    document.getElementById('tgt-acos-val').textContent=n+'%';
+  }
+}
+
+// ── 模块三：Bulk 文件拖拽区（文件名须以 Bulk 开头，大小写不敏感）────────────
+function _validateBulkFile(file){
+  if(!file) return false;
+  if(!/^bulk/i.test(file.name)){
+    const dz = document.getElementById('tgt-bulk-dz');
+    const lb = document.getElementById('tgt-bulk-dz-label');
+    dz.classList.remove('loaded'); dz.classList.add('err');
+    lb.textContent = '⚠️ 文件名须以 Bulk 开头：' + file.name;
+    return false;
+  }
+  return true;
+}
+function bulkFileLoaded(input){
+  const file=input.files[0]; if(!file)return;
+  const dz=document.getElementById('tgt-bulk-dz');
+  const lb=document.getElementById('tgt-bulk-dz-label');
+  if(!_validateBulkFile(file)){return;}
+  dz.classList.remove('err'); dz.classList.add('loaded');
+  lb.textContent='✓ '+file.name;
+}
+function bulkDzOver(e){e.preventDefault();document.getElementById('tgt-bulk-dz').classList.add('over');}
+function bulkDzLeave(){document.getElementById('tgt-bulk-dz').classList.remove('over');}
+function bulkDzDrop(e){
+  e.preventDefault();
+  bulkDzLeave();
+  const file=e.dataTransfer.files[0]; if(!file)return;
+  const dt=new DataTransfer(); dt.items.add(file);
+  const input=document.getElementById('tgt-bulk-file');
+  input.files=dt.files;
+  bulkFileLoaded(input);
+}
+
+// 将 base64 转为 Blob，更新持久下载卡片，并自动触发一次下载
+function _showDlCard(cardId, linkId, nameId, b64, filename, mimeType){
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const blob  = new Blob([bytes], {type: mimeType});
+  const url   = URL.createObjectURL(blob);
+  const link  = document.getElementById(linkId);
+  if(link._blobUrl) URL.revokeObjectURL(link._blobUrl);
+  link._blobUrl = url;
+  link.href     = url;
+  link.download = filename;
+  document.getElementById(nameId).textContent = filename;
+  document.getElementById(cardId).style.display = 'flex';
+  // 自动触发下载
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+}
+
+async function exportBulkFile(){
+  if(!window.MODE1_CACHE_ID){
+    alert('服务端分析结果已过期（或尚未运行分析）。\n请先完成模块一的分析，再执行竞价批量更新。');
+    return;
+  }
+  const bulkFileEl = document.getElementById('tgt-bulk-file');
+  if(!bulkFileEl.files.length){
+    alert('请先上传 Bulk 文件（文件名须以 Bulk 开头，xlsx 格式）');
+    return;
+  }
+  // 再次校验文件名
+  if(!_validateBulkFile(bulkFileEl.files[0])){
+    alert('文件名须以 Bulk 开头（大小写不敏感），请重新选择正确的文件。');
+    return;
+  }
+  const ordersThresh = parseInt(document.getElementById('tgt-orders-thresh').value) || 10;
+  const status = document.getElementById('tgt-bulk-status');
+  const logEl  = document.getElementById('tgt-bulk-log');
+  status.textContent = '⏳ 处理中...';
+  logEl.style.display = 'none';
+  document.getElementById('tgt-bulk-dl').style.display      = 'none';
+  document.getElementById('tgt-label-dl').style.display     = 'none';
+  document.getElementById('tgt-confirm-section').style.display = 'none';
+  document.getElementById('tgt-bulk-btn').disabled = true;
+
+  try{
+    const fd = new FormData();
+    fd.append('bulk_file',        bulkFileEl.files[0]);
+    fd.append('cache_id',         window.MODE1_CACHE_ID);
+    fd.append('orders_threshold', ordersThresh);
+
+    const resp = await fetch('api/analysis/mode1/export-bulk', {method:'POST', body:fd});
+    if(!resp.ok){
+      const text = await resp.text().catch(()=>'');
+      let detail = `HTTP ${resp.status}`;
+      try{ detail = JSON.parse(text).detail || detail; }catch(_){}
+      throw new Error(detail);
+    }
+
+    const data = await resp.json();
+
+    // 显示日志
+    if(data.log && data.log.length){
+      logEl.textContent = data.log.join('\n');
+      logEl.style.display = '';
+      status.textContent = '✅ ' + (data.log[0] || '完成');
+    } else {
+      status.textContent = '✅ 完成';
+    }
+
+    // Bulk xlsx 下载卡片（自动触发下载）
+    _showDlCard(
+      'tgt-bulk-dl', 'tgt-bulk-dl-link', 'tgt-bulk-dl-name',
+      data.bulk_b64, data.bulk_filename,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+
+    // targeting_labels CSV 下载卡片（自动触发下载）
+    _showDlCard(
+      'tgt-label-dl', 'tgt-label-dl-link', 'tgt-label-dl-name',
+      data.label_b64, data.label_filename,
+      'text/csv; charset=utf-8'
+    );
+
+    // 存储本次导出元数据，供「确认更新亚马逊广告」按钮使用
+    const updatedCount = parseInt((data.log[0]||'').match(/共更新\s*(\d+)/)?.[1]) || 0;
+    const lastMeta = window.MODE1_LAST_DATA || {};
+    window._lastBulkExport = {
+      product_target:   lastMeta.product_target || '',
+      bulk_filename:    data.bulk_filename,
+      label_filename:   data.label_filename,
+      report_start:     lastMeta.report_start   || '',
+      report_end:       lastMeta.report_end     || '',
+      orders_threshold: ordersThresh,
+      updated_count:    updatedCount,
+      log_lines:        data.log     || [],
+      details:          data.details || [],    // 结构化明细，confirm 时写库
+    };
+
+    // 显示确认区域，重置按钮状态
+    const confirmSection = document.getElementById('tgt-confirm-section');
+    const confirmBtn     = document.getElementById('tgt-confirm-btn');
+    const confirmSt      = document.getElementById('tgt-confirm-status');
+    confirmSection.style.display = '';
+    confirmBtn.disabled  = false;
+    confirmBtn.textContent = '✅ 确认已上传亚马逊，记录本次调价';
+    confirmSt.textContent  = '';
+    confirmSt.style.color  = 'var(--g6)';
+
+  }catch(e){
+    status.textContent = '❌ ' + e.message;
+  }finally{
+    document.getElementById('tgt-bulk-btn').disabled = false;
+  }
+}
+
+async function confirmBidUpdate(){
+  const meta = window._lastBulkExport;
+  if(!meta){ alert('无待确认的导出记录'); return; }
+
+  const btn = document.getElementById('tgt-confirm-btn');
+  const st  = document.getElementById('tgt-confirm-status');
+  btn.disabled  = true;
+  st.textContent = '⏳ 记录中...';
+  st.style.color = 'var(--g6)';
+
+  try{
+    const resp = await fetch('api/analysis/mode1/confirm-update', {
+      method:  'POST',
+      headers: {'Content-Type':'application/json'},
+      body:    JSON.stringify(meta),
+    });
+    if(!resp.ok){
+      const t = await resp.text().catch(()=>'');
+      let d = `HTTP ${resp.status}`;
+      try{ d = JSON.parse(t).detail || d; }catch(_){}
+      throw new Error(d);
+    }
+    btn.textContent = '✅ 已记录';
+    st.textContent  = '调价记录已保存到数据库';
+    st.style.color  = 'var(--gn)';
+    window._lastBulkExport = null;  // 防止重复确认
+  }catch(e){
+    btn.disabled = false;
+    st.textContent = '❌ ' + e.message;
+    st.style.color = 'var(--rd)';
+  }
+}
+
+// ── 调价历史 ──────────────────────────────────────────────────────────────────
+async function renderBidHistory(){
+  const el = document.getElementById('ana-history');
+  el.innerHTML = '<div style="padding:32px;text-align:center;color:#94a3b8;font-size:13px">⏳ 加载中...</div>';
+
+  let logs;
+  try{
+    const r = await fetch('api/analysis/mode1/update-logs');
+    logs = await r.json();
+  }catch(e){
+    el.innerHTML = `<div style="padding:32px;text-align:center;color:#e53e3e;font-size:13px">加载失败：${e.message}</div>`;
+    return;
+  }
+
+  if(!logs.length){
+    el.innerHTML = '<div style="padding:32px;text-align:center;color:#94a3b8;font-size:13px">暂无调价记录</div>';
+    return;
+  }
+
+  const pct = v => v==null ? '—' : (v*100).toFixed(0)+'%';
+  const usd = v => v==null ? '—' : '$'+Number(v).toFixed(4);
+
+  let html = '<div style="margin-top:12px"><div style="border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;font-size:12px"><div style="display:grid;grid-template-columns:2fr 1fr 1fr 2fr 1fr 1fr"><div class="tgt-gh">确认时间</div><div class="tgt-gh">产品</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">更新条数</div><div class="tgt-gh">报告区间</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">订单阈值</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">明细</div>';
+
+  logs.forEach((log, i) => {
+    const range = log.report_start && log.report_end
+      ? `${log.report_start} ~ ${log.report_end}` : '—';
+    html += `<div class="tgt-gd">${log.confirmed_at}</div>`
+          + `<div class="tgt-gd" style="font-weight:600">${log.product_target||'—'}</div>`
+          + `<div class="tgt-gd" style="justify-content:center;display:flex;align-items:center">${log.updated_count}</div>`
+          + `<div class="tgt-gd" style="font-size:11px;color:#6b7280">${range}</div>`
+          + `<div class="tgt-gd" style="justify-content:center;display:flex;align-items:center;color:#6b7280">${log.orders_threshold}</div>`
+          + `<div class="tgt-gd" style="justify-content:center;display:flex;align-items:center"><button onclick="toggleBidDetail(${log.id})" style="padding:3px 10px;font-size:11px;border:1px solid #d1d5db;border-radius:5px;background:#fff;cursor:pointer;color:#374151" id="hist-btn-${log.id}">展开</button></div>`
+          + `<div id="hist-detail-${log.id}" style="display:none;grid-column:1/-1;padding:0"><div id="hist-detail-inner-${log.id}" style="padding:12px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:11px">加载中...</div></div>`;
+  });
+
+  html += '</div></div></div>';
+  el.innerHTML = html;
+}
+
+async function toggleBidDetail(logId){
+  const row  = document.getElementById('hist-detail-'+logId);
+  const btn  = document.getElementById('hist-btn-'+logId);
+  const inner= document.getElementById('hist-detail-inner-'+logId);
+
+  if(row.style.display !== 'none'){
+    row.style.display = 'none';
+    btn.textContent = '展开';
+    return;
+  }
+
+  row.style.display = '';
+  btn.textContent = '收起';
+
+  // 已加载过则不重复请求
+  if(inner.dataset.loaded) return;
+
+  try{
+    const r = await fetch(`api/analysis/mode1/update-logs/${logId}/details`);
+    const details = await r.json();
+    if(!details.length){ inner.innerHTML='<span style="color:#94a3b8">无明细数据</span>'; }
+    else{
+      const pct = v => v==null ? '—' : Number(v).toFixed(0)+'%';
+      inner.innerHTML = `<div style="width:100%;overflow-x:auto"><div style="display:grid;grid-template-columns:3fr 2fr 2fr 1fr 1fr 1fr 1.5fr 3fr 1.2fr 1.2fr 1fr;font-size:11px"><div class="tgt-gh">广告活动</div><div class="tgt-gh">广告组</div><div class="tgt-gh">策略</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">Top</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">Rest</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">PP</div><div class="tgt-gh">标签</div><div class="tgt-gh">Targeting</div><div class="tgt-gh" style="justify-content:flex-end;display:flex;align-items:center">原竞价</div><div class="tgt-gh" style="justify-content:flex-end;display:flex;align-items:center">新竞价</div><div class="tgt-gh" style="justify-content:flex-end;display:flex;align-items:center">调整</div>${details.map(d=>`<div class="tgt-gd" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.campaign}">${d.campaign}</div><div class="tgt-gd">${d.ad_group}</div><div class="tgt-gd" style="white-space:nowrap">${d.strategy||'—'}</div><div class="tgt-gd" style="justify-content:center;display:flex;align-items:center">${pct(d.top)}</div><div class="tgt-gd" style="justify-content:center;display:flex;align-items:center">${pct(d.rest)}</div><div class="tgt-gd" style="justify-content:center;display:flex;align-items:center">${pct(d.product_page)}</div><div class="tgt-gd" style="color:#92400e">${d.label}</div><div class="tgt-gd" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.targeting}">${d.targeting}</div><div class="tgt-gd r">$${Number(d.old_bid).toFixed(4)}</div><div class="tgt-gd r" style="font-weight:600;color:#1a7f4f">$${Number(d.new_bid).toFixed(4)}</div><div class="tgt-gd r" style="color:#c0392b">${(d.adj_pct*100).toFixed(0)}%</div>`).join('')}</div></div>`;
+    }
+    inner.dataset.loaded = '1';
+  }catch(e){
+    inner.innerHTML = `<span style="color:#e53e3e">加载失败：${e.message}</span>`;
+  }
+}
+
+// ── 导出分析结果 CSV（完全对齐原版 targeting_labels_*.csv 格式）──────────────
+function exportAnalysisCSV(){
+  const data = window.MODE1_LAST_DATA;
+  if(!data || !data.rows) { alert('请先运行分析'); return; }
+
+  const rows = data.rows;
+
+  // 列顺序、列名与 run_targeting_structure_report_v2.py 的 out_cols + rename 完全一致
+  const COLS = [
+    ['Campaign Name', r => r.campaign],
+    ['Ad Group Name', r => r.ad_group],
+    ['Targeting',     r => r.targeting],
+    ['Match Type',    r => r.match_type],
+    ['impressions',   r => r.impressions ?? ''],
+    ['clicks',        r => r.clicks],
+    ['orders',        r => r.orders],
+    ['spend',         r => r.spend],
+    ['sales',         r => r.sales],
+    ['ACoS(%)',       r => r.acos ?? ''],
+    ['CVR(%)',        r => r.cvr  ?? ''],
+    ['CPC($)',        r => r.cpc  ?? ''],
+    ['销售占比(%)',   r => r.sales_share ?? ''],
+    ['花费占比(%)',   r => r.spend_share ?? ''],
+    ['label',         r => r.label],
+    ['action',        r => r.action],
+    ['adj_pct',       r => r.adj_pct],
+    ['adj_dollar',    r => r.adj_dollar],
+    ['reason',        r => r.reason],
+  ];
+
+  function esc(v){
+    const s = String(v ?? '');
+    return (s.includes(',') || s.includes('"') || s.includes('\n'))
+      ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+
+  const header   = COLS.map(([h])    => esc(h)).join(',');
+  const dataRows = rows.map(r => COLS.map(([, fn]) => esc(fn(r))).join(','));
+  const csv      = '﻿' + header + '\n' + dataRows.join('\n'); // UTF-8 BOM
+
+  const blob = new Blob([csv], {type: 'text/csv;charset=utf-8'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  // 文件名格式：targeting_labels_{product_target}_{report_start}_{report_end}.csv
+  const rs = data.report_start || '';
+  const re = data.report_end   || '';
+  a.href     = url;
+  a.download = `targeting_labels_${data.product_target}_${rs}_${re}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+
+
+// 启动时加载 avg_clicks 配置
+(async()=>{
+  try{
+    window.AVG_CLICKS = await fetch('api/config/avg-clicks').then(r=>r.json());
+  }catch(e){ window.AVG_CLICKS={}; }
+  // 清除旧版遗留的分析结果缓存
+  try{ localStorage.removeItem('mode1_last_result'); localStorage.removeItem('mode1_last_params'); }catch(e){}
+})();
 
 function renderAnaFunnel(){
   const el=document.getElementById('ana-funnel');
