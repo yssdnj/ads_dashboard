@@ -841,17 +841,17 @@ body.dark .drs-lbl{color:#64748b}
           <div style="background:#ede9fe;border-radius:8px;padding:10px 8px;text-align:center">
             <div style="font-size:16px;font-weight:800;color:#6366f1">R1</div>
             <div style="font-size:11px;font-weight:600;color:var(--g7);margin:3px 0">最近 1 周</div>
-            <div style="font-size:11px;color:#a5b4fc">最新状态</div>
+            <div id="rdesc-R1-date" style="font-size:11px;color:#a5b4fc">最新状态</div>
           </div>
           <div style="background:#e0f2fe;border-radius:8px;padding:10px 8px;text-align:center">
             <div style="font-size:16px;font-weight:800;color:#0891b2">R2</div>
             <div style="font-size:11px;font-weight:600;color:var(--g7);margin:3px 0">最近 3 周</div>
-            <div style="font-size:11px;color:#7dd3fc">中期趋势</div>
+            <div id="rdesc-R2-date" style="font-size:11px;color:#7dd3fc">中期趋势</div>
           </div>
           <div style="background:#ccfbf1;border-radius:8px;padding:10px 8px;text-align:center">
             <div style="font-size:16px;font-weight:800;color:#0f766e">R3</div>
             <div style="font-size:11px;font-weight:600;color:var(--g7);margin:3px 0">最近 6 周</div>
-            <div style="font-size:11px;color:#5eead4">最稳定</div>
+            <div id="rdesc-R3-date" style="font-size:11px;color:#5eead4">长期趋势</div>
           </div>
         </div>
         <!-- 投票规则 -->
@@ -2887,6 +2887,20 @@ async function runMode1Analysis(){
       const rd = data[key];
       if(!rd) return;
       renderTargetingResult({...rd, ...commonMeta}, `tgt-panel-${key}`);
+    });
+    // 更新说明卡片 & tab 标签的实际时间范围
+    ['R1','R2','R3'].forEach(key => {
+      const rd = data[key];
+      if(!rd?.summary?.date_range) return;
+      const range = rd.summary.date_range.replace(' → ', ' ~ ');
+      const sub = document.querySelector(`#rtab-${key} .rt-sub`);
+      if(sub) sub.textContent = range;
+      const desc = document.getElementById(`rdesc-${key}-date`);
+      if(desc){
+        const orig = desc.dataset.orig || desc.textContent;
+        desc.dataset.orig = orig;
+        desc.innerHTML = orig + `<br><span style="font-size:10px;opacity:.75">${range}</span>`;
+      }
     });
     // consensus：指标用 R3，rows 用 consensus
     const consensusData = {
