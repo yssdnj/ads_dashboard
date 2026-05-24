@@ -65,7 +65,7 @@ def _check_file_country(df: pd.DataFrame, report_country: str, label: str):
 def startup():
     db.init_db()
     db.rebuild_from_raw()       # 从原始数据重建 JSON（若 raw 表有数据）
-    print('Database ready:', db.DB_PATH)
+    print('Database ready (MySQL)')
 
 
 # ── 静态文件 ──────────────────────────────────────────────────────────────────

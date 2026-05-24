@@ -1,6 +1,9 @@
 # 数据库文件（含业务数据，不入库）
 ads_funnel/ads_funnel.db
 
+# MySQL 连接配置（含密码，不入库）
+ads_funnel/db_config.json
+
 # v1.0 历史存档（只本地查看，不入库）
 legacy/
 
