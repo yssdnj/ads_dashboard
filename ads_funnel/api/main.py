@@ -378,8 +378,9 @@ async def api_mode1_bid_optimize_6r(
         raise HTTPException(400, result['R6']['error'])
 
     cid = str(uuid.uuid4())
+    consensus = result.get('consensus') or {}
     _mode1_6r_cache[cid] = {
-        'rows':           result['consensus']['rows'],
+        'rows':           consensus.get('rows', []),
         'product_target': result.get('product_target', ''),
         'report_start':   result.get('report_start', ''),
         'report_end':     result.get('report_end', ''),
@@ -403,9 +404,9 @@ async def api_mode1_export_bulk(
     返回 JSON（两个文件均以 base64 编码）：
       { bulk_b64, bulk_filename, label_b64, label_filename, log }
     """
-    cached = _mode1_cache.get(cache_id)
+    cached = _mode1_cache.get(cache_id) or _mode1_6r_cache.get(cache_id)
     if not cached:
-        raise HTTPException(400, '分析结果已过期，请重新运行 Mode 1 分析')
+        raise HTTPException(400, '分析结果已过期，请重新运行分析')
 
     bulk_bytes     = await bulk_file.read()
     rows           = cached['rows']
