@@ -584,3 +584,166 @@ def run_multi_round_analysis(
         'report_start':   r3.get('date_start', ''),
         'report_end':     r3.get('date_end',   ''),
     }
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 六轮分析（R1=1w … R6=6w，每轮递增一周 + 向好趋势排除）
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+def _is_improving_6r(hit_set: set[str]) -> bool:
+    """
+    判断是否为向好趋势（不应降价）。
+    - =3/6 命中且仅 {R4,R5,R6}：近 3 周干净，明显好转
+    - =4/6 命中且仅 {R3,R4,R5,R6}（R1/R2 均未中）：近 2 周干净，趋势向好
+    ≥5/6 命中时无条件返回 False（信号足够强）。
+    """
+    if len(hit_set) == 3 and hit_set == {'R4', 'R5', 'R6'}:
+        return True
+    if len(hit_set) == 4 and hit_set == {'R3', 'R4', 'R5', 'R6'}:
+        return True
+    return False
+
+
+def run_multi_round_analysis_6r(
+    tar_df:               pd.DataFrame,
+    ap_df:                pd.DataFrame,
+    week_sundays:         list,           # 升序 Timestamp 列表，最多 6 个
+    product_target:       str,
+    asins:                list[str],
+    target_acos:          float,
+    avg_clicks_per_order: float,
+    core_sales_share:     float = 0.20,
+) -> dict:
+    """
+    六轮多窗口分析 + 投票 consensus（含向好趋势排除）。
+
+    轮次（日历周，周日开始）：
+      R1 — 最近 1 周  R2 — 最近 2 周  R3 — 最近 3 周
+      R4 — 最近 4 周  R5 — 最近 5 周  R6 — 全部（最多 6 周）
+
+    Consensus 规则：
+      - ≥3/6 轮命中 → 候选
+      - =3/6 且仅 {R4,R5,R6} 命中 → 排除（向好）
+      - =4/6 且仅 {R3,R4,R5,R6} 命中 → 排除（向好）
+      - adj_pct 取各命中轮绝对值最小（最保守）
+      - metrics 来自 R6，label 来自 R1
+    """
+    n = len(week_sundays)
+    to_sunday = week_sundays[-1]
+
+    # 六轮起始周（数据不足时退化到 week_sundays[0]，不报错）
+    r_from = {
+        'R1': week_sundays[-1],
+        'R2': week_sundays[max(-2, -n)],
+        'R3': week_sundays[max(-3, -n)],
+        'R4': week_sundays[max(-4, -n)],
+        'R5': week_sundays[max(-5, -n)],
+        'R6': week_sundays[0],
+    }
+
+    rounds: dict[str, dict] = {}
+    for rname, from_sunday in r_from.items():
+        t, a = _filter_by_week_range(tar_df, ap_df, from_sunday, to_sunday)
+        week_end = to_sunday + pd.Timedelta(days=6)
+        date_label = f'{from_sunday.strftime("%m/%d")}-{week_end.strftime("%m/%d")}'
+        if t.empty or a.empty:
+            rounds[rname] = {
+                'rows': [], 'summary': {}, 'layers': {},
+                'date_start': from_sunday.strftime('%Y-%m-%d'),
+                'date_end':   week_end.strftime('%Y-%m-%d'),
+                'week_label': date_label,
+                'error': '该时间窗口内数据为空',
+            }
+            continue
+        res = run_analysis(
+            ap_df                = a,
+            tar_df               = t,
+            product_target       = product_target,
+            asins                = asins,
+            target_acos          = target_acos,
+            avg_clicks_per_order = avg_clicks_per_order,
+            core_sales_share     = core_sales_share,
+            analysis_days        = 0,
+        )
+        rounds[rname] = {
+            'rows':         res.get('rows', []),
+            'summary':      res.get('summary', {}),
+            'layers':       res.get('layers', {}),
+            'label_counts': res.get('label_counts', {}),
+            'date_start':   from_sunday.strftime('%Y-%m-%d'),
+            'date_end':     week_end.strftime('%Y-%m-%d'),
+            'week_label':   date_label,
+            'error':        res.get('error'),
+        }
+
+    # ── 投票 consensus ──────────────────────────────────────────────────────────
+    vote: dict[tuple, dict] = {}          # key → {rname: adj_pct_decimal}
+    r6_row_map: dict[tuple, dict] = {}    # metrics 来源
+    r1_row_map: dict[tuple, dict] = {}    # label 来源
+
+    for rname in ('R6', 'R5', 'R4', 'R3', 'R2', 'R1'):
+        for row in rounds[rname].get('rows', []):
+            if row.get('label') not in _ADJ_LABELS:
+                continue
+            adj_dec = _parse_adj_pct(row.get('adj_pct'))
+            if adj_dec is None:
+                continue
+            key = (row.get('campaign'), row.get('ad_group'), row.get('targeting'))
+            if key not in vote:
+                vote[key] = {}
+            vote[key][rname] = adj_dec
+            if rname == 'R6':
+                r6_row_map[key] = row
+            if rname == 'R1':
+                r1_row_map[key] = row
+
+    consensus_rows: list[dict] = []
+    for key, hit_map in vote.items():
+        hit_set = set(hit_map.keys())
+
+        # 门槛：≥3/6
+        if len(hit_set) < 3:
+            continue
+
+        # 排除向好趋势
+        if _is_improving_6r(hit_set):
+            continue
+
+        # 最保守 adj_pct
+        best_adj = min(hit_map.values(), key=abs)
+        hit_rounds_str = ','.join(sorted(hit_map.keys()))
+
+        # metrics 取 R6，label 取 R1，fallback 任意命中轮
+        base = r6_row_map.get(key) or r1_row_map.get(key) or next(
+            (rounds[r]['rows'] for r in hit_set if rounds[r].get('rows')), [{}]
+        )
+        if isinstance(base, list):
+            base = next(
+                (ro for ro in base
+                 if (ro.get('campaign'), ro.get('ad_group'), ro.get('targeting')) == key),
+                {}
+            )
+        row = dict(base)
+        row['label']      = (r1_row_map.get(key) or base).get('label', base.get('label', ''))
+        row['adj_pct']    = f'{int(best_adj * 100)}%'
+        row['action']     = '↘ 降价'
+        row['reason']     = f'六轮分析命中（{hit_rounds_str}），取最保守降幅'
+        row['hit_rounds'] = hit_rounds_str
+        consensus_rows.append(row)
+
+    r6 = rounds.get('R6', {})
+    return {
+        'R1': rounds.get('R1', {}),
+        'R2': rounds.get('R2', {}),
+        'R3': rounds.get('R3', {}),
+        'R4': rounds.get('R4', {}),
+        'R5': rounds.get('R5', {}),
+        'R6': r6,
+        'consensus': {
+            'rows':  consensus_rows,
+            'count': len(consensus_rows),
+        },
+        'product_target': product_target,
+        'report_start':   r6.get('date_start', ''),
+        'report_end':     r6.get('date_end',   ''),
+    }
