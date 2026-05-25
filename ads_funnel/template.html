@@ -744,11 +744,122 @@ body.dark .drs-lbl{color:#64748b}
       <button class="ana-view-btn active" onclick="switchAnaView('funnel')" id="anabtn-funnel">漏斗分析</button>
       <button class="ana-view-btn" onclick="switchAnaView('recs')" id="anabtn-recs">建议清单</button>
       <button class="ana-view-btn" onclick="switchAnaView('targeting')" id="anabtn-targeting">批量竞价优化</button>
+      <button class="ana-view-btn" onclick="switchAnaView('targeting6')" id="anabtn-targeting6">批量竞价优化-6轮</button>
       <button class="ana-view-btn" onclick="switchAnaView('history')" id="anabtn-history">调价历史</button>
     </div>
     <div id="ana-funnel"></div>
     <div id="ana-recs" style="display:none"></div>
     <div id="ana-history" style="display:none"></div>
+    <div id="ana-targeting6" style="display:none">
+<div class="tgt-wrap" style="margin-top:12px">
+
+  <!-- ═══ 规则说明 ═══ -->
+  <div class="tgt-card" style="margin-bottom:10px;background:var(--tgbg,#f0fdf4);border:1.5px solid var(--tg,#16a34a)">
+    <div style="font-size:13px;font-weight:700;color:var(--tgd,#15803d);margin-bottom:8px">📋 六轮分析规则说明</div>
+    <div style="font-size:12px;color:#374151;line-height:1.8">
+      <div><strong>轮次定义：</strong>R1=最近1周 · R2=最近2周 · … · R6=最近6周（数据最全）</div>
+      <div style="margin-top:4px"><strong>Consensus 门槛：</strong>≥ 3/6 轮命中调价标签</div>
+      <div style="margin-top:4px"><strong>向好趋势排除（不降价）：</strong>
+        <span style="display:inline-block;background:#fef9c3;border-radius:4px;padding:1px 6px;margin:0 2px">命中=3且仅R4~R6</span>
+        或
+        <span style="display:inline-block;background:#fef9c3;border-radius:4px;padding:1px 6px;margin:0 2px">命中=4且仅R3~R6（R1/R2 近期已好转）</span>
+      </div>
+      <div style="margin-top:4px"><strong>降幅策略：</strong>取各命中轮中绝对值最小（最保守）的降幅 · 指标来自 R6 · 标签来自 R1</div>
+    </div>
+  </div>
+
+  <!-- ═══ 模块一：分析执行 ═══ -->
+  <div class="tgt-module-hd" onclick="tgt6ToggleModule(1)">
+    <div class="tgt-module-badge m1">01</div>
+    <div class="tgt-module-title">分析执行</div>
+    <div class="tgt-module-sub">选择产品 · 设置参数 · 执行六轮分析</div>
+    <div class="tgt-module-chev" id="tgt6-m1-chev">▼</div>
+  </div>
+  <div class="tgt-module-body" id="tgt6-m1-body">
+    <div class="tgt-card">
+      <div class="tgt-form-row">
+        <label class="tgt-label">产品目标</label>
+        <select id="tgt6-product" class="tgt-select"></select>
+      </div>
+      <div class="tgt-form-row">
+        <label class="tgt-label">目标 ACoS (%)</label>
+        <input id="tgt6-acos" type="number" class="tgt-input" value="20" min="1" max="100">
+      </div>
+      <div class="tgt-form-row">
+        <label class="tgt-label">平均出单点击数</label>
+        <input id="tgt6-cpo" type="number" class="tgt-input" value="10" min="1" max="999">
+      </div>
+    </div>
+    <button class="tgt-run-btn" id="tgt6-run-btn" onclick="runMode1Analysis6r()" style="margin-top:8px">
+      🚀 开始六轮分析
+    </button>
+    <div class="tgt-prog" id="tgt6-prog"><div class="tgt-prog-fill" id="tgt6-prog-fill" style="width:0%"></div></div>
+    <div id="tgt6-status" style="font-size:12px;color:var(--g6);margin-top:6px;min-height:18px"></div>
+  </div>
+
+  <!-- ═══ 模块二：分析结果 ═══ -->
+  <div class="tgt-module-hd" onclick="tgt6ToggleModule(2)" style="margin-top:10px">
+    <div class="tgt-module-badge m2">02</div>
+    <div class="tgt-module-title">分析结果</div>
+    <div class="tgt-module-sub">Consensus · R1~R6 六轮结果</div>
+    <div class="tgt-module-chev" id="tgt6-m2-chev">▶</div>
+  </div>
+  <div class="tgt-module-body closed" id="tgt6-m2-body">
+    <div class="round-tabs" id="tgt6-round-tabs" style="display:none">
+      <button class="round-tab" id="tgt6-rtab-consensus" onclick="switchRoundTab6r('consensus')">Consensus<span class="rt-badge" id="tgt6-rtab-consensus-cnt"></span></button>
+      <button class="round-tab" id="tgt6-rtab-R1" onclick="switchRoundTab6r('R1')">R1<span class="rt-sub">1周</span></button>
+      <button class="round-tab" id="tgt6-rtab-R2" onclick="switchRoundTab6r('R2')">R2<span class="rt-sub">2周</span></button>
+      <button class="round-tab" id="tgt6-rtab-R3" onclick="switchRoundTab6r('R3')">R3<span class="rt-sub">3周</span></button>
+      <button class="round-tab" id="tgt6-rtab-R4" onclick="switchRoundTab6r('R4')">R4<span class="rt-sub">4周</span></button>
+      <button class="round-tab" id="tgt6-rtab-R5" onclick="switchRoundTab6r('R5')">R5<span class="rt-sub">5周</span></button>
+      <button class="round-tab" id="tgt6-rtab-R6" onclick="switchRoundTab6r('R6')">R6<span class="rt-sub">6周</span></button>
+    </div>
+    <div class="round-panel" id="tgt6-panel-consensus"><div class="tgt-placeholder">运行分析后结果将在此显示</div></div>
+    <div class="round-panel" id="tgt6-panel-R1"></div>
+    <div class="round-panel" id="tgt6-panel-R2"></div>
+    <div class="round-panel" id="tgt6-panel-R3"></div>
+    <div class="round-panel" id="tgt6-panel-R4"></div>
+    <div class="round-panel" id="tgt6-panel-R5"></div>
+    <div class="round-panel" id="tgt6-panel-R6"></div>
+  </div>
+
+  <!-- ═══ 模块三：竞价批量更新 ═══ -->
+  <div class="tgt-module-hd" onclick="tgt6ToggleModule(3)" style="margin-top:10px">
+    <div class="tgt-module-badge m3">03</div>
+    <div class="tgt-module-title">竞价批量更新</div>
+    <div class="tgt-module-sub">筛选 → 调价 → 写回 Bulk · 先完成模块一分析再执行</div>
+    <div class="tgt-module-chev" id="tgt6-m3-chev">▶</div>
+  </div>
+  <div class="tgt-module-body closed" id="tgt6-m3-body">
+    <div class="tgt-card" style="margin-top:8px">
+      <div class="tgt-info-section">
+        <div class="tgt-info-hd">📌 筛选条件（与三轮版相同）</div>
+        <div class="tgt-info-row">
+          <span class="ir-label">条件 ①  标签</span>
+          <span>包含 <span class="tgt-info-tag y">⚠️ 高ACoS出单</span> 或 <span class="tgt-info-tag r">🔴 高点击不出单</span></span>
+        </div>
+        <div class="tgt-info-row" style="align-items:center">
+          <span class="ir-label">条件 ②  订单数</span>
+          <span>orders &lt; </span>
+          <input id="tgt6-orders-thresh" type="number" min="1" max="999" value="10"
+            style="width:64px;padding:4px 8px;font-size:13px;font-weight:700;border:1.5px solid var(--tg);border-radius:6px;background:var(--tgbg);color:var(--tgd);text-align:center;outline:none">
+        </div>
+      </div>
+      <div class="tgt-info-section" style="margin-top:10px">
+        <div class="tgt-info-hd">📂 上传 Bulk 文件</div>
+        <input type="file" id="tgt6-bulk-file" accept=".xlsx"
+          style="margin-top:6px;font-size:13px">
+      </div>
+      <button class="tgt-run-btn" id="tgt6-export-btn" onclick="exportBulk6r()" style="margin-top:10px">
+        📥 生成调价 Bulk
+      </button>
+      <div id="tgt6-export-status" style="font-size:12px;color:var(--g6);margin-top:6px;min-height:18px"></div>
+    </div>
+  </div>
+
+</div><!-- /.tgt-wrap -->
+    </div><!-- /#ana-targeting6 -->
+
     <div id="ana-targeting" style="display:none">
 
 <div class="tgt-wrap" style="margin-top:12px">
@@ -2444,13 +2555,15 @@ function setAnaWkRange(){
 }
 function switchAnaView(v){
   anaView=v;
-  document.getElementById('ana-funnel').style.display   = v==='funnel'    ? '' : 'none';
-  document.getElementById('ana-recs').style.display     = v==='recs'      ? '' : 'none';
-  document.getElementById('ana-targeting').style.display= v==='targeting' ? '' : 'none';
-  document.getElementById('ana-history').style.display  = v==='history'   ? '' : 'none';
+  document.getElementById('ana-funnel').style.display    = v==='funnel'     ? '' : 'none';
+  document.getElementById('ana-recs').style.display      = v==='recs'       ? '' : 'none';
+  document.getElementById('ana-targeting').style.display = v==='targeting'  ? '' : 'none';
+  document.getElementById('ana-targeting6').style.display= v==='targeting6' ? '' : 'none';
+  document.getElementById('ana-history').style.display   = v==='history'    ? '' : 'none';
   document.querySelectorAll('.ana-view-btn').forEach(b=>b.classList.toggle('active',b.id==='anabtn-'+v));
-  if(v==='targeting') initTargetingDefaults();
-  if(v==='history')   renderBidHistory();
+  if(v==='targeting')  initTargetingDefaults();
+  if(v==='targeting6') initTgt6Products();
+  if(v==='history')    renderBidHistory();
 }
 function saveNote(key,val){try{localStorage.setItem('note_'+key,val);}catch(e){}}
 function getNote(key){try{return localStorage.getItem('note_'+key)||'';}catch(e){return'';}}
@@ -2935,6 +3048,148 @@ async function runMode1Analysis(){
   } finally {
     document.getElementById('tgt-run-btn').disabled=false;
     document.getElementById('tgt-prog').classList.remove('show');
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   六轮分析 JS
+══════════════════════════════════════════════════════ */
+
+function tgt6ToggleModule(n){
+  const body = document.getElementById(`tgt6-m${n}-body`);
+  const chev = document.getElementById(`tgt6-m${n}-chev`);
+  if(!body) return;
+  const closed = body.classList.toggle('closed');
+  if(chev) chev.textContent = closed ? '▶' : '▼';
+}
+
+function initTgt6Products(){
+  const dst = document.getElementById('tgt6-product');
+  if(!dst || dst.options.length > 0) return;
+  // Populate from RAW.prods if available
+  if(window.RAW && RAW.prods){
+    Object.keys(RAW.prods).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p;
+      opt.textContent = p;
+      dst.appendChild(opt);
+    });
+  }
+}
+
+function switchRoundTab6r(rname){
+  ['consensus','R1','R2','R3','R4','R5','R6'].forEach(r => {
+    const tab   = document.getElementById(`tgt6-rtab-${r}`);
+    const panel = document.getElementById(`tgt6-panel-${r}`);
+    if(tab)   tab.classList.toggle('active', r === rname);
+    if(panel) panel.style.display = r === rname ? '' : 'none';
+  });
+}
+
+function _renderRoundPanel6r(rname, data){
+  const panel = document.getElementById(`tgt6-panel-${rname}`);
+  if(!panel) return;
+  _renderRoundPanel(panel, data, rname === 'consensus');
+}
+
+async function runMode1Analysis6r(){
+  const product = document.getElementById('tgt6-product')?.value;
+  const acos    = parseFloat(document.getElementById('tgt6-acos')?.value);
+  const cpo     = parseFloat(document.getElementById('tgt6-cpo')?.value);
+  if(!product){ alert('请选择产品目标'); return; }
+  if(isNaN(acos)||acos<=0){ alert('请输入有效的目标 ACoS'); return; }
+  if(isNaN(cpo)||cpo<=0){   alert('请输入有效的平均出单点击数'); return; }
+
+  const btn    = document.getElementById('tgt6-run-btn');
+  const status = document.getElementById('tgt6-status');
+  const prog   = document.getElementById('tgt6-prog-fill');
+  btn.disabled = true;
+  status.textContent = '⏳ 六轮分析中…';
+  if(prog) prog.style.width = '30%';
+
+  const fd = new FormData();
+  fd.append('product_target',       product);
+  fd.append('target_acos',          acos);
+  fd.append('avg_clicks_per_order', cpo);
+
+  try{
+    if(prog) prog.style.width = '60%';
+    const resp = await fetch('api/analysis/mode1/bid-optimize-6r', {method:'POST', body:fd});
+    if(!resp.ok){ const e=await resp.json(); throw new Error(e.detail||'分析失败'); }
+    const d = await resp.json();
+    if(prog) prog.style.width = '100%';
+
+    window._tgt6CacheId = d.cache_id;
+
+    const tabs = document.getElementById('tgt6-round-tabs');
+    if(tabs) tabs.style.display = '';
+    const m2body = document.getElementById('tgt6-m2-body');
+    if(m2body) m2body.classList.remove('closed');
+    const m2chev = document.getElementById('tgt6-m2-chev');
+    if(m2chev) m2chev.textContent = '▼';
+
+    ['R1','R2','R3','R4','R5','R6'].forEach(r => _renderRoundPanel6r(r, d[r]));
+    _renderRoundPanel6r('consensus', d.consensus);
+
+    const cnt = document.getElementById('tgt6-rtab-consensus-cnt');
+    if(cnt) cnt.textContent = d.consensus?.count ?? '';
+
+    switchRoundTab6r('consensus');
+
+    status.style.color = 'var(--gn)';
+    status.textContent = `✅ 六轮分析完成，Consensus ${d.consensus?.count ?? 0} 条`;
+  }catch(e){
+    status.style.color = 'var(--rd)';
+    status.textContent = '❌ ' + e.message;
+  }finally{
+    btn.disabled = false;
+    if(prog) prog.style.width = '0%';
+  }
+}
+
+async function exportBulk6r(){
+  const cacheId   = window._tgt6CacheId;
+  const bulkFile  = document.getElementById('tgt6-bulk-file')?.files[0];
+  const threshold = document.getElementById('tgt6-orders-thresh')?.value || '10';
+  const statusEl  = document.getElementById('tgt6-export-status');
+  const btn       = document.getElementById('tgt6-export-btn');
+
+  if(!cacheId){ alert('请先执行六轮分析'); return; }
+  if(!bulkFile){ alert('请上传 Bulk 文件'); return; }
+
+  btn.disabled = true;
+  statusEl.textContent = '⏳ 生成中…';
+
+  const fd = new FormData();
+  fd.append('bulk_file',        bulkFile);
+  fd.append('cache_id',         cacheId);
+  fd.append('orders_threshold', threshold);
+
+  try{
+    const resp = await fetch('api/analysis/mode1/export-bulk', {method:'POST', body:fd});
+    if(!resp.ok){ const e=await resp.json(); throw new Error(e.detail||'导出失败'); }
+    const d = await resp.json();
+
+    if(d.bulk_b64){
+      const a = document.createElement('a');
+      a.href     = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + d.bulk_b64;
+      a.download = d.bulk_filename || 'bulk_updated.xlsx';
+      a.click();
+    }
+    if(d.label_b64){
+      const a = document.createElement('a');
+      a.href     = 'data:text/csv;charset=utf-8;base64,' + d.label_b64;
+      a.download = d.label_filename || 'targeting_labels.csv';
+      a.click();
+    }
+
+    statusEl.style.color = 'var(--gn)';
+    statusEl.textContent = `✅ 已下载 Bulk 文件（${d.log||''}）`;
+  }catch(e){
+    statusEl.style.color = 'var(--rd)';
+    statusEl.textContent = '❌ ' + e.message;
+  }finally{
+    btn.disabled = false;
   }
 }
 
