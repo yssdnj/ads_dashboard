@@ -3688,8 +3688,9 @@ function renderTargetingResult(data, targetId='tgt-panel-consensus', skipSideEff
             <span style="font-size:11px;color:var(--g6);flex-shrink:0">${usd(cd2.spend)} · ACoS ${fmtA(cd2.spend,cd2.sales)} · ${cd2.orders} 单</span>
           </summary>
           <div style="padding-left:64px;overflow-x:auto;background:#fff">
-            <table class="tgt-tbl" style="min-width:780px">
-              <tr><th>投放</th><th>匹配</th><th>标签</th><th>建议</th><th style="text-align:right">调价%</th><th style="text-align:right">花费</th><th style="text-align:right">ACoS</th><th style="text-align:right">订单</th><th style="text-align:right">CPC</th><th>原因</th></tr>
+            <table class="tgt-tbl" style="min-width:800px;table-layout:fixed;width:100%">
+              <colgroup><col style="width:200px"><col style="width:58px"><col style="width:118px"><col style="width:112px"><col style="width:66px"><col style="width:82px"><col style="width:66px"><col style="width:50px"><col style="width:66px"><col></colgroup>
+              <tr><th style="white-space:nowrap">投放</th><th style="white-space:nowrap">匹配</th><th style="white-space:nowrap">标签</th><th style="white-space:nowrap">建议</th><th style="text-align:right;white-space:nowrap">调价%</th><th style="text-align:right;white-space:nowrap">花费</th><th style="text-align:right;white-space:nowrap">ACoS</th><th style="text-align:right;white-space:nowrap">订单</th><th style="text-align:right;white-space:nowrap">CPC</th><th>原因</th></tr>
               ${cd2.rows.map(r=>`<tr>
                 <td style="font-family:monospace;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.targeting}">${r.is_core?'<span class="tgt-prot" style="margin-right:4px">🔒</span>':''}${trn(r.targeting,32)}</td>
                 <td>${tag(r.match_type,'gr')}</td>
@@ -3852,6 +3853,16 @@ function renderTargetingResult(data, targetId='tgt-panel-consensus', skipSideEff
       return '早期问题，近期已有改善迹象';
     };
 
+    // 确定展示的轮次槽位（从数据推断：最少 R1~R3，最多 R1~R6）
+    const _allRounds=['R1','R2','R3','R4','R5','R6'];
+    const _maxRoundIdx=Math.max(
+      2,
+      ...rows.flatMap(r=>_parseRounds(r.hit_rounds||''))
+             .map(r=>_allRounds.indexOf(r))
+             .filter(i=>i>=0)
+    );
+    const _roundSlots=_allRounds.slice(0,_maxRoundIdx+1);
+
     // 聚合：category → portfolio → campaign → rows[]
     const hitTree={};
     rows.forEach(r=>{
@@ -3897,8 +3908,11 @@ function renderTargetingResult(data, targetId='tgt-panel-consensus', skipSideEff
                 <table class="tgt-tbl" style="min-width:700px">
                   <tr><th>Targeting</th><th>Match</th><th>标签</th><th style="text-align:right">调价</th><th>命中轮次</th><th>说明</th></tr>
                   ${campRows.map(r=>{
-                    const rounds=_parseRounds(r.hit_rounds||'');
-                    const badges=rounds.map(rn=>`<span style="display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;margin-right:3px;${_roundStyle(rn)}">${rn}</span>`).join('');
+                    const hitSet=new Set(_parseRounds(r.hit_rounds||''));
+                    const badges=_roundSlots.map(rn=>hitSet.has(rn)
+                      ?`<span style="display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;margin-right:3px;background:#dc2626;color:#fff">${rn}</span>`
+                      :`<span style="display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;margin-right:3px;background:#f1f5f9;color:#94a3b8">—</span>`
+                    ).join('');
                     const desc=_hitDesc(r.hit_rounds||'');
                     return `<tr>
                       <td style="font-family:monospace;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.targeting}">${trn(r.targeting,32)}</td>
