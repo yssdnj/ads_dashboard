@@ -3646,6 +3646,72 @@ function renderTargetingResult(data, targetId='tgt-panel-consensus', skipSideEff
     </div>`).join('')}
   </div>`;
 
+  // ── 9. 层级明细（全部折叠）─────────────────────────────────────────────────
+  const byCategory={};
+  rows.forEach(r=>{
+    const cat=r.category||'7_Other';
+    if(!byCategory[cat]) byCategory[cat]={spend:0,sales:0,orders:0,ports:{}};
+    const bc=byCategory[cat];
+    bc.spend+=r.spend; bc.sales+=r.sales; bc.orders+=r.orders;
+    const pt=r.portfolio||'(无组合)';
+    if(!bc.ports[pt]) bc.ports[pt]={spend:0,sales:0,orders:0,camps:{}};
+    const bp=bc.ports[pt];
+    bp.spend+=r.spend; bp.sales+=r.sales; bp.orders+=r.orders;
+    if(!bp.camps[r.campaign]) bp.camps[r.campaign]={spend:0,sales:0,orders:0,rows:[]};
+    const bc2=bp.camps[r.campaign];
+    bc2.spend+=r.spend; bc2.sales+=r.sales; bc2.orders+=r.orders;
+    bc2.rows.push(r);
+  });
+  const fmtA=(sp,sl)=>sl>0?(sp/sl*100).toFixed(1)+'%':'—';
+  const labelCls={'✅ 低ACoS出单':'g','⚠️ 高ACoS出单':'y','🔴 高点击不出单':'r','⚪ 低点击不出单':'gr','— 无点击':'gr'};
+  const actionCls={'🔒 保护':'dk','↘ 降价':'r','⛔ 大幅降价/暂停':'r','↗ 维持/提价':'g','观察':'gr'};
+
+  html += `<div class="tgt-sec-div">层级明细 <span style="font-weight:400;color:var(--g4)">· 默认折叠，点击展开</span></div>
+  <div style="background:#fff;border:1px solid var(--g2);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)">`;
+
+  Object.entries(byCategory).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([cat,cd])=>{
+    html+=`<details style="border-top:1px solid var(--g1)">
+      <summary style="padding:11px 16px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;background:var(--g0);user-select:none">
+        <span style="font-size:12px;font-weight:700;color:var(--g9);flex:1">▶ ${cat}</span>
+        <span style="font-size:11px;color:var(--g6)">${usd(cd.spend)} · ACoS ${fmtA(cd.spend,cd.sales)} · ${cd.orders} 单</span>
+      </summary>`;
+    Object.entries(cd.ports).forEach(([port,pd])=>{
+      html+=`<details style="border-top:1px solid var(--g1)">
+        <summary style="padding:9px 16px 9px 30px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;background:#fff;user-select:none">
+          <span style="font-size:11px;font-weight:600;color:var(--g7);flex:1">📁 ${port}</span>
+          <span style="font-size:11px;color:var(--g6)">${usd(pd.spend)} · ACoS ${fmtA(pd.spend,pd.sales)} · ${pd.orders} 单</span>
+        </summary>`;
+      Object.entries(pd.camps).forEach(([camp,cd2])=>{
+        html+=`<details style="border-top:1px solid var(--g1)">
+          <summary style="padding:8px 16px 8px 48px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;background:var(--g0);user-select:none">
+            <span style="font-size:11px;color:var(--g6);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${camp}">📣 ${trn(camp,56)}</span>
+            <span style="font-size:11px;color:var(--g6);flex-shrink:0">${usd(cd2.spend)} · ACoS ${fmtA(cd2.spend,cd2.sales)} · ${cd2.orders} 单</span>
+          </summary>
+          <div style="padding-left:64px;overflow-x:auto;background:#fff">
+            <table class="tgt-tbl" style="min-width:780px">
+              <tr><th>投放</th><th>匹配</th><th>标签</th><th>建议</th><th style="text-align:right">调价%</th><th style="text-align:right">花费</th><th style="text-align:right">ACoS</th><th style="text-align:right">订单</th><th style="text-align:right">CPC</th><th>原因</th></tr>
+              ${cd2.rows.map(r=>`<tr>
+                <td style="font-family:monospace;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.targeting}">${r.is_core?'<span class="tgt-prot" style="margin-right:4px">🔒</span>':''}${trn(r.targeting,32)}</td>
+                <td>${tag(r.match_type,'gr')}</td>
+                <td style="white-space:nowrap">${tag(r.label, labelCls[r.label]||'gr')}</td>
+                <td style="white-space:nowrap">${tag(r.action, actionCls[r.action]||'gr')}</td>
+                <td style="text-align:right;font-family:monospace;font-weight:700;color:${r.adj_pct.startsWith('-')?'var(--rd)':r.adj_pct.startsWith('+')?'var(--gn)':'var(--g4)'}">${r.adj_pct}</td>
+                <td style="text-align:right;font-family:monospace">${usd2(r.spend)}</td>
+                <td style="text-align:right;font-family:monospace;${r.acos!=null&&r.acos>s.target_acos?'color:var(--rd);font-weight:700':''}">${r.acos!=null?r.acos+'%':'—'}</td>
+                <td style="text-align:right;font-family:monospace">${r.orders}</td>
+                <td style="text-align:right;font-family:monospace">${r.cpc!=null?'$'+r.cpc.toFixed(2):'—'}</td>
+                <td style="color:var(--g4);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.reason}">${r.reason||''}</td>
+              </tr>`).join('')}
+            </table>
+          </div>
+        </details>`;
+      });
+      html+='</details>';
+    });
+    html+='</details>';
+  });
+  html+='</div>';
+
   // ── 3. 流量集中度 ──────────────────────────────────────────────────────────
   const sortedBySales = [...rows].sort((a,b)=>b.sales-a.sales);
   const topN = n => sortedBySales.slice(0,n).reduce((s,r)=>s+r.sales,0)/tsl;
@@ -3754,72 +3820,6 @@ function renderTargetingResult(data, targetId='tgt-panel-consensus', skipSideEff
       </div>`;
     }).join('')}
   </div>`;
-
-  // ── 9. 层级明细（全部折叠）─────────────────────────────────────────────────
-  const byCategory={};
-  rows.forEach(r=>{
-    const cat=r.category||'7_Other';
-    if(!byCategory[cat]) byCategory[cat]={spend:0,sales:0,orders:0,ports:{}};
-    const bc=byCategory[cat];
-    bc.spend+=r.spend; bc.sales+=r.sales; bc.orders+=r.orders;
-    const pt=r.portfolio||'(无组合)';
-    if(!bc.ports[pt]) bc.ports[pt]={spend:0,sales:0,orders:0,camps:{}};
-    const bp=bc.ports[pt];
-    bp.spend+=r.spend; bp.sales+=r.sales; bp.orders+=r.orders;
-    if(!bp.camps[r.campaign]) bp.camps[r.campaign]={spend:0,sales:0,orders:0,rows:[]};
-    const bc2=bp.camps[r.campaign];
-    bc2.spend+=r.spend; bc2.sales+=r.sales; bc2.orders+=r.orders;
-    bc2.rows.push(r);
-  });
-  const fmtA=(sp,sl)=>sl>0?(sp/sl*100).toFixed(1)+'%':'—';
-  const labelCls={'✅ 低ACoS出单':'g','⚠️ 高ACoS出单':'y','🔴 高点击不出单':'r','⚪ 低点击不出单':'gr','— 无点击':'gr'};
-  const actionCls={'🔒 保护':'dk','↘ 降价':'r','⛔ 大幅降价/暂停':'r','↗ 维持/提价':'g','观察':'gr'};
-
-  html += `<div class="tgt-sec-div">层级明细 <span style="font-weight:400;color:var(--g4)">· 默认折叠，点击展开</span></div>
-  <div style="background:#fff;border:1px solid var(--g2);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)">`;
-
-  Object.entries(byCategory).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([cat,cd])=>{
-    html+=`<details style="border-top:1px solid var(--g1)">
-      <summary style="padding:11px 16px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;background:var(--g0);user-select:none">
-        <span style="font-size:12px;font-weight:700;color:var(--g9);flex:1">▶ ${cat}</span>
-        <span style="font-size:11px;color:var(--g6)">${usd(cd.spend)} · ACoS ${fmtA(cd.spend,cd.sales)} · ${cd.orders} 单</span>
-      </summary>`;
-    Object.entries(cd.ports).forEach(([port,pd])=>{
-      html+=`<details style="border-top:1px solid var(--g1)">
-        <summary style="padding:9px 16px 9px 30px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;background:#fff;user-select:none">
-          <span style="font-size:11px;font-weight:600;color:var(--g7);flex:1">📁 ${port}</span>
-          <span style="font-size:11px;color:var(--g6)">${usd(pd.spend)} · ACoS ${fmtA(pd.spend,pd.sales)} · ${pd.orders} 单</span>
-        </summary>`;
-      Object.entries(pd.camps).forEach(([camp,cd2])=>{
-        html+=`<details style="border-top:1px solid var(--g1)">
-          <summary style="padding:8px 16px 8px 48px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;background:var(--g0);user-select:none">
-            <span style="font-size:11px;color:var(--g6);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${camp}">📣 ${trn(camp,56)}</span>
-            <span style="font-size:11px;color:var(--g6);flex-shrink:0">${usd(cd2.spend)} · ACoS ${fmtA(cd2.spend,cd2.sales)} · ${cd2.orders} 单</span>
-          </summary>
-          <div style="padding-left:64px;overflow-x:auto;background:#fff">
-            <table class="tgt-tbl" style="min-width:780px">
-              <tr><th>投放</th><th>匹配</th><th>标签</th><th>建议</th><th style="text-align:right">调价%</th><th style="text-align:right">花费</th><th style="text-align:right">ACoS</th><th style="text-align:right">订单</th><th style="text-align:right">CPC</th><th>原因</th></tr>
-              ${cd2.rows.map(r=>`<tr>
-                <td style="font-family:monospace;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.targeting}">${r.is_core?'<span class="tgt-prot" style="margin-right:4px">🔒</span>':''}${trn(r.targeting,32)}</td>
-                <td>${tag(r.match_type,'gr')}</td>
-                <td style="white-space:nowrap">${tag(r.label, labelCls[r.label]||'gr')}</td>
-                <td style="white-space:nowrap">${tag(r.action, actionCls[r.action]||'gr')}</td>
-                <td style="text-align:right;font-family:monospace;font-weight:700;color:${r.adj_pct.startsWith('-')?'var(--rd)':r.adj_pct.startsWith('+')?'var(--gn)':'var(--g4)'}">${r.adj_pct}</td>
-                <td style="text-align:right;font-family:monospace">${usd2(r.spend)}</td>
-                <td style="text-align:right;font-family:monospace;${r.acos!=null&&r.acos>s.target_acos?'color:var(--rd);font-weight:700':''}">${r.acos!=null?r.acos+'%':'—'}</td>
-                <td style="text-align:right;font-family:monospace">${r.orders}</td>
-                <td style="text-align:right;font-family:monospace">${r.cpc!=null?'$'+r.cpc.toFixed(2):'—'}</td>
-                <td style="color:var(--g4);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.reason}">${r.reason||''}</td>
-              </tr>`).join('')}
-            </table>
-          </div>
-        </details>`;
-      });
-      html+='</details>';
-    });
-    html+='</details>';
-  });
-  html+='</div>';
 
   // ── 10. 入围广告活动命中明细（仅 consensus 面板）────────────────────────────
   if(roundKey==='consensus'){
