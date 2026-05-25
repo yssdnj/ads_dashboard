@@ -17,6 +17,7 @@ from . import db, export, gen_data, targeting_analysis, bulk_update
 
 # ── Mode 1 结果服务端缓存（避免前端回传大量 JSON）────────────────────────────────
 _mode1_cache: dict[str, dict] = {}   # { cache_id: {rows, product_target, report_start, report_end} }
+_mode1_6r_cache: dict[str, dict] = {}   # 六轮分析结果缓存
 
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(title='广告漏斗分析 v2.0', version='2.0.0')
@@ -322,6 +323,62 @@ async def api_mode1_analysis(
     # 缓存 consensus rows，供 export-bulk 端点使用
     cid = str(uuid.uuid4())
     _mode1_cache[cid] = {
+        'rows':           result['consensus']['rows'],
+        'product_target': result.get('product_target', ''),
+        'report_start':   result.get('report_start', ''),
+        'report_end':     result.get('report_end', ''),
+    }
+    result['cache_id'] = cid
+    return result
+
+
+# ── API: Mode 1 → 六轮分析 ────────────────────────────────────────────────────
+
+@app.post('/api/analysis/mode1/bid-optimize-6r')
+async def api_mode1_bid_optimize_6r(
+    product_target:       str   = Form(...),
+    target_acos:          float = Form(...),        # 百分比值，如 20.0 表示 20%
+    avg_clicks_per_order: float = Form(...),
+    core_sales_share:     float = Form(0.2),
+):
+    """
+    Mode 1 六轮分析：从数据库读取最近 6 个日历周数据，
+    跑 R1(1周)~R6(6周) 六轮，≥3/6 命中且非向好趋势 → 进入 consensus。
+    请先通过 /api/analysis/mode1/import-data 导入数据。
+    """
+    try:
+        asins = targeting_analysis.get_asins_for_product(product_target)
+    except FileNotFoundError as e:
+        raise HTTPException(500, str(e))
+    if not asins:
+        raise HTTPException(400, f'产品目录中未找到 {product_target.split("_")[0]} 的 ASIN，请检查 product_catalog.xlsx')
+
+    tar_df, ap_df, week_sundays = db.get_tar_ap_for_analysis(n_weeks=6)
+    if tar_df is None:
+        raise HTTPException(400, '数据库中暂无投放数据，请先通过「导入数据」上传报告文件')
+    if len(week_sundays) < 1:
+        raise HTTPException(400, '数据不足，无法确定完整日历周，请补充上传数据')
+
+    try:
+        result = targeting_analysis.run_multi_round_analysis_6r(
+            tar_df               = tar_df,
+            ap_df                = ap_df,
+            week_sundays         = week_sundays,
+            product_target       = product_target,
+            asins                = asins,
+            target_acos          = target_acos / 100,
+            avg_clicks_per_order = avg_clicks_per_order,
+            core_sales_share     = core_sales_share,
+        )
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(500, f'六轮分析失败: {e}')
+
+    if result.get('R6', {}).get('error'):
+        raise HTTPException(400, result['R6']['error'])
+
+    cid = str(uuid.uuid4())
+    _mode1_6r_cache[cid] = {
         'rows':           result['consensus']['rows'],
         'product_target': result.get('product_target', ''),
         'report_start':   result.get('report_start', ''),
