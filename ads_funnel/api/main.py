@@ -322,8 +322,9 @@ async def api_mode1_analysis(
 
     # 缓存 consensus rows，供 export-bulk 端点使用
     cid = str(uuid.uuid4())
+    consensus = result.get('consensus') or {}
     _mode1_cache[cid] = {
-        'rows':           result['consensus']['rows'],
+        'rows':           consensus.get('rows', []),
         'product_target': result.get('product_target', ''),
         'report_start':   result.get('report_start', ''),
         'report_end':     result.get('report_end', ''),
