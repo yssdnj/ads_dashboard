@@ -3082,14 +3082,13 @@ function switchRoundTab6r(rname){
     const tab   = document.getElementById(`tgt6-rtab-${r}`);
     const panel = document.getElementById(`tgt6-panel-${r}`);
     if(tab)   tab.classList.toggle('active', r === rname);
-    if(panel) panel.style.display = r === rname ? '' : 'none';
+    if(panel) panel.classList.toggle('active', r === rname);
   });
 }
 
 function _renderRoundPanel6r(rname, data){
-  const panel = document.getElementById(`tgt6-panel-${rname}`);
-  if(!panel) return;
-  _renderRoundPanel(panel, data, rname === 'consensus');
+  const panelId = `tgt6-panel-${rname}`;
+  renderTargetingResult(data, panelId, /*skipSideEffects=*/true);
 }
 
 async function runMode1Analysis6r(){
@@ -3499,20 +3498,22 @@ const ACTION_COLOR = {
 // 全局缓存 Mode 1 结果（供 exportBulkFile 使用）
 window.MODE1_CACHE_ID = '';
 
-function renderTargetingResult(data, targetId='tgt-panel-consensus'){
+function renderTargetingResult(data, targetId='tgt-panel-consensus', skipSideEffects=false){
   const el = document.getElementById(targetId);
   if(!el) return;
   if(!data||!data.rows){el.innerHTML='';return;}
 
-  const roundKey = targetId.replace('tgt-panel-', '');
+  const roundKey = targetId.replace('tgt-panel-', '').replace('tgt6-panel-', '');
 
   // 缓存
   window.MODE1_CACHE_ID   = data.cache_id||'';
   window.MODE1_LAST_DATA  = data;          // 供导出 CSV 使用
 
-  // 自动展开模块二（结果区），折叠模块一
-  tgtOpenModule(2);
-  document.getElementById('tgt-bulk-log').style.display='none';
+  // 自动展开模块二（结果区），折叠模块一（仅三轮模式）
+  if(!skipSideEffects){
+    tgtOpenModule(2);
+    document.getElementById('tgt-bulk-log').style.display='none';
+  }
 
   const s   = data.summary;
   const L   = data.layers;
