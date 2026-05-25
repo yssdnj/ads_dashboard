@@ -641,8 +641,28 @@ def run_multi_round_analysis_6r(
         'R6': week_sundays[0],
     }
 
+    # 去重：跳过与更长轮次（R6>R5>...）重叠的起始周，避免投票膨胀
+    _seen_starts: set = set()
+    _skip_rounds: set[str] = set()
+    for rname in ('R6', 'R5', 'R4', 'R3', 'R2', 'R1'):
+        fs = r_from[rname]
+        if fs in _seen_starts:
+            _skip_rounds.add(rname)
+        else:
+            _seen_starts.add(fs)
+
     rounds: dict[str, dict] = {}
     for rname, from_sunday in r_from.items():
+        if rname in _skip_rounds:
+            week_end = to_sunday + pd.Timedelta(days=6)
+            rounds[rname] = {
+                'rows': [], 'summary': {}, 'layers': {},
+                'date_start': from_sunday.strftime('%Y-%m-%d'),
+                'date_end':   week_end.strftime('%Y-%m-%d'),
+                'week_label': f'{from_sunday.strftime("%m/%d")}-{week_end.strftime("%m/%d")}',
+                'error': '与其他轮次时间窗口重叠（数据不足），已跳过',
+            }
+            continue
         t, a = _filter_by_week_range(tar_df, ap_df, from_sunday, to_sunday)
         week_end = to_sunday + pd.Timedelta(days=6)
         date_label = f'{from_sunday.strftime("%m/%d")}-{week_end.strftime("%m/%d")}'
