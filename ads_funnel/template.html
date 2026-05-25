@@ -3841,6 +3841,7 @@ function renderTargetingResult(data, targetId='tgt-panel-consensus', skipSideEff
       const nums=_parseRounds(hrStr).map(r=>parseInt(r.replace('R',''))).sort((a,b)=>a-b);
       const hasR1=nums.includes(1);
       const n=nums.length;
+      if(n===0) return '—';
       if(n>=5) return '长期持续异常，优先处理';
       if(hasR1){
         const isConsec=nums.every((v,i)=>i===0||v===nums[i-1]+1);
@@ -3903,7 +3904,7 @@ function renderTargetingResult(data, targetId='tgt-panel-consensus', skipSideEff
                       <td style="font-family:monospace;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.targeting}">${trn(r.targeting,32)}</td>
                       <td>${tag(r.match_type,'gr')}</td>
                       <td style="white-space:nowrap">${tag(r.label,labelCls[r.label]||'gr')}</td>
-                      <td style="text-align:right;font-family:monospace;font-weight:700;color:var(--rd)">${r.adj_pct}</td>
+                      <td style="text-align:right;font-family:monospace;font-weight:700;color:${r.adj_pct&&r.adj_pct.startsWith('-')?'var(--rd)':r.adj_pct&&r.adj_pct.startsWith('+')?'var(--gn)':'var(--g4)'}">${r.adj_pct}</td>
                       <td style="white-space:nowrap">${badges}</td>
                       <td style="color:var(--g6);font-size:12px;white-space:nowrap">${desc}</td>
                     </tr>`;
