@@ -3,7 +3,7 @@ main.py — FastAPI 后端
 启动: uvicorn api.main:app --reload  （从 ads_funnel/ 目录执行）
 """
 
-import base64, io, json, traceback, uuid
+import base64, io, json, traceback
 from datetime import datetime
 from pathlib import Path
 
@@ -15,9 +15,6 @@ from fastapi.staticfiles import StaticFiles
 
 from . import db, export, gen_data, targeting_analysis, bulk_update
 
-# ── Mode 1 结果服务端缓存（避免前端回传大量 JSON）────────────────────────────────
-_mode1_cache: dict[str, dict] = {}   # { cache_id: {rows, product_target, report_start, report_end} }
-_mode1_6r_cache: dict[str, dict] = {}   # 六轮分析结果缓存
 
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(title='广告漏斗分析 v2.0', version='2.0.0')
@@ -353,16 +350,6 @@ async def api_mode1_analysis(
     if result.get('R3', {}).get('error'):
         raise HTTPException(400, result['R3']['error'])
 
-    # 缓存 consensus rows，供 export-bulk 端点使用
-    cid = str(uuid.uuid4())
-    consensus = result.get('consensus') or {}
-    _mode1_cache[cid] = {
-        'rows':           consensus.get('rows', []),
-        'product_target': result.get('product_target', ''),
-        'report_start':   result.get('report_start', ''),
-        'report_end':     result.get('report_end', ''),
-    }
-    result['cache_id'] = cid
     return result
 
 
@@ -413,15 +400,6 @@ async def api_mode1_bid_optimize_6r(
     if result.get('R6', {}).get('error'):
         raise HTTPException(400, result['R6']['error'])
 
-    cid = str(uuid.uuid4())
-    consensus = result.get('consensus') or {}
-    _mode1_6r_cache[cid] = {
-        'rows':           consensus.get('rows', []),
-        'product_target': result.get('product_target', ''),
-        'report_start':   result.get('report_start', ''),
-        'report_end':     result.get('report_end', ''),
-    }
-    result['cache_id'] = cid
     return result
 
 
@@ -430,7 +408,10 @@ async def api_mode1_bid_optimize_6r(
 @app.post('/api/analysis/mode1/export-bulk')
 async def api_mode1_export_bulk(
     bulk_file:        UploadFile = File(..., description='Amazon Bulk 文件（xlsx，文件名须以 Bulk 开头）'),
-    cache_id:         str        = Form(..., description='Mode 1 分析结果的缓存 ID'),
+    rows_json:        str        = Form(..., description='consensus rows JSON（前端回传）'),
+    product_target:   str        = Form('',  description='产品标识，用于文件名'),
+    report_start:     str        = Form('',  description='报告开始日期，用于文件名'),
+    report_end:       str        = Form('',  description='报告结束日期，用于文件名'),
     orders_threshold: int        = Form(10,  description='订单数筛选阈值，默认 10'),
     report_country:   str        = Form('',  description='当前页面国家（中文，如 美国），用于文件名'),
 ):
@@ -441,15 +422,12 @@ async def api_mode1_export_bulk(
     返回 JSON（两个文件均以 base64 编码）：
       { bulk_b64, bulk_filename, label_b64, label_filename, log }
     """
-    cached = _mode1_cache.get(cache_id) or _mode1_6r_cache.get(cache_id)
-    if not cached:
-        raise HTTPException(400, '分析结果已过期，请重新运行分析')
+    try:
+        rows = json.loads(rows_json)
+    except Exception:
+        raise HTTPException(400, 'rows_json 格式错误，请重新运行分析')
 
-    bulk_bytes     = await bulk_file.read()
-    rows           = cached['rows']
-    product_target = cached['product_target']
-    report_start   = cached.get('report_start', '')
-    report_end     = cached.get('report_end', '')
+    bulk_bytes = await bulk_file.read()
 
     try:
         bulk_out_bytes, label_csv_bytes, log, details = bulk_update.apply_mode1_to_bulk(

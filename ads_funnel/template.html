@@ -3181,9 +3181,16 @@ async function runMode1Analysis(){
     }
     const data = await resp.json();
 
+    // 保存导出所需元数据（供 exportBulkFile 使用）
+    window._mode1ExportMeta = {
+      rows:           data.consensus?.rows || [],
+      product_target: data.product_target || '',
+      report_start:   data.report_start   || '',
+      report_end:     data.report_end     || '',
+    };
+
     // 渲染四个轮次面板
     const commonMeta = {
-      cache_id:       data.cache_id,
       product_target: data.product_target,
       report_start:   data.report_start,
       report_end:     data.report_end,
@@ -3230,7 +3237,6 @@ async function runMode1Analysis(){
     // 保存配置
     const prod = pt.split('_')[0];
     saveAvgClicksConfig(prod, clicks);
-    // 缓存到 localStorage（不含文件，cache_id 留空防止跨页复用）
     window._lastMode1Data = data;
   } catch(e){
     status.style.color='var(--rd)';
@@ -3368,7 +3374,12 @@ async function runMode1Analysis6r(){
     const d = await resp.json();
     if(prog) prog.style.width = '100%';
 
-    window._tgt6CacheId = d.cache_id;
+    window._tgt6ExportMeta = {
+      rows:           d.consensus?.rows   || [],
+      product_target: d.product_target    || '',
+      report_start:   d.report_start      || '',
+      report_end:     d.report_end        || '',
+    };
 
     const tabs = document.getElementById('tgt6-round-tabs');
     if(tabs) tabs.style.display = '';
@@ -3385,7 +3396,6 @@ async function runMode1Analysis6r(){
       ...(d.R6 || {}),
       rows:           d.consensus?.rows || [],
       label_counts:   d.consensus?.label_counts || d.R6?.label_counts || {},
-      cache_id:       d.cache_id,
       product_target: d.product_target,
       report_start:   d.report_start,
       report_end:     d.report_end,
@@ -3440,14 +3450,14 @@ function bulkDzDrop6r(e){
 }
 
 async function exportBulk6r(){
-  const cacheId       = window._tgt6CacheId;
+  const exportMeta    = window._tgt6ExportMeta;
   const bulkFileEl    = document.getElementById('tgt6-bulk-file');
   const ordersThresh  = parseInt(document.getElementById('tgt6-orders-thresh')?.value) || 10;
   const statusEl      = document.getElementById('tgt6-export-status');
   const logEl         = document.getElementById('tgt6-bulk-log');
   const btn           = document.getElementById('tgt6-export-btn');
 
-  if(!cacheId){ alert('请先执行六轮分析'); return; }
+  if(!exportMeta){ alert('请先执行六轮分析'); return; }
   if(!bulkFileEl.files.length){ alert('请先上传 Bulk 文件（文件名须以 Bulk 开头，xlsx 格式）'); return; }
   if(!_validateBulkFile(bulkFileEl.files[0])){ alert('文件名须以 Bulk 开头（大小写不敏感），请重新选择正确的文件。'); return; }
 
@@ -3462,7 +3472,10 @@ async function exportBulk6r(){
   try{
     const fd = new FormData();
     fd.append('bulk_file',        bulkFileEl.files[0]);
-    fd.append('cache_id',         cacheId);
+    fd.append('rows_json',        JSON.stringify(exportMeta.rows));
+    fd.append('product_target',   exportMeta.product_target);
+    fd.append('report_start',     exportMeta.report_start);
+    fd.append('report_end',       exportMeta.report_end);
     fd.append('orders_threshold', ordersThresh);
     fd.append('report_country',   REPORT_COUNTRY);
 
@@ -3962,8 +3975,8 @@ const ACTION_COLOR = {
   '观察':         '#64748b',
 };
 
-// 全局缓存 Mode 1 结果（供 exportBulkFile 使用）
-window.MODE1_CACHE_ID = '';
+// 全局保存 Mode 1 导出所需数据（供 exportBulkFile 使用）
+window._mode1ExportMeta = null;
 
 function renderTargetingResult(data, targetId='tgt-panel-consensus', skipSideEffects=false){
   const el = document.getElementById(targetId);
@@ -3975,8 +3988,6 @@ function renderTargetingResult(data, targetId='tgt-panel-consensus', skipSideEff
 
   const roundKey = targetId.replace('tgt-panel-', '').replace('tgt6-panel-', '');
 
-  // 缓存
-  window.MODE1_CACHE_ID   = data.cache_id||'';
   window.MODE1_LAST_DATA  = data;          // 供导出 CSV 使用
 
   // 自动展开模块二（结果区），折叠模块一（仅三轮模式）
@@ -4430,8 +4441,8 @@ function _showDlCard(cardId, linkId, nameId, b64, filename, mimeType){
 }
 
 async function exportBulkFile(){
-  if(!window.MODE1_CACHE_ID){
-    alert('服务端分析结果已过期（或尚未运行分析）。\n请先完成模块一的分析，再执行竞价批量更新。');
+  if(!window._mode1ExportMeta){
+    alert('尚未运行分析，请先完成模块一的分析，再执行竞价批量更新。');
     return;
   }
   const bulkFileEl = document.getElementById('tgt-bulk-file');
@@ -4455,9 +4466,13 @@ async function exportBulkFile(){
   document.getElementById('tgt-bulk-btn').disabled = true;
 
   try{
+    const exportMeta = window._mode1ExportMeta;
     const fd = new FormData();
     fd.append('bulk_file',        bulkFileEl.files[0]);
-    fd.append('cache_id',         window.MODE1_CACHE_ID);
+    fd.append('rows_json',        JSON.stringify(exportMeta.rows));
+    fd.append('product_target',   exportMeta.product_target);
+    fd.append('report_start',     exportMeta.report_start);
+    fd.append('report_end',       exportMeta.report_end);
     fd.append('orders_threshold', ordersThresh);
     fd.append('report_country',   REPORT_COUNTRY);
 
