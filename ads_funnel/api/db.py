@@ -54,16 +54,19 @@ def init_db():
         """,
         """
         CREATE TABLE IF NOT EXISTS bid_update_log (
-            id               INT AUTO_INCREMENT PRIMARY KEY,
-            confirmed_at     DATETIME     NOT NULL DEFAULT NOW(),
-            product_target   VARCHAR(200) DEFAULT '',
-            bulk_filename    VARCHAR(500) DEFAULT '',
-            label_filename   VARCHAR(500) DEFAULT '',
-            report_start     VARCHAR(20)  DEFAULT '',
-            report_end       VARCHAR(20)  DEFAULT '',
-            orders_threshold INT          DEFAULT 10,
-            updated_count    INT          DEFAULT 0,
-            log_lines        LONGTEXT
+            id                   INT AUTO_INCREMENT PRIMARY KEY,
+            confirmed_at         DATETIME     NOT NULL DEFAULT NOW(),
+            product_target       VARCHAR(200) DEFAULT '',
+            bulk_filename        VARCHAR(500) DEFAULT '',
+            label_filename       VARCHAR(500) DEFAULT '',
+            report_start         VARCHAR(20)  DEFAULT '',
+            report_end           VARCHAR(20)  DEFAULT '',
+            orders_threshold     INT          DEFAULT 10,
+            updated_count        INT          DEFAULT 0,
+            log_lines            LONGTEXT,
+            target_acos          DOUBLE,
+            avg_clicks_per_order DOUBLE,
+            country              VARCHAR(50)  DEFAULT ''
         ) CHARACTER SET utf8mb4
         """,
         """
@@ -101,6 +104,21 @@ def init_db():
         if 'country' not in cols:
             conn.execute(text(
                 "ALTER TABLE reports ADD COLUMN country VARCHAR(50) NOT NULL DEFAULT ''"
+            ))
+        # 迁移：bid_update_log 补加 target_acos / avg_clicks_per_order 列
+        result = conn.execute(text('SHOW COLUMNS FROM bid_update_log'))
+        log_cols = {row[0] for row in result}
+        if 'target_acos' not in log_cols:
+            conn.execute(text(
+                'ALTER TABLE bid_update_log ADD COLUMN target_acos DOUBLE'
+            ))
+        if 'avg_clicks_per_order' not in log_cols:
+            conn.execute(text(
+                'ALTER TABLE bid_update_log ADD COLUMN avg_clicks_per_order DOUBLE'
+            ))
+        if 'country' not in log_cols:
+            conn.execute(text(
+                "ALTER TABLE bid_update_log ADD COLUMN country VARCHAR(50) DEFAULT ''"
             ))
 
 
@@ -348,14 +366,17 @@ def set_config(key: str, value):
 # ── Bid Update Log ────────────────────────────────────────────────────────────
 
 def save_bid_update_log(
-    product_target:   str,
-    bulk_filename:    str,
-    label_filename:   str,
-    report_start:     str,
-    report_end:       str,
-    orders_threshold: int,
-    updated_count:    int,
-    log_lines:        list,
+    product_target:       str,
+    bulk_filename:        str,
+    label_filename:       str,
+    report_start:         str,
+    report_end:           str,
+    orders_threshold:     int,
+    updated_count:        int,
+    log_lines:            list,
+    target_acos:          float | None = None,
+    avg_clicks_per_order: float | None = None,
+    country:              str = '',
 ) -> int:
     """记录一次已确认上传到亚马逊的竞价更新操作，返回新记录 id。"""
     with get_engine().begin() as conn:
@@ -363,14 +384,17 @@ def save_bid_update_log(
             text(
                 'INSERT INTO bid_update_log '
                 '(product_target, bulk_filename, label_filename, '
-                ' report_start, report_end, orders_threshold, updated_count, log_lines) '
-                'VALUES (:pt, :bf, :lf, :rs, :re, :ot, :uc, :ll)'
+                ' report_start, report_end, orders_threshold, updated_count, log_lines, '
+                ' target_acos, avg_clicks_per_order, country) '
+                'VALUES (:pt, :bf, :lf, :rs, :re, :ot, :uc, :ll, :ta, :ac, :co)'
             ),
             {
                 'pt': product_target,  'bf': bulk_filename,
                 'lf': label_filename,  'rs': report_start,
                 're': report_end,      'ot': orders_threshold,
                 'uc': updated_count,   'll': json.dumps(log_lines, ensure_ascii=False),
+                'ta': target_acos,     'ac': avg_clicks_per_order,
+                'co': country,
             }
         )
         return result.lastrowid
@@ -411,17 +435,29 @@ def save_bid_update_details(log_id: int, details: list):
         )
 
 
-def list_bid_update_logs(limit: int = 100) -> list:
-    """返回最近的竞价更新记录列表（不含 log_lines 详情）。"""
+def list_bid_update_logs(limit: int = 100, country: str = '') -> list:
+    """返回最近的竞价更新记录列表（不含 log_lines 详情）。country 非空时只返回该国家记录。"""
     with get_engine().connect() as conn:
-        result = conn.execute(
-            text(
-                'SELECT id, confirmed_at, product_target, bulk_filename, '
-                '       report_start, report_end, orders_threshold, updated_count '
-                'FROM bid_update_log ORDER BY id DESC LIMIT :lim'
-            ),
-            {'lim': limit}
-        )
+        if country:
+            result = conn.execute(
+                text(
+                    'SELECT id, confirmed_at, product_target, bulk_filename, '
+                    '       report_start, report_end, orders_threshold, updated_count, '
+                    '       target_acos, avg_clicks_per_order, country '
+                    'FROM bid_update_log WHERE country = :co ORDER BY id DESC LIMIT :lim'
+                ),
+                {'lim': limit, 'co': country}
+            )
+        else:
+            result = conn.execute(
+                text(
+                    'SELECT id, confirmed_at, product_target, bulk_filename, '
+                    '       report_start, report_end, orders_threshold, updated_count, '
+                    '       target_acos, avg_clicks_per_order, country '
+                    'FROM bid_update_log ORDER BY id DESC LIMIT :lim'
+                ),
+                {'lim': limit}
+            )
         return [dict(r) for r in result.mappings().all()]
 
 

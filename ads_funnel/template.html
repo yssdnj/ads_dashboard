@@ -3517,15 +3517,18 @@ async function exportBulk6r(){
     const updatedCount = parseInt((data.log[0]||'').match(/共更新\s*(\d+)/)?.[1]) || 0;
     const lastMeta = window._lastMode1Data6r || {};
     window._lastBulkExport6r = {
-      product_target:   lastMeta.product_target || '',
-      bulk_filename:    data.bulk_filename,
-      label_filename:   data.label_filename,
-      report_start:     lastMeta.report_start   || '',
-      report_end:       lastMeta.report_end     || '',
-      orders_threshold: ordersThresh,
-      updated_count:    updatedCount,
-      log_lines:        data.log     || [],
-      details:          data.details || [],
+      product_target:       lastMeta.product_target || '',
+      bulk_filename:        data.bulk_filename,
+      label_filename:       data.label_filename,
+      report_start:         lastMeta.report_start   || '',
+      report_end:           lastMeta.report_end     || '',
+      orders_threshold:     ordersThresh,
+      updated_count:        updatedCount,
+      log_lines:            data.log     || [],
+      details:              data.details || [],
+      target_acos:          parseFloat(document.getElementById('tgt6-target-acos')?.value) || null,
+      avg_clicks_per_order: parseFloat(document.getElementById('tgt6-avg-clicks')?.value)  || null,
+      country:              REPORT_COUNTRY || '',
     };
 
     // 显示确认区域
@@ -4513,15 +4516,18 @@ async function exportBulkFile(){
     const updatedCount = parseInt((data.log[0]||'').match(/共更新\s*(\d+)/)?.[1]) || 0;
     const lastMeta = window.MODE1_LAST_DATA || {};
     window._lastBulkExport = {
-      product_target:   lastMeta.product_target || '',
-      bulk_filename:    data.bulk_filename,
-      label_filename:   data.label_filename,
-      report_start:     lastMeta.report_start   || '',
-      report_end:       lastMeta.report_end     || '',
-      orders_threshold: ordersThresh,
-      updated_count:    updatedCount,
-      log_lines:        data.log     || [],
-      details:          data.details || [],    // 结构化明细，confirm 时写库
+      product_target:       lastMeta.product_target || '',
+      bulk_filename:        data.bulk_filename,
+      label_filename:       data.label_filename,
+      report_start:         lastMeta.report_start   || '',
+      report_end:           lastMeta.report_end     || '',
+      orders_threshold:     ordersThresh,
+      updated_count:        updatedCount,
+      log_lines:            data.log     || [],
+      details:              data.details || [],    // 结构化明细，confirm 时写库
+      target_acos:          parseFloat(document.getElementById('tgt-target-acos')?.value) || null,
+      avg_clicks_per_order: parseFloat(document.getElementById('tgt-avg-clicks')?.value)  || null,
+      country:              REPORT_COUNTRY || '',
     };
 
     // 显示确认区域，重置按钮状态
@@ -4581,7 +4587,8 @@ async function renderBidHistory(){
 
   let logs;
   try{
-    const r = await fetch('api/analysis/mode1/update-logs');
+    const qs = REPORT_COUNTRY ? `?country=${encodeURIComponent(REPORT_COUNTRY)}` : '';
+    const r = await fetch(`api/analysis/mode1/update-logs${qs}`);
     logs = await r.json();
   }catch(e){
     el.innerHTML = `<div style="padding:32px;text-align:center;color:#e53e3e;font-size:13px">加载失败：${e.message}</div>`;
@@ -4596,16 +4603,20 @@ async function renderBidHistory(){
   const pct = v => v==null ? '—' : (v*100).toFixed(0)+'%';
   const usd = v => v==null ? '—' : '$'+Number(v).toFixed(4);
 
-  let html = '<div style="margin-top:12px"><div style="border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;font-size:12px"><div style="display:grid;grid-template-columns:2fr 1fr 1fr 2fr 1fr 1fr"><div class="tgt-gh">确认时间</div><div class="tgt-gh">产品</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">更新条数</div><div class="tgt-gh">报告区间</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">订单阈值</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">明细</div>';
+  let html = '<div style="margin-top:12px"><div style="border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;font-size:12px"><div style="display:grid;grid-template-columns:2fr 1fr 1fr 2fr 1fr 1fr 1fr 1fr"><div class="tgt-gh">确认时间</div><div class="tgt-gh">产品</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">更新条数</div><div class="tgt-gh">报告区间</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">订单阈值</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">目标ACoS</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">出单点击数</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">明细</div>';
 
   logs.forEach((log, i) => {
     const range = log.report_start && log.report_end
       ? `${log.report_start} ~ ${log.report_end}` : '—';
+    const tacos = log.target_acos != null ? log.target_acos + '%' : '—';
+    const aclk  = log.avg_clicks_per_order != null ? log.avg_clicks_per_order : '—';
     html += `<div class="tgt-gd">${log.confirmed_at}</div>`
           + `<div class="tgt-gd" style="font-weight:600">${log.product_target||'—'}</div>`
           + `<div class="tgt-gd" style="justify-content:center;display:flex;align-items:center">${log.updated_count}</div>`
           + `<div class="tgt-gd" style="font-size:11px;color:#6b7280">${range}</div>`
           + `<div class="tgt-gd" style="justify-content:center;display:flex;align-items:center;color:#6b7280">${log.orders_threshold}</div>`
+          + `<div class="tgt-gd" style="justify-content:center;display:flex;align-items:center;color:#1d4ed8">${tacos}</div>`
+          + `<div class="tgt-gd" style="justify-content:center;display:flex;align-items:center;color:#6b7280">${aclk}</div>`
           + `<div class="tgt-gd" style="justify-content:center;display:flex;align-items:center"><button onclick="toggleBidDetail(${log.id})" style="padding:3px 10px;font-size:11px;border:1px solid #d1d5db;border-radius:5px;background:#fff;cursor:pointer;color:#374151" id="hist-btn-${log.id}">展开</button></div>`
           + `<div id="hist-detail-${log.id}" style="display:none;grid-column:1/-1;padding:0"><div id="hist-detail-inner-${log.id}" style="padding:12px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:11px">加载中...</div></div>`;
   });

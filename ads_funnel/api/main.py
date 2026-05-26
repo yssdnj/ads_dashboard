@@ -479,15 +479,20 @@ async def api_mode1_confirm_update(body: dict):
                orders_threshold, updated_count, log_lines
     """
     try:
+        ta = body.get('target_acos')
+        ac = body.get('avg_clicks_per_order')
         log_id = db.save_bid_update_log(
-            product_target   = body.get('product_target', ''),
-            bulk_filename    = body.get('bulk_filename',  ''),
-            label_filename   = body.get('label_filename', ''),
-            report_start     = body.get('report_start',  ''),
-            report_end       = body.get('report_end',    ''),
-            orders_threshold = int(body.get('orders_threshold', 10)),
-            updated_count    = int(body.get('updated_count', 0)),
-            log_lines        = body.get('log_lines', []),
+            product_target       = body.get('product_target', ''),
+            bulk_filename        = body.get('bulk_filename',  ''),
+            label_filename       = body.get('label_filename', ''),
+            report_start         = body.get('report_start',  ''),
+            report_end           = body.get('report_end',    ''),
+            orders_threshold     = int(body.get('orders_threshold', 10)),
+            updated_count        = int(body.get('updated_count', 0)),
+            log_lines            = body.get('log_lines', []),
+            target_acos          = float(ta) if ta is not None else None,
+            avg_clicks_per_order = float(ac) if ac is not None else None,
+            country              = body.get('country', ''),
         )
         db.save_bid_update_details(log_id, body.get('details', []))
     except Exception as e:
@@ -497,9 +502,9 @@ async def api_mode1_confirm_update(body: dict):
 
 
 @app.get('/api/analysis/mode1/update-logs')
-def api_mode1_update_logs(limit: int = 100):
-    """返回竞价更新历史记录列表（不含明细）。"""
-    return db.list_bid_update_logs(limit=limit)
+def api_mode1_update_logs(limit: int = 100, country: str = ''):
+    """返回竞价更新历史记录列表（不含明细）。country 非空时只返回该国家记录。"""
+    return db.list_bid_update_logs(limit=limit, country=country)
 
 
 @app.get('/api/analysis/mode1/update-logs/{log_id}/details')
