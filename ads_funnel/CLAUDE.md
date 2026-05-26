@@ -14,10 +14,12 @@ ads_funnel/
 ├── template.html      # 报告 HTML 模板（含所有 JS/CSS）
 ├── CLAUDE.md          # 本文件
 ├── api/
-│   ├── main.py        # FastAPI 路由
-│   ├── db.py          # SQLite 操作层
-│   ├── gen_data.py    # Excel DataFrame → 结构化 dict
-│   ├── export.py      # HTML / CSV 导出
+│   ├── main.py               # FastAPI 路由
+│   ├── db.py                 # MySQL 操作层（SQLAlchemy + PyMySQL）
+│   ├── gen_data.py           # Excel DataFrame → 结构化 dict
+│   ├── export.py             # HTML / CSV 导出
+│   ├── targeting_analysis.py # Mode 1 竞价分析逻辑
+│   ├── bulk_update.py        # Bulk 文件竞价写回
 │   └── __init__.py
 └── frontend/
     └── index.html     # Web UI（报告列表 + 导入）
@@ -27,28 +29,57 @@ ads_funnel/
 
 ```bash
 python start.py
-# 自动安装依赖，启动服务，打开浏览器 → http://localhost:8000
+# 自动安装依赖，启动服务，打开浏览器 → http://127.0.0.1:5001
 ```
 
-或手动启动：
+或手动启动（需在 ads_funnel/ 目录下执行）：
 ```bash
 pip install -r requirements.txt
-uvicorn api.main:app --reload --host 127.0.0.1 --port 8000
+uvicorn api.main:app --reload --host 0.0.0.0 --port 5001
 ```
 
 ## API 路由
 
+**报告管理**
+
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/` | Web UI 首页 |
-| GET | `/dashboard?id=<n>` | 报告详情页（服务端渲染） |
 | GET | `/api/reports` | 报告列表 |
+| GET | `/api/reports/{id}` | 报告详情 |
 | POST | `/api/import` | 上传 Excel，解析入库 |
 | DELETE | `/api/reports/{id}` | 删除报告 |
 | GET | `/api/reports/{id}/export/html` | 导出离线 HTML |
 | GET | `/api/reports/{id}/export/json` | 导出 JSON 数据包 |
 | GET | `/api/reports/{id}/export/csv` | 导出 CSV |
+
+**配置**
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
 | GET/POST | `/api/config/acos-targets` | ACoS 目标配置 |
+| GET/POST | `/api/config/avg-clicks` | 平均出单点击数配置 |
+
+**Mode 1 竞价分析**
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/analysis/mode1/import-data` | 上传投放报告/推广商品报告入库 |
+| GET | `/api/analysis/mode1/data-stats` | 查询数据库中已有数据的时间范围 |
+| POST | `/api/analysis/mode1` | 3 轮竞价分析 |
+| POST | `/api/analysis/mode1/bid-optimize-6r` | 6 轮竞价分析 |
+| POST | `/api/analysis/mode1/export-bulk` | 将分析结果写回 Bulk 文件 |
+| POST | `/api/analysis/mode1/confirm-update` | 确认更新，写入 bid_update_log |
+| GET | `/api/analysis/mode1/update-logs` | 查询竞价更新历史 |
+| GET | `/api/analysis/mode1/update-logs/{id}/details` | 查询某次更新明细 |
+
+**工具**
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/health` | 健康检查 |
+| POST | `/api/db/query` | 直接执行 SQL 查询（调试用） |
+| GET | `/api/db/schema` | 查询数据库表结构 |
 
 ## 数据库结构（MySQL）
 
@@ -73,7 +104,7 @@ POST /api/import
   ↓ 读取上传的两个 Excel（camp_file + port_file）
   ↓ api/gen_data.py: process(df_c, df_p) → dict
   ↓ api/db.py: save_report(...)
-  ↓ SQLite ads_funnel.db
+  ↓ MySQL（db_config.json 中配置连接信息）
 ```
 
 ## 报告渲染流程
