@@ -468,7 +468,7 @@ async def api_mode1_export_bulk(
     pt_part      = f'_{product_target}' if product_target else ''
 
     bulk_filename  = f'bulk{country_part}{pt_part}_{today}_updated.xlsx'
-    label_filename = f'targeting_labels{pt_part}_{report_start}_{report_end}_updated.csv'
+    label_filename = f'targeting_labels{country_part}{pt_part}_{report_start}_{report_end}_updated.csv'
 
     return {
         'bulk_b64':       base64.b64encode(bulk_out_bytes).decode('ascii'),
