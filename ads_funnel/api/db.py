@@ -517,9 +517,10 @@ def _week_start(date: pd.Timestamp) -> pd.Timestamp:
     return (date - pd.Timedelta(days=days_since_sunday)).normalize()
 
 
-def get_tar_ap_for_analysis(n_weeks: int = 6) -> tuple:
+def get_tar_ap_for_analysis(n_weeks: int = 6, country_values: set | None = None) -> tuple:
     """
     从 raw_tar / raw_ap 读取最近 n_weeks 个完整日历周（周日开始）的数据。
+    country_values 不为 None 时按 Country / 国家/地区 列过滤。
     返回 (tar_df, ap_df, week_sundays) 或 (None, None, []) 若数据不足。
     """
     engine = get_engine()
@@ -532,6 +533,18 @@ def get_tar_ap_for_analysis(n_weeks: int = 6) -> tuple:
     ap_df  = pd.read_sql('SELECT * FROM `raw_ap`',  engine)
     if tar_df.empty or ap_df.empty:
         return None, None, []
+
+    if country_values:
+        for col in ('Country', '国家/地区'):
+            if col in tar_df.columns:
+                tar_df = tar_df[tar_df[col].isin(country_values)].copy()
+                break
+        for col in ('Country', '国家/地区'):
+            if col in ap_df.columns:
+                ap_df = ap_df[ap_df[col].isin(country_values)].copy()
+                break
+        if tar_df.empty or ap_df.empty:
+            return None, None, []
 
     tar_df['Date'] = pd.to_datetime(tar_df['Date'])
     ap_df['日期']  = pd.to_datetime(ap_df['日期'])

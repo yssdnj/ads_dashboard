@@ -41,16 +41,30 @@ _COUNTRY_ALIASES: dict[str, set[str]] = {
     '西班牙': {'Spain', 'ES', '西班牙'},
 }
 
+# 反向查找：任意别名（DE / Germany / 德国）→ 该国家的完整别名集合
+_COUNTRY_REVERSE: dict[str, set[str]] = {}
+for _cn, _vals in _COUNTRY_ALIASES.items():
+    for _v in _vals:
+        _COUNTRY_REVERSE[_v] = _vals
+
+
+def _resolve_country(country: str) -> set[str] | None:
+    """将任意国家表示（中文/英文/ISO 码）转为完整别名集合，匹配失败返回 None。"""
+    c = country.strip()
+    if not c:
+        return None
+    return _COUNTRY_ALIASES.get(c) or _COUNTRY_REVERSE.get(c)
+
 
 def _check_file_country(df: pd.DataFrame, report_country: str, label: str):
-    """校验 DataFrame 的 Country / 国家/地区 列是否与 report_country（中文）一致。"""
+    """校验 DataFrame 的 Country / 国家/地区 列是否与 report_country 一致。"""
     col = next(
         (c for c in df.columns if c.strip() in ('Country', '国家/地区')),
         None,
     )
     if col is None:
         return
-    aliases = _COUNTRY_ALIASES.get(report_country, set())
+    aliases = _resolve_country(report_country)
     if not aliases:
         return
     file_countries = set(str(v) for v in df[col].dropna().unique())
@@ -258,7 +272,7 @@ async def api_mode1_import_data(
         raise HTTPException(500, f'入库失败: {e}')
 
     # 入库后返回当前库内数据范围（按国家过滤）
-    country_values = _COUNTRY_ALIASES.get(report_country.strip())
+    country_values = _resolve_country(report_country)
     db_stats = db.get_tar_ap_stats(country_values)
     return {
         'ok':       True,
@@ -270,7 +284,7 @@ async def api_mode1_import_data(
 @app.get('/api/analysis/mode1/data-stats')
 def api_mode1_data_stats(country: str = ''):
     """返回库内 raw_tar / raw_ap 的数据覆盖范围（按国家过滤）。"""
-    country_values = _COUNTRY_ALIASES.get(country.strip()) if country.strip() else None
+    country_values = _resolve_country(country)
     return db.get_tar_ap_stats(country_values)
 
 
@@ -282,6 +296,7 @@ async def api_mode1_analysis(
     target_acos:          float = Form(...),        # 百分比值，如 20.0 表示 20%
     avg_clicks_per_order: float = Form(...),
     core_sales_share:     float = Form(0.2),
+    report_country:       str   = Form(''),
 ):
     """
     Mode 1 多轮分析：从数据库读取最近 6 个日历周数据，
@@ -295,7 +310,8 @@ async def api_mode1_analysis(
     if not asins:
         raise HTTPException(400, f'产品目录中未找到 {product_target.split("_")[0]} 的 ASIN，请检查 product_catalog.xlsx')
 
-    tar_df, ap_df, week_sundays = db.get_tar_ap_for_analysis(n_weeks=6)
+    country_values = _resolve_country(report_country) if report_country else None
+    tar_df, ap_df, week_sundays = db.get_tar_ap_for_analysis(n_weeks=6, country_values=country_values)
     if tar_df is None:
         raise HTTPException(400, '数据库中暂无投放数据，请先通过「导入数据」上传报告文件')
     if len(week_sundays) < 1:
@@ -341,6 +357,7 @@ async def api_mode1_bid_optimize_6r(
     target_acos:          float = Form(...),        # 百分比值，如 20.0 表示 20%
     avg_clicks_per_order: float = Form(...),
     core_sales_share:     float = Form(0.2),
+    report_country:       str   = Form(''),
 ):
     """
     Mode 1 六轮分析：从数据库读取最近 6 个日历周数据，
@@ -354,7 +371,8 @@ async def api_mode1_bid_optimize_6r(
     if not asins:
         raise HTTPException(400, f'产品目录中未找到 {product_target.split("_")[0]} 的 ASIN，请检查 product_catalog.xlsx')
 
-    tar_df, ap_df, week_sundays = db.get_tar_ap_for_analysis(n_weeks=6)
+    country_values = _resolve_country(report_country) if report_country else None
+    tar_df, ap_df, week_sundays = db.get_tar_ap_for_analysis(n_weeks=6, country_values=country_values)
     if tar_df is None:
         raise HTTPException(400, '数据库中暂无投放数据，请先通过「导入数据」上传报告文件')
     if len(week_sundays) < 1:

@@ -743,7 +743,7 @@ body.dark .drs-lbl{color:#64748b}
     <div style="display:flex;gap:8px;margin:10px 0 8px">
       <button class="ana-view-btn active" onclick="switchAnaView('funnel')" id="anabtn-funnel">漏斗分析</button>
       <button class="ana-view-btn" onclick="switchAnaView('recs')" id="anabtn-recs">建议清单</button>
-      <button class="ana-view-btn" onclick="switchAnaView('targeting')" id="anabtn-targeting">批量竞价优化</button>
+      <button class="ana-view-btn" onclick="switchAnaView('targeting')" id="anabtn-targeting" style="display:none">批量竞价优化</button>
       <button class="ana-view-btn" onclick="switchAnaView('targeting6')" id="anabtn-targeting6">批量竞价优化-6轮</button>
       <button class="ana-view-btn" onclick="switchAnaView('history')" id="anabtn-history">调价历史</button>
     </div>
@@ -762,12 +762,50 @@ body.dark .drs-lbl{color:#64748b}
   </div>
   <div class="tgt-module-body" id="tgt6-m1-body">
 
+  <!-- ── A. 导入数据 ── -->
+  <div class="tgt-card" style="margin-top:8px">
+    <div class="tgt-sec-hd">
+      <h3>① 导入数据</h3>
+      <div class="tgt-hint" id="tgt6-import-status">每周上传上一周的两份报告</div>
+    </div>
+    <div id="tgt6-db-stats-card" style="font-size:11px;color:var(--g6);margin-bottom:10px;padding:6px 10px;background:var(--g0);border-radius:6px;display:none"></div>
+    <div class="tgt-dz-grid">
+      <div class="tgt-dz" id="tgt6-dz-ap"
+           onclick="document.getElementById('tgt6-ap-file').click()"
+           ondragover="tgtDzOver(event,'tgt6-dz-ap')"
+           ondragleave="tgtDzLeave('tgt6-dz-ap')"
+           ondrop="tgtDzDrop6r(event,'ap')">
+        <div class="dz-icon">📄</div>
+        <div class="dz-label" id="tgt6-ap-label">Advertised Product Report</div>
+        <div class="dz-sub">推广商品报告（每日格式，含 日期 列）· 拖拽或点击上传 .xlsx</div>
+        <input type="file" id="tgt6-ap-file" accept=".xlsx,.xls" onchange="tgt6FileLoaded('ap',this)">
+      </div>
+      <div class="tgt-dz" id="tgt6-dz-tar"
+           onclick="document.getElementById('tgt6-tar-file').click()"
+           ondragover="tgtDzOver(event,'tgt6-dz-tar')"
+           ondragleave="tgtDzLeave('tgt6-dz-tar')"
+           ondrop="tgtDzDrop6r(event,'tar')">
+        <div class="dz-icon">📄</div>
+        <div class="dz-label" id="tgt6-tar-label">Targeting Report（每日）</div>
+        <div class="dz-sub">投放报告（每日格式，含 Date 列）· 拖拽或点击上传 .xlsx</div>
+        <input type="file" id="tgt6-tar-file" accept=".xlsx,.xls" onchange="tgt6FileLoaded('tar',this)">
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;margin-top:12px">
+      <button class="tgt-run-btn" id="tgt6-import-btn" onclick="importTarApData6r()"
+        style="padding:10px 24px;font-size:13px;margin-top:0">
+        ⬆ 导入数据库
+      </button>
+      <div id="tgt6-import-result" style="font-size:12px;color:var(--g6)"></div>
+    </div>
+  </div>
+
   <!-- 左右两栏：左=参数，右=六轮逻辑说明 -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;align-items:stretch">
 
     <!-- 左：运行参数 -->
     <div class="tgt-card" style="margin-top:0">
-      <div class="tgt-sec-hd"><h3>运行分析</h3><div class="tgt-hint">从库中取最近 6 周数据，跑 R1~R6 六轮后投票</div></div>
+      <div class="tgt-sec-hd"><h3>② 运行分析</h3><div class="tgt-hint">从库中取最近 6 周数据，跑 R1~R6 六轮后投票</div></div>
       <div class="tgt-pg" style="margin-bottom:14px">
         <label>目标 ACoS <span class="lh">Target ACoS</span></label>
         <div class="tgt-acos-row">
@@ -844,7 +882,6 @@ body.dark .drs-lbl{color:#64748b}
           <div style="font-size:12px;font-weight:700;color:#14532d;margin-bottom:4px">🌱 向好趋势排除</div>
           <div style="font-size:12px;color:#166534;line-height:1.7">
             命中=3 且仅 R4~R6 → <strong>不降价</strong>（近3周已好转）<br>
-            命中=4 且仅 R3~R6 → <strong>不降价</strong>（近2周已好转）<br>
             指标来自 R6 · 标签来自 R1 · 降幅取最保守值
           </div>
         </div>
@@ -895,31 +932,117 @@ body.dark .drs-lbl{color:#64748b}
     <div class="tgt-module-chev" id="tgt6-m3-chev">▶</div>
   </div>
   <div class="tgt-module-body closed" id="tgt6-m3-body">
-    <div class="tgt-card" style="margin-top:8px">
-      <div class="tgt-info-section">
-        <div class="tgt-info-hd">📌 筛选条件（与三轮版相同）</div>
-        <div class="tgt-info-row">
-          <span class="ir-label">条件 ①  标签</span>
-          <span>包含 <span class="tgt-info-tag y">⚠️ 高ACoS出单</span> 或 <span class="tgt-info-tag r">🔴 高点击不出单</span></span>
-        </div>
-        <div class="tgt-info-row" style="align-items:center">
-          <span class="ir-label">条件 ②  订单数</span>
-          <span>orders &lt; </span>
-          <input id="tgt6-orders-thresh" type="number" min="1" max="999" value="10"
-            style="width:64px;padding:4px 8px;font-size:13px;font-weight:700;border:1.5px solid var(--tg);border-radius:6px;background:var(--tgbg);color:var(--tgd);text-align:center;outline:none">
-        </div>
+  <div class="tgt-card" style="margin-top:8px">
+
+    <!-- 筛选条件 -->
+    <div class="tgt-info-section">
+      <div class="tgt-info-hd">📌 筛选条件</div>
+      <div class="tgt-info-row">
+        <span class="ir-label">条件 ①  标签</span>
+        <span>包含 <span class="tgt-info-tag y">⚠️ 高ACoS出单</span> 或 <span class="tgt-info-tag r">🔴 高点击不出单</span></span>
       </div>
-      <div class="tgt-info-section" style="margin-top:10px">
-        <div class="tgt-info-hd">📂 上传 Bulk 文件</div>
-        <input type="file" id="tgt6-bulk-file" accept=".xlsx"
-          style="margin-top:6px;font-size:13px">
+      <div class="tgt-info-row" style="align-items:center">
+        <span class="ir-label">条件 ②  订单数</span>
+        <span>orders &lt; </span>
+        <input id="tgt6-orders-thresh" type="number" min="1" max="999" value="10"
+          style="width:64px;padding:4px 8px;font-size:13px;font-weight:700;border:1.5px solid var(--tg);border-radius:6px;background:var(--tgbg);color:var(--tgd);text-align:center;outline:none">
+        <span style="color:var(--g4);font-size:11px;margin-left:4px">（默认 10，可修改）</span>
       </div>
-      <button class="tgt-run-btn" id="tgt6-export-btn" onclick="exportBulk6r()" style="margin-top:10px">
-        📥 生成调价 Bulk
-      </button>
-      <div id="tgt6-export-status" style="font-size:12px;color:var(--g6);margin-top:6px;min-height:18px"></div>
+      <div style="font-size:11px;color:var(--g4);margin-top:6px">两个条件须同时满足，核心流量（出单 Top10 或销售占比 ≥ 20%）即使命中也会被标记为 🔒 保护，不调价。</div>
     </div>
-  </div>
+
+    <!-- 调价逻辑 -->
+    <div class="tgt-info-section">
+      <div class="tgt-info-hd">📐 调价逻辑（来自分析结果 adj_pct 字段）</div>
+      <div class="tgt-info-row"><span class="ir-label"><span class="tgt-info-tag y">⚠️ 高ACoS出单</span></span><span style="color:var(--g4)">（非核心流量）</span></div>
+      <div style="padding-left:128px;margin-bottom:6px">
+        <div class="tgt-info-row" style="margin-bottom:3px"><span style="min-width:160px;color:var(--g6)">ACoS 超目标 ≤ 20%</span><span class="tgt-info-tag r">降价 −5%</span></div>
+        <div class="tgt-info-row" style="margin-bottom:3px"><span style="min-width:160px;color:var(--g6)">ACoS 超目标 20%–50%</span><span class="tgt-info-tag r">降价 −10%</span></div>
+        <div class="tgt-info-row" style="margin-bottom:3px"><span style="min-width:160px;color:var(--g6)">ACoS 超目标 &gt; 50%</span><span class="tgt-info-tag r">降价 −15%</span></div>
+      </div>
+      <div class="tgt-info-row"><span class="ir-label"><span class="tgt-info-tag r">🔴 高点击不出单</span></span><span style="color:var(--g4)">（非核心流量）</span><span class="tgt-info-tag r" style="margin-left:8px">固定降价 −20%</span></div>
+      <div class="tgt-info-row" style="margin-top:4px"><span class="ir-label"><span class="tgt-info-tag b">🔒 核心流量</span></span><span>出单 Top10 或销售占比 ≥ 20%，<b>保护，不调价</b></span></div>
+    </div>
+
+    <!-- 输出文件 -->
+    <div class="tgt-info-section">
+      <div class="tgt-info-hd">📤 输出文件（共 2 个）</div>
+      <div class="tgt-info-row" style="align-items:flex-start">
+        <span class="ir-label"><span class="tgt-info-tag b">① Bulk xlsx</span></span>
+        <span>在原 Bulk 文件基础上更新 Bid 列为新竞价（黄色高亮），Operation 列 = Update，已自动删除 RAS Search Term Report 工作表</span>
+      </div>
+      <div class="tgt-info-row" style="align-items:flex-start;margin-top:4px">
+        <span class="ir-label"><span class="tgt-info-tag g">② targeting CSV</span></span>
+        <span>原分析结果全部字段（同"导出分析结果 CSV"），末尾追加三列：<b>原竞价 / 新竞价 / 操作日期</b>（仅被处理行填写，其余行留空）</span>
+      </div>
+    </div>
+
+    <!-- 输入文件 & 执行 -->
+    <div class="tgt-info-section" style="padding-bottom:0">
+      <div class="tgt-info-hd">📥 输入文件 &amp; 执行</div>
+      <div style="font-size:12px;color:var(--g6);margin-bottom:10px">
+        上传从亚马逊后台下载的 Bulk 文件，文件名须以 <b>Bulk</b> 开头（大小写不敏感），格式 .xlsx。<br>
+        请确保已先完成模块一的分析（分析结果保存在服务端，刷新页面后需重新分析）。
+      </div>
+      <!-- Bulk 文件拖拽区 -->
+      <div class="tgt-bulk-dz" id="tgt6-bulk-dz"
+           onclick="document.getElementById('tgt6-bulk-file').click()"
+           ondragover="bulkDzOver6r(event)" ondragleave="bulkDzLeave6r()" ondrop="bulkDzDrop6r(event)">
+        <div style="font-size:22px;margin-bottom:4px">📦</div>
+        <div class="dz-label" id="tgt6-bulk-dz-label">Bulk 文件（BulkSheetExport*.xlsx）</div>
+        <div class="dz-sub">文件名须以 Bulk 开头（大小写不敏感） · 拖拽或点击上传</div>
+        <input type="file" id="tgt6-bulk-file" accept=".xlsx" onchange="bulkFileLoaded6r(this)">
+      </div>
+
+      <div style="display:flex;align-items:center;gap:16px;margin-top:14px;flex-wrap:wrap">
+        <button class="tgt-bulk-btn" id="tgt6-export-btn" onclick="exportBulk6r()" style="padding:11px 28px;font-size:14px">
+          ⬇ 生成更新文件
+        </button>
+        <span id="tgt6-export-status" style="font-size:12px;color:var(--g6)"></span>
+      </div>
+
+      <!-- Bulk xlsx 下载卡片 -->
+      <div id="tgt6-bulk-dl" style="display:none;margin-top:12px;padding:10px 14px;background:var(--gnbg);border:1px solid var(--gn);border-radius:8px;align-items:center;gap:10px">
+        <span style="font-size:18px">📊</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:var(--gn)">Bulk 文件已更新，点击下载</div>
+          <div id="tgt6-bulk-dl-name" style="font-size:11px;color:var(--g6);word-break:break-all;margin-top:2px"></div>
+        </div>
+        <a id="tgt6-bulk-dl-link" href="#" download
+           style="padding:8px 16px;background:var(--gn);color:#fff;border-radius:7px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0">
+          ⬇ 下载
+        </a>
+      </div>
+      <!-- targeting_labels CSV 下载卡片 -->
+      <div id="tgt6-label-dl" style="display:none;margin-top:8px;padding:10px 14px;background:var(--gnbg);border:1px solid var(--gn);border-radius:8px;align-items:center;gap:10px">
+        <span style="font-size:18px">📋</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:var(--gn)">targeting_labels 已更新（含 原竞价/新竞价/操作日期），点击下载</div>
+          <div id="tgt6-label-dl-name" style="font-size:11px;color:var(--g6);word-break:break-all;margin-top:2px"></div>
+        </div>
+        <a id="tgt6-label-dl-link" href="#" download
+           style="padding:8px 16px;background:var(--gn);color:#fff;border-radius:7px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;flex-shrink:0">
+          ⬇ 下载
+        </a>
+      </div>
+      <div id="tgt6-bulk-log" style="display:none;margin-top:10px;background:var(--g0);border-radius:6px;padding:10px 14px;font-size:11px;color:var(--g7);line-height:1.7;max-height:200px;overflow-y:auto;white-space:pre-wrap;font-family:monospace"></div>
+
+      <!-- 确认更新亚马逊广告 -->
+      <div id="tgt6-confirm-section" style="display:none;margin-top:14px;padding:14px 16px;background:var(--ywbg);border:1px solid #f59e0b;border-radius:8px">
+        <div style="font-size:13px;font-weight:700;color:var(--yw);margin-bottom:5px">📤 确认已上传到亚马逊后台？</div>
+        <div style="font-size:12px;color:var(--g6);margin-bottom:10px">将 Bulk 文件成功上传到亚马逊广告后台后，点击下方按钮记录本次调价。</div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <button id="tgt6-confirm-btn" onclick="confirmBidUpdate6r()"
+            style="padding:9px 22px;background:#f59e0b;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:700">
+            ✅ 确认已上传亚马逊，记录本次调价
+          </button>
+          <span id="tgt6-confirm-status" style="font-size:12px;color:var(--g6)"></span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.tgt-card -->
+  </div><!-- /#tgt6-m3-body -->
 
 </div><!-- /.tgt-wrap -->
     </div><!-- /#ana-targeting6 -->
@@ -3017,14 +3140,17 @@ async function importTarApData(){
 }
 
 function _renderDbStats(stats){
-  const el = document.getElementById('tgt-db-stats');
-  if(!stats){ el.style.display='none'; return; }
-  const t = stats.raw_tar || {};
-  const a = stats.raw_ap  || {};
-  if(!t.count && !a.count){ el.style.display='none'; return; }
-  el.style.display = '';
-  el.innerHTML = `📦 库内数据：Targeting ${t.count||0} 行（${t.min_date||'—'} ~ ${t.max_date||'—'}）`
-    + `　· AP ${a.count||0} 行（${a.min_date||'—'} ~ ${a.max_date||'—'}）`;
+  ['tgt-db-stats','tgt6-db-stats-card'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    if(!stats){ el.style.display='none'; return; }
+    const t = stats.raw_tar || {};
+    const a = stats.raw_ap  || {};
+    if(!t.count && !a.count){ el.style.display='none'; return; }
+    el.style.display = '';
+    el.innerHTML = `📦 库内数据（${REPORT_COUNTRY}）：Targeting ${t.count||0} 行（${t.min_date||'—'} ~ ${t.max_date||'—'}）`
+      + `　· AP ${a.count||0} 行（${a.min_date||'—'} ~ ${a.max_date||'—'}）`;
+  });
 }
 
 async function runMode1Analysis(){
@@ -3128,20 +3254,75 @@ function tgt6ToggleModule(n){
 }
 
 function initTgt6Products(){
-  // 6轮 tab 使用文本输入，无需下拉初始化
+  fetch('api/analysis/mode1/data-stats?country='+encodeURIComponent(REPORT_COUNTRY))
+    .then(r=>r.json()).then(s=>_renderDbStats(s)).catch(()=>{});
 }
 
 function tgt6AutoFill(val){
-  // 产品代码输入时同步 target-acos（如 RAW 有配置）
-  if(!val || !window.RAW || !RAW.acos_targets) return;
-  const target = RAW.acos_targets[val];
-  if(target != null){
-    const inp = document.getElementById('tgt6-target-acos');
+  if(!val) return;
+  if(acosTargets && acosTargets[val] != null){
+    const target = acosTargets[val];
+    const inp    = document.getElementById('tgt6-target-acos');
     const slider = document.getElementById('tgt6-acos-slider');
-    const display = document.getElementById('tgt6-acos-val');
-    if(inp){ inp.value = target; }
-    if(slider){ slider.value = target; }
-    if(display){ display.textContent = target + '%'; }
+    const display= document.getElementById('tgt6-acos-val');
+    if(inp)    inp.value = target;
+    if(slider) slider.value = target;
+    if(display)display.textContent = target + '%';
+  }
+}
+
+function tgt6FileLoaded(type, inp){
+  const label = document.getElementById(`tgt6-${type}-label`);
+  const dz    = document.getElementById(`tgt6-dz-${type}`);
+  if(inp.files[0]){
+    if(label) label.textContent = inp.files[0].name;
+    if(dz)    dz.classList.add('ready');
+  }
+}
+
+function tgtDzDrop6r(e, type){
+  e.preventDefault();
+  const dz = document.getElementById(`tgt6-dz-${type}`);
+  if(dz) dz.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if(!f) return;
+  const inp = document.getElementById(`tgt6-${type}-file`);
+  if(!inp) return;
+  const dt = new DataTransfer();
+  dt.items.add(f);
+  inp.files = dt.files;
+  tgt6FileLoaded(type, inp);
+}
+
+async function importTarApData6r(){
+  const apFile  = document.getElementById('tgt6-ap-file').files[0];
+  const tarFile = document.getElementById('tgt6-tar-file').files[0];
+  if(!apFile||!tarFile) return alert('请同时上传推广商品报告和投放报告');
+
+  const btn = document.getElementById('tgt6-import-btn');
+  const rst = document.getElementById('tgt6-import-result');
+  btn.disabled = true;
+  rst.textContent = '⏳ 入库中...';
+  rst.style.color = 'var(--g6)';
+
+  const fd = new FormData();
+  fd.append('ap_file',  apFile);
+  fd.append('tar_file', tarFile);
+  fd.append('report_country', REPORT_COUNTRY);
+
+  try{
+    const resp = await fetch('api/analysis/mode1/import-data', {method:'POST', body:fd});
+    if(!resp.ok){ const e=await resp.json(); throw new Error(e.detail||'入库失败'); }
+    const d = await resp.json();
+    const imp = d.imported;
+    rst.style.color = 'var(--gn)';
+    rst.textContent = `✅ tar ${imp.tar_rows} 行（${imp.tar_min}~${imp.tar_max}）· ap ${imp.ap_rows} 行`;
+    _renderDbStats(d.db_stats);
+  }catch(e){
+    rst.style.color = 'var(--rd)';
+    rst.textContent = '❌ ' + e.message;
+  }finally{
+    btn.disabled = false;
   }
 }
 
@@ -3178,6 +3359,7 @@ async function runMode1Analysis6r(){
   fd.append('product_target',       product);
   fd.append('target_acos',          acos);
   fd.append('avg_clicks_per_order', cpo);
+  fd.append('report_country',       REPORT_COUNTRY);
 
   try{
     if(prog) prog.style.width = '60%';
@@ -3195,6 +3377,8 @@ async function runMode1Analysis6r(){
     const m2chev = document.getElementById('tgt6-m2-chev');
     if(m2chev) m2chev.textContent = '▼';
 
+    window._lastMode1Data6r = d;
+
     ['R1','R2','R3','R4','R5','R6'].forEach(r => _renderRoundPanel6r(r, d[r]));
     // consensus：指标来自 R6（最全窗口），rows 用 consensus 投票结果
     const consensus6rData = {
@@ -3207,6 +3391,17 @@ async function runMode1Analysis6r(){
       report_end:     d.report_end,
     };
     _renderRoundPanel6r('consensus', consensus6rData);
+
+    // 更新 R1-R6 tab 标签的实际时间范围
+    ['R1','R2','R3','R4','R5','R6'].forEach(key => {
+      const rd = d[key];
+      if(!rd?.summary?.date_range) return;
+      const range = rd.summary.date_range.replace(' → ', ' ~ ');
+      const sub = document.querySelector(`#tgt6-rtab-${key} .rt-sub`);
+      if(sub) sub.textContent = range;
+    });
+
+    _renderRoundCsvBtns6r(d);
 
     const cnt = document.getElementById('tgt6-rtab-consensus-cnt');
     if(cnt) cnt.textContent = d.consensus?.count ?? '';
@@ -3224,44 +3419,111 @@ async function runMode1Analysis6r(){
   }
 }
 
+function bulkFileLoaded6r(input){
+  const file = input.files[0]; if(!file) return;
+  const dz = document.getElementById('tgt6-bulk-dz');
+  const lb = document.getElementById('tgt6-bulk-dz-label');
+  if(!_validateBulkFile(file)){ return; }
+  dz.classList.remove('err'); dz.classList.add('loaded');
+  lb.textContent = '✓ ' + file.name;
+}
+function bulkDzOver6r(e){ e.preventDefault(); document.getElementById('tgt6-bulk-dz').classList.add('over'); }
+function bulkDzLeave6r(){ document.getElementById('tgt6-bulk-dz').classList.remove('over'); }
+function bulkDzDrop6r(e){
+  e.preventDefault();
+  bulkDzLeave6r();
+  const file = e.dataTransfer.files[0]; if(!file) return;
+  const dt = new DataTransfer(); dt.items.add(file);
+  const input = document.getElementById('tgt6-bulk-file');
+  input.files = dt.files;
+  bulkFileLoaded6r(input);
+}
+
 async function exportBulk6r(){
-  const cacheId   = window._tgt6CacheId;
-  const bulkFile  = document.getElementById('tgt6-bulk-file')?.files[0];
-  const threshold = document.getElementById('tgt6-orders-thresh')?.value || '10';
-  const statusEl  = document.getElementById('tgt6-export-status');
-  const btn       = document.getElementById('tgt6-export-btn');
+  const cacheId       = window._tgt6CacheId;
+  const bulkFileEl    = document.getElementById('tgt6-bulk-file');
+  const ordersThresh  = parseInt(document.getElementById('tgt6-orders-thresh')?.value) || 10;
+  const statusEl      = document.getElementById('tgt6-export-status');
+  const logEl         = document.getElementById('tgt6-bulk-log');
+  const btn           = document.getElementById('tgt6-export-btn');
 
   if(!cacheId){ alert('请先执行六轮分析'); return; }
-  if(!bulkFile){ alert('请上传 Bulk 文件'); return; }
+  if(!bulkFileEl.files.length){ alert('请先上传 Bulk 文件（文件名须以 Bulk 开头，xlsx 格式）'); return; }
+  if(!_validateBulkFile(bulkFileEl.files[0])){ alert('文件名须以 Bulk 开头（大小写不敏感），请重新选择正确的文件。'); return; }
 
   btn.disabled = true;
-  statusEl.textContent = '⏳ 生成中…';
-
-  const fd = new FormData();
-  fd.append('bulk_file',        bulkFile);
-  fd.append('cache_id',         cacheId);
-  fd.append('orders_threshold', threshold);
+  statusEl.textContent = '⏳ 处理中...';
+  statusEl.style.color = 'var(--g6)';
+  logEl.style.display  = 'none';
+  document.getElementById('tgt6-bulk-dl').style.display       = 'none';
+  document.getElementById('tgt6-label-dl').style.display      = 'none';
+  document.getElementById('tgt6-confirm-section').style.display = 'none';
 
   try{
+    const fd = new FormData();
+    fd.append('bulk_file',        bulkFileEl.files[0]);
+    fd.append('cache_id',         cacheId);
+    fd.append('orders_threshold', ordersThresh);
+
     const resp = await fetch('api/analysis/mode1/export-bulk', {method:'POST', body:fd});
-    if(!resp.ok){ const e=await resp.json(); throw new Error(e.detail||'导出失败'); }
-    const d = await resp.json();
-
-    if(d.bulk_b64){
-      const a = document.createElement('a');
-      a.href     = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + d.bulk_b64;
-      a.download = d.bulk_filename || 'bulk_updated.xlsx';
-      a.click();
-    }
-    if(d.label_b64){
-      const a = document.createElement('a');
-      a.href     = 'data:text/csv;charset=utf-8;base64,' + d.label_b64;
-      a.download = d.label_filename || 'targeting_labels.csv';
-      a.click();
+    if(!resp.ok){
+      const text = await resp.text().catch(()=>'');
+      let detail = `HTTP ${resp.status}`;
+      try{ detail = JSON.parse(text).detail || detail; }catch(_){}
+      throw new Error(detail);
     }
 
+    const data = await resp.json();
+
+    // 显示日志
+    if(data.log && data.log.length){
+      logEl.textContent = data.log.join('\n');
+      logEl.style.display = '';
+      statusEl.textContent = '✅ ' + (data.log[0] || '完成');
+    } else {
+      statusEl.textContent = '✅ 完成';
+    }
     statusEl.style.color = 'var(--gn)';
-    statusEl.textContent = `✅ 已下载 Bulk 文件（${d.log||''}）`;
+
+    // Bulk xlsx 下载卡片（自动触发下载）
+    _showDlCard(
+      'tgt6-bulk-dl', 'tgt6-bulk-dl-link', 'tgt6-bulk-dl-name',
+      data.bulk_b64, data.bulk_filename,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+
+    // targeting_labels CSV 下载卡片（自动触发下载）
+    _showDlCard(
+      'tgt6-label-dl', 'tgt6-label-dl-link', 'tgt6-label-dl-name',
+      data.label_b64, data.label_filename,
+      'text/csv; charset=utf-8'
+    );
+
+    // 存储本次导出元数据，供「确认更新亚马逊广告」按钮使用
+    const updatedCount = parseInt((data.log[0]||'').match(/共更新\s*(\d+)/)?.[1]) || 0;
+    const lastMeta = window._lastMode1Data6r || {};
+    window._lastBulkExport6r = {
+      product_target:   lastMeta.product_target || '',
+      bulk_filename:    data.bulk_filename,
+      label_filename:   data.label_filename,
+      report_start:     lastMeta.report_start   || '',
+      report_end:       lastMeta.report_end     || '',
+      orders_threshold: ordersThresh,
+      updated_count:    updatedCount,
+      log_lines:        data.log     || [],
+      details:          data.details || [],
+    };
+
+    // 显示确认区域
+    const confirmSection = document.getElementById('tgt6-confirm-section');
+    const confirmBtn     = document.getElementById('tgt6-confirm-btn');
+    const confirmSt      = document.getElementById('tgt6-confirm-status');
+    confirmSection.style.display = '';
+    confirmBtn.disabled  = false;
+    confirmBtn.textContent = '✅ 确认已上传亚马逊，记录本次调价';
+    confirmSt.textContent  = '';
+    confirmSt.style.color  = 'var(--g6)';
+
   }catch(e){
     statusEl.style.color = 'var(--rd)';
     statusEl.textContent = '❌ ' + e.message;
@@ -3270,11 +3532,62 @@ async function exportBulk6r(){
   }
 }
 
+async function confirmBidUpdate6r(){
+  const meta = window._lastBulkExport6r;
+  if(!meta){ alert('无待确认的导出记录'); return; }
+
+  const btn = document.getElementById('tgt6-confirm-btn');
+  const st  = document.getElementById('tgt6-confirm-status');
+  btn.disabled   = true;
+  st.textContent = '⏳ 记录中...';
+  st.style.color = 'var(--g6)';
+
+  try{
+    const resp = await fetch('api/analysis/mode1/confirm-update', {
+      method:  'POST',
+      headers: {'Content-Type':'application/json'},
+      body:    JSON.stringify(meta),
+    });
+    if(!resp.ok){
+      const t = await resp.text().catch(()=>'');
+      let d = `HTTP ${resp.status}`;
+      try{ d = JSON.parse(t).detail || d; }catch(_){}
+      throw new Error(d);
+    }
+    btn.textContent = '✅ 已记录';
+    st.textContent  = '调价记录已保存到数据库';
+    st.style.color  = 'var(--gn)';
+    window._lastBulkExport6r = null;
+  }catch(e){
+    btn.disabled = false;
+    st.textContent = '❌ ' + e.message;
+    st.style.color = 'var(--rd)';
+  }
+}
+
 function switchRoundTab(key){
   ['R1','R2','R3','consensus'].forEach(k => {
     document.getElementById(`rtab-${k}`)?.classList.toggle('active', k === key);
     document.getElementById(`tgt-panel-${k}`)?.classList.toggle('active', k === key);
   });
+}
+
+// ── Consensus 导出用：命中轮次说明（全局，供两个导出函数复用）──────────────
+function _consensusHitReason(row){
+  const hrStr = row.hit_rounds || '';
+  const rounds = hrStr.split(',').map(r=>r.trim()).filter(Boolean);
+  const nums   = rounds.map(r=>parseInt(r.replace('R',''))).sort((a,b)=>a-b);
+  const n      = nums.length;
+  if(n===0) return row.reason||'';
+  let desc;
+  const hasR1   = nums.includes(1);
+  const isConsec= nums.every((v,i)=>i===0||v===nums[i-1]+1);
+  if(n>=5)              desc='长期持续异常，优先处理';
+  else if(hasR1&&isConsec&&n>=3) desc='近期持续异常，建议尽快处理';
+  else if(hasR1&&n>=3)  desc='近期复发，历史有前例';
+  else if(hasR1)        desc='近期出现，观察是否持续';
+  else                  desc='早期问题，近期已有改善迹象';
+  return `命中${n}轮 · ${desc}`;
 }
 
 function _renderRoundCsvBtns(data){
@@ -3328,7 +3641,7 @@ function exportRoundCSV(roundKey){
     ['action',        r=>r.action],
     ['adj_pct',       r=>r.adj_pct],
     ['adj_dollar',    r=>r.adj_dollar],
-    ['reason',        r=>r.reason],
+    ['reason',        r=>roundKey==='consensus'?_consensusHitReason(r):r.reason],
     ...(roundKey==='consensus'?[['hit_rounds',r=>r.hit_rounds??'']]:[]),
   ];
 
@@ -3343,6 +3656,81 @@ function exportRoundCSV(roundKey){
   const blob    = new Blob([csv],{type:'text/csv;charset=utf-8'});
   const url     = URL.createObjectURL(blob);
   const a       = document.createElement('a'); a.href=url; a.download=fname; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function _renderRoundCsvBtns6r(d){
+  const defs = [
+    { key:'R1',        label:'R1（1周）',  color:'#6366f1', isConsensus:false },
+    { key:'R2',        label:'R2（2周）',  color:'#0891b2', isConsensus:false },
+    { key:'R3',        label:'R3（3周）',  color:'#0f766e', isConsensus:false },
+    { key:'R4',        label:'R4（4周）',  color:'#16a34a', isConsensus:false },
+    { key:'R5',        label:'R5（5周）',  color:'#ca8a04', isConsensus:false },
+    { key:'R6',        label:'R6（全量）', color:'#ea580c', isConsensus:false },
+    { key:'consensus', label:'Consensus',  color:'#b45309', isConsensus:true  },
+  ];
+  defs.forEach(({key, label, color, isConsensus}) => {
+    const panel = document.getElementById(`tgt6-panel-${key}`);
+    if(!panel) return;
+    const rdata = isConsensus ? d.consensus : d[key];
+    const n  = rdata?.rows?.length ?? 0;
+    const wl = rdata?.week_label ? ` · ${rdata.week_label}` : '';
+    const bar = document.createElement('div');
+    bar.style.cssText = 'display:flex;align-items:center;justify-content:flex-end;padding:6px 0 2px;';
+    bar.innerHTML = `<button onclick="exportRoundCSV6r('${key}')"
+      style="padding:5px 14px;font-size:12px;font-weight:600;border:1.5px solid ${color};
+             border-radius:7px;background:#fff;color:${color};cursor:pointer">
+      ⬇ 导出 ${label}${wl}（${n} 条）
+    </button>`;
+    panel.insertBefore(bar, panel.firstChild);
+  });
+}
+
+function exportRoundCSV6r(roundKey){
+  const data = window._lastMode1Data6r;
+  if(!data) return alert('请先运行六轮分析');
+
+  const rdata = roundKey==='consensus' ? data.consensus : data[roundKey];
+  const rows  = rdata?.rows || [];
+  if(!rows.length) return alert('该轮无数据');
+
+  const COLS = [
+    ['Campaign Name', r=>r.campaign],
+    ['Ad Group Name', r=>r.ad_group],
+    ['Targeting',     r=>r.targeting],
+    ['Match Type',    r=>r.match_type],
+    ['impressions',   r=>r.impressions??''],
+    ['clicks',        r=>r.clicks],
+    ['orders',        r=>r.orders],
+    ['spend',         r=>r.spend],
+    ['sales',         r=>r.sales],
+    ['ACoS(%)',       r=>r.acos??''],
+    ['CVR(%)',        r=>r.cvr??''],
+    ['CPC($)',        r=>r.cpc??''],
+    ['销售占比(%)',   r=>r.sales_share??''],
+    ['花费占比(%)',   r=>r.spend_share??''],
+    ['label',         r=>r.label],
+    ['action',        r=>r.action],
+    ['adj_pct',       r=>r.adj_pct],
+    ['adj_dollar',    r=>r.adj_dollar],
+    ['reason',        r=>roundKey==='consensus'?_consensusHitReason(r):r.reason],
+    ...(roundKey==='consensus'?[
+      ['hit_rounds',     r=>r.hit_rounds??''],
+      ['hit_rounds_adj', r=>r.hit_rounds_adj??''],
+    ]:[]),
+  ];
+
+  const esc = v=>{ const s=String(v??''); return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:''+s; };
+  const header = COLS.map(([h])=>h).join(',');
+  const body   = rows.map(r=>COLS.map(([,fn])=>esc(fn(r))).join(',')).join('\n');
+  const csv    = '﻿' + header + '\n' + body;
+
+  const pt    = data.product_target||'';
+  const wl    = roundKey==='consensus' ? 'consensus' : (rdata.week_label||roundKey).replace(/\//g,'-');
+  const fname = `targeting_labels_${pt}_${wl}.csv`;
+  const blob  = new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url   = URL.createObjectURL(blob);
+  const a     = document.createElement('a'); a.href=url; a.download=fname; a.click();
   URL.revokeObjectURL(url);
 }
 
@@ -3579,7 +3967,10 @@ window.MODE1_CACHE_ID = '';
 function renderTargetingResult(data, targetId='tgt-panel-consensus', skipSideEffects=false){
   const el = document.getElementById(targetId);
   if(!el) return;
-  if(!data||!data.rows){el.innerHTML='';return;}
+  if(!data||!data.rows||data.rows.length===0){
+    el.innerHTML = data?.error ? `<div style="padding:16px;color:var(--rd);font-size:13px">⚠️ ${data.error}</div>` : '';
+    return;
+  }
 
   const roundKey = targetId.replace('tgt-panel-', '').replace('tgt6-panel-', '');
 
@@ -3645,6 +4036,120 @@ function renderTargetingResult(data, targetId='tgt-panel-consensus', skipSideEff
       ${m.sub?`<div class="ms">${m.sub}</div>`:''}
     </div>`).join('')}
   </div>`;
+
+  // ── 10. 入围广告活动命中明细（仅 consensus 面板）────────────────────────────
+  if(roundKey==='consensus'){
+    const _parseRounds = hrStr=>(hrStr||'').split(',').map(r=>r.trim()).filter(Boolean);
+    const _labelCls={'✅ 低ACoS出单':'g','⚠️ 高ACoS出单':'y','🔴 高点击不出单':'r','⚪ 低点击不出单':'gr','— 无点击':'gr'};
+
+    const _hitDesc = hrStr=>{
+      const nums=_parseRounds(hrStr).map(r=>parseInt(r.replace('R',''))).sort((a,b)=>a-b);
+      const hasR1=nums.includes(1), n=nums.length;
+      if(n===0) return '—';
+      if(n>=5) return '长期持续异常，优先处理';
+      if(hasR1){
+        const isConsec=nums.every((v,i)=>i===0||v===nums[i-1]+1);
+        if(isConsec&&n>=3) return '近期持续异常，建议尽快处理';
+        if(n>=3) return '近期复发，历史有前例';
+        return '近期出现，观察是否持续';
+      }
+      return '早期问题，近期已有改善迹象';
+    };
+
+    // 确定展示的轮次槽位（从数据推断：最少 R1~R3，最多 R1~R6）
+    const _allRounds=['R1','R2','R3','R4','R5','R6'];
+    const _maxRoundIdx=Math.max(
+      2,
+      ...rows.flatMap(r=>_parseRounds(r.hit_rounds||''))
+             .map(r=>_allRounds.indexOf(r))
+             .filter(i=>i>=0)
+    );
+    const _roundSlots=_allRounds.slice(0,_maxRoundIdx+1);
+    // 标签颜色（纯文本渲染）
+    const _labelColor={'✅ 低ACoS出单':'var(--gn)','⚠️ 高ACoS出单':'var(--yw)','🔴 高点击不出单':'var(--rd)','⚪ 低点击不出单':'var(--g6)','— 无点击':'var(--g6)'};
+    // 命中轮次列宽（每个徽章 28px = 26px宽 + 2px margin）
+    const _badgeColW=(_roundSlots.length*28+8)+'px';
+    // CSS Grid 列定义（Targeting 1.5fr，其余按内容比例）
+    const _gridCols=`1.5fr 0.45fr 0.85fr 0.4fr ${_badgeColW} 0.9fr 1fr`;
+    // header/data 共享样式：左右 padding 缩小为 4px，列间距由 column-gap:8px 统一控制
+    const _gh='background:var(--g0);color:var(--g6);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:7px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:2px solid var(--g2);';
+    const _gd='padding:6px 4px;border-bottom:1px solid var(--g1);display:flex;align-items:center;overflow:hidden;font-size:12px;';
+
+    const hitTree={};
+    rows.forEach(r=>{
+      const cat=r.category||'7_Other';
+      const port=r.portfolio||'(无组合)';
+      const camp=r.campaign||'(未知广告活动)';
+      if(!hitTree[cat]) hitTree[cat]={};
+      if(!hitTree[cat][port]) hitTree[cat][port]={};
+      if(!hitTree[cat][port][camp]) hitTree[cat][port][camp]=[];
+      hitTree[cat][port][camp].push(r);
+    });
+
+    html+=`<div class="tgt-sec-div">入围广告活动命中明细 <span style="font-weight:400;color:var(--g4)">· 默认折叠，点击展开</span></div>`;
+
+    if(rows.length===0){
+      html+=`<div class="tgt-card" style="color:var(--g4);text-align:center;padding:20px">暂无入围广告活动</div>`;
+    } else {
+      html+=`<div style="background:#fff;border:1px solid var(--g2);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)">`;
+
+      Object.entries(hitTree).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([cat,ports])=>{
+        const catTotal=Object.values(ports).reduce((s,camps)=>s+Object.values(camps).reduce((s2,rs)=>s2+rs.length,0),0);
+        html+=`<details style="border-top:1px solid var(--g1)">
+          <summary style="padding:11px 16px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;background:var(--g0);user-select:none">
+            <span style="font-size:12px;font-weight:700;color:var(--g9);flex:1">▶ ${cat}</span>
+            <span style="font-size:11px;color:var(--g6)">${catTotal} 个 targeting</span>
+          </summary>`;
+        Object.entries(ports).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([port,camps])=>{
+          const portTotal=Object.values(camps).reduce((s,rs)=>s+rs.length,0);
+          html+=`<details style="border-top:1px solid var(--g1)">
+            <summary style="padding:9px 16px 9px 30px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;background:#fff;user-select:none">
+              <span style="font-size:11px;font-weight:600;color:var(--g7);flex:1">📁 ${port}</span>
+              <span style="font-size:11px;color:var(--g6)">${portTotal} 个 targeting</span>
+            </summary>`;
+          Object.entries(camps).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([camp,campRows])=>{
+            html+=`<details style="border-top:1px solid var(--g1)">
+              <summary style="padding:8px 16px 8px 48px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;background:var(--g0);user-select:none">
+                <span style="font-size:11px;color:var(--g6);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${camp}">📣 ${trn(camp,56)}</span>
+                <span style="font-size:11px;color:var(--g6);flex-shrink:0">${campRows.length} 个 targeting</span>
+              </summary>
+              <div style="overflow-x:auto;padding-left:76px;background:#fff">
+                <div style="display:grid;grid-template-columns:${_gridCols};column-gap:8px;min-width:520px">
+                  <div style="${_gh}">Targeting</div>
+                  <div style="${_gh}">Match</div>
+                  <div style="${_gh}">标签</div>
+                  <div style="${_gh}justify-content:flex-end;display:flex;align-items:center">调价</div>
+                  <div style="${_gh}">命中轮次</div>
+                  <div style="${_gh}">各轮降幅</div>
+                  <div style="${_gh}">说明</div>
+                  ${campRows.map((r,_i)=>{
+                    const hitSet=new Set(_parseRounds(r.hit_rounds||''));
+                    const badges=_roundSlots.map(rn=>hitSet.has(rn)
+                      ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:18px;border-radius:3px;font-size:10px;font-weight:700;margin-right:2px;background:#dc2626;color:#fff">${rn}</span>`
+                      :`<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:18px;border-radius:3px;font-size:10px;font-weight:700;margin-right:2px;background:#f1f5f9;color:#94a3b8">—</span>`
+                    ).join('');
+                    const desc=_hitDesc(r.hit_rounds||'');
+                    const nb=_i===campRows.length-1?'border-bottom:none;':'';
+                    return `
+                      <div style="${_gd}font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${nb}" title="${r.targeting}">${trn(r.targeting,32)}</div>
+                      <div style="${_gd}color:var(--g6);${nb}">${r.match_type||''}</div>
+                      <div style="${_gd}overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:${_labelColor[r.label]||'var(--g6)'};${nb}">${r.label||''}</div>
+                      <div style="${_gd}justify-content:flex-end;font-family:monospace;font-weight:700;color:${r.adj_pct&&r.adj_pct.startsWith('-')?'var(--rd)':r.adj_pct&&r.adj_pct.startsWith('+')?'var(--gn)':'var(--g4)'};${nb}">${r.adj_pct}</div>
+                      <div style="${_gd}white-space:nowrap;${nb}">${badges}</div>
+                      <div style="${_gd}font-family:monospace;font-size:11px;color:var(--g5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${nb}" title="${r.hit_rounds_adj||''}">${r.hit_rounds_adj||''}</div>
+                      <div style="${_gd}color:var(--g6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${nb}">${desc}</div>`;
+                  }).join('')}
+                </div>
+              </div>
+            </details>`;
+          });
+          html+='</details>';
+        });
+        html+='</details>';
+      });
+      html+='</div>';
+    }
+  }
 
   // ── 3. 流量集中度 ──────────────────────────────────────────────────────────
   const sortedBySales = [...rows].sort((a,b)=>b.sales-a.sales);
@@ -3820,106 +4325,6 @@ function renderTargetingResult(data, targetId='tgt-panel-consensus', skipSideEff
     html+='</details>';
   });
   html+='</div>';
-
-  // ── 10. 入围广告活动命中明细（仅 consensus 面板）────────────────────────────
-  if(roundKey==='consensus'){
-    // 解析命中轮次字符串 → 数组，如 "R1,R2,R4" → ['R1','R2','R4']
-    const _parseRounds = hrStr=>(hrStr||'').split(',').map(r=>r.trim()).filter(Boolean);
-
-    // 轮次徽章样式
-    const _roundStyle = r=>({
-      'R1':'background:#ede9fe;color:#7c3aed',
-      'R2':'background:#e0f2fe;color:#0891b2',
-      'R3':'background:#ccfbf1;color:#0f766e',
-      'R4':'background:#dcfce7;color:#16a34a',
-      'R5':'background:#fef9c3;color:#ca8a04',
-      'R6':'background:#ffedd5;color:#ea580c',
-    }[r]||'background:#f1f5f9;color:#64748b');
-
-    // 规则推断说明（优先级从高到低）
-    const _hitDesc = hrStr=>{
-      const nums=_parseRounds(hrStr).map(r=>parseInt(r.replace('R',''))).sort((a,b)=>a-b);
-      const hasR1=nums.includes(1);
-      const n=nums.length;
-      if(n===0) return '—';
-      if(n>=5) return '长期持续异常，优先处理';
-      if(hasR1){
-        const isConsec=nums.every((v,i)=>i===0||v===nums[i-1]+1);
-        if(isConsec&&n>=3) return '近期持续异常，建议尽快处理';
-        if(n>=3) return '近期复发，历史有前例';
-        return '近期出现，观察是否持续';
-      }
-      return '早期问题，近期已有改善迹象';
-    };
-
-    // 聚合：category → portfolio → campaign → rows[]
-    const hitTree={};
-    rows.forEach(r=>{
-      const cat=r.category||'7_Other';
-      const port=r.portfolio||'(无组合)';
-      const camp=r.campaign||'(未知广告活动)';
-      if(!hitTree[cat]) hitTree[cat]={};
-      if(!hitTree[cat][port]) hitTree[cat][port]={};
-      if(!hitTree[cat][port][camp]) hitTree[cat][port][camp]=[];
-      hitTree[cat][port][camp].push(r);
-    });
-
-    html+=`<div class="tgt-sec-div">入围广告活动命中明细 <span style="font-weight:400;color:var(--g4)">· 默认折叠，点击展开</span></div>`;
-
-    if(rows.length===0){
-      html+=`<div class="tgt-card" style="color:var(--g4);text-align:center;padding:20px">暂无入围广告活动</div>`;
-    } else {
-      html+=`<div style="background:#fff;border:1px solid var(--g2);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)">`;
-
-      Object.entries(hitTree).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([cat,ports])=>{
-        const catTotal=Object.values(ports).reduce((s,camps)=>s+Object.values(camps).reduce((s2,rs)=>s2+rs.length,0),0);
-        html+=`<details style="border-top:1px solid var(--g1)">
-          <summary style="padding:11px 16px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;background:var(--g0);user-select:none">
-            <span style="font-size:12px;font-weight:700;color:var(--g9);flex:1">▶ ${cat}</span>
-            <span style="font-size:11px;color:var(--g6)">${catTotal} 个 targeting</span>
-          </summary>`;
-
-        Object.entries(ports).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([port,camps])=>{
-          const portTotal=Object.values(camps).reduce((s,rs)=>s+rs.length,0);
-          html+=`<details style="border-top:1px solid var(--g1)">
-            <summary style="padding:9px 16px 9px 30px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;background:#fff;user-select:none">
-              <span style="font-size:11px;font-weight:600;color:var(--g7);flex:1">📁 ${port}</span>
-              <span style="font-size:11px;color:var(--g6)">${portTotal} 个 targeting</span>
-            </summary>`;
-
-          Object.entries(camps).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([camp,campRows])=>{
-            html+=`<details style="border-top:1px solid var(--g1)">
-              <summary style="padding:8px 16px 8px 48px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;background:var(--g0);user-select:none">
-                <span style="font-size:11px;color:var(--g6);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${camp}">📣 ${trn(camp,56)}</span>
-                <span style="font-size:11px;color:var(--g6);flex-shrink:0">${campRows.length} 个 targeting</span>
-              </summary>
-              <div style="padding-left:64px;overflow-x:auto;background:#fff">
-                <table class="tgt-tbl" style="min-width:700px">
-                  <tr><th>Targeting</th><th>Match</th><th>标签</th><th style="text-align:right">调价</th><th>命中轮次</th><th>说明</th></tr>
-                  ${campRows.map(r=>{
-                    const rounds=_parseRounds(r.hit_rounds||'');
-                    const badges=rounds.map(rn=>`<span style="display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;margin-right:3px;${_roundStyle(rn)}">${rn}</span>`).join('');
-                    const desc=_hitDesc(r.hit_rounds||'');
-                    return `<tr>
-                      <td style="font-family:monospace;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.targeting}">${trn(r.targeting,32)}</td>
-                      <td>${tag(r.match_type,'gr')}</td>
-                      <td style="white-space:nowrap">${tag(r.label,labelCls[r.label]||'gr')}</td>
-                      <td style="text-align:right;font-family:monospace;font-weight:700;color:${r.adj_pct&&r.adj_pct.startsWith('-')?'var(--rd)':r.adj_pct&&r.adj_pct.startsWith('+')?'var(--gn)':'var(--g4)'}">${r.adj_pct}</td>
-                      <td style="white-space:nowrap">${badges}</td>
-                      <td style="color:var(--g6);font-size:12px;white-space:nowrap">${desc}</td>
-                    </tr>`;
-                  }).join('')}
-                </table>
-              </div>
-            </details>`;
-          });
-          html+='</details>';
-        });
-        html+='</details>';
-      });
-      html+='</div>';
-    }
-  }
 
   html+='</div>';  // 关闭 tgt-wrap
   el.innerHTML = html;

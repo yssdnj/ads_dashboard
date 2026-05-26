@@ -79,9 +79,9 @@ def daily_to_summary(df: pd.DataFrame) -> pd.DataFrame:
         '7 Day Advertised SKU Units (#)', '7 Day Other SKU Units (#)',
         '7 Day Advertised SKU Sales', '7 Day Other SKU Sales',
     ]
-    group_keys = [k for k in group_keys if k in df.columns]
+    group_keys = [k for k in group_keys if k in df.columns and df[k].notna().any()]
     sum_cols   = [k for k in sum_cols   if k in df.columns]
-    agg = df.groupby(group_keys)[sum_cols].sum().reset_index()
+    agg = df.groupby(group_keys, dropna=False)[sum_cols].sum().reset_index()
     agg.insert(0, 'Start Date', df['日期'].min())
     agg.insert(1, 'End Date',   df['日期'].max())
     return agg
@@ -594,12 +594,9 @@ def _is_improving_6r(hit_set: set[str]) -> bool:
     """
     判断是否为向好趋势（不应降价）。
     - =3/6 命中且仅 {R4,R5,R6}：近 3 周干净，明显好转
-    - =4/6 命中且仅 {R3,R4,R5,R6}（R1/R2 均未中）：近 2 周干净，趋势向好
     ≥5/6 命中时无条件返回 False（信号足够强）。
     """
     if len(hit_set) == 3 and hit_set == {'R4', 'R5', 'R6'}:
-        return True
-    if len(hit_set) == 4 and hit_set == {'R3', 'R4', 'R5', 'R6'}:
         return True
     return False
 
@@ -624,7 +621,6 @@ def run_multi_round_analysis_6r(
     Consensus 规则：
       - ≥3/6 轮命中 → 候选
       - =3/6 且仅 {R4,R5,R6} 命中 → 排除（向好）
-      - =4/6 且仅 {R3,R4,R5,R6} 命中 → 排除（向好）
       - adj_pct 取各命中轮绝对值最小（最保守）
       - metrics 来自 R6，label 来自 R1
     """
@@ -697,7 +693,9 @@ def run_multi_round_analysis_6r(
         }
 
     # ── 投票 consensus ──────────────────────────────────────────────────────────
-    vote: dict[tuple, dict] = {}          # key → {rname: adj_pct_decimal}
+    # vote[key][rname] = (adj_dec|None, raw_str)
+    # 只要标签命中即计票，adj_pct=0% / None 不影响投票计数，仅影响降幅计算
+    vote: dict[tuple, dict] = {}          # key → {rname: (adj_dec|None, raw_str)}
     r6_row_map: dict[tuple, dict] = {}    # metrics 来源
     r1_row_map: dict[tuple, dict] = {}    # label 来源
 
@@ -705,13 +703,13 @@ def run_multi_round_analysis_6r(
         for row in rounds[rname].get('rows', []):
             if row.get('label') not in _ADJ_LABELS:
                 continue
-            adj_dec = _parse_adj_pct(row.get('adj_pct'))
-            if adj_dec is None:
-                continue
+            adj_raw = str(row.get('adj_pct') or '').strip()
+            adj_dec = _parse_adj_pct(adj_raw)
+            action_raw = row.get('action', '')
             key = (row.get('campaign'), row.get('ad_group'), row.get('targeting'))
             if key not in vote:
                 vote[key] = {}
-            vote[key][rname] = adj_dec
+            vote[key][rname] = (adj_dec, adj_raw or '0%', action_raw)
             if rname == 'R6':
                 r6_row_map[key] = row
             if rname == 'R1':
@@ -729,9 +727,26 @@ def run_multi_round_analysis_6r(
         if _is_improving_6r(hit_set):
             continue
 
-        # 最保守 adj_pct
-        best_adj = min(hit_map.values(), key=abs)
+        # 最保守 adj_pct：仅从非 None（有效降幅）的轮次中取，同时记录来源轮的 action
+        valid_adjs = [
+            (rn, dec, raw, act)
+            for rn, (dec, raw, act) in hit_map.items()
+            if dec is not None
+        ]
+        if valid_adjs:
+            best_rn, best_adj_dec, _, best_action = min(valid_adjs, key=lambda x: abs(x[1]))
+            best_adj_str = f'{int(best_adj_dec * 100)}%'
+        else:
+            # 所有轮次 adj_pct 均为 0%：取任意命中轮的 action，保持 0%
+            any_rn = next(iter(sorted(hit_map.keys())))
+            _, _, best_action = hit_map[any_rn]
+            best_adj_str = '0%'
+
         hit_rounds_str = ','.join(sorted(hit_map.keys()))
+        # 各轮 adj_pct 明细，格式：R1:-10%,R2:0%,...
+        hit_rounds_adj = ','.join(
+            f'{r}:{hit_map[r][1]}' for r in sorted(hit_map.keys())
+        )
 
         # metrics 取 R6，label 取 R1，fallback 任意命中轮
         base = r6_row_map.get(key) or r1_row_map.get(key) or next(
@@ -744,11 +759,12 @@ def run_multi_round_analysis_6r(
                 {}
             )
         row = dict(base)
-        row['label']      = (r1_row_map.get(key) or base).get('label', base.get('label', ''))
-        row['adj_pct']    = f'{int(best_adj * 100)}%'
-        row['action']     = '↘ 降价'
-        row['reason']     = f'六轮分析命中（{hit_rounds_str}），取最保守降幅'
-        row['hit_rounds'] = hit_rounds_str
+        row['label']          = (r1_row_map.get(key) or base).get('label', base.get('label', ''))
+        row['adj_pct']        = best_adj_str
+        row['action']         = best_action
+        row['reason']         = f'六轮分析命中（{hit_rounds_str}），取最保守降幅'
+        row['hit_rounds']     = hit_rounds_str
+        row['hit_rounds_adj'] = hit_rounds_adj
         consensus_rows.append(row)
 
     r6 = rounds.get('R6', {})
