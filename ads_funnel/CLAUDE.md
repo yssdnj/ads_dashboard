@@ -1,6 +1,6 @@
 # ads_funnel — v2.0 开发文档
 
-广告漏斗分析 v2.0：FastAPI 后端 + SQLite 数据库 + Web UI。
+广告漏斗分析 v2.0：FastAPI 后端 + MySQL 数据库 + Web UI。
 
 > v1.0 旧版脚本已归档至 `../legacy/`，本目录为当前活跃版本。
 
@@ -10,7 +10,7 @@
 ads_funnel/
 ├── start.py           # 一键启动入口
 ├── requirements.txt   # 依赖
-├── ads_funnel.db      # SQLite 数据库
+├── db_config.json     # MySQL 连接配置（参考 db_config.example.json）
 ├── template.html      # 报告 HTML 模板（含所有 JS/CSS）
 ├── CLAUDE.md          # 本文件
 ├── api/
@@ -50,14 +50,20 @@ uvicorn api.main:app --reload --host 127.0.0.1 --port 8000
 | GET | `/api/reports/{id}/export/csv` | 导出 CSV |
 | GET/POST | `/api/config/acos-targets` | ACoS 目标配置 |
 
-## 数据库结构
+## 数据库结构（MySQL）
 
 ```sql
-reports (id, title, weeks, wk_dates, data, camp_file, port_file, created_at)
-config  (key, value, updated_at)
+reports          (id, title, country, weeks, wk_dates, data LONGTEXT, camp_file, port_file, created_at)
+config           (key, value LONGTEXT, updated_at)
+raw_camp_lx      -- 领星广告活动每日原始数据（upsert）
+raw_port_lx      -- 领星广告组合每日原始数据（upsert）
+raw_tar          -- 投放报告每日原始数据（Mode 1 分析用）
+raw_ap           -- 推广商品报告每日原始数据（Mode 1 分析用）
+bid_update_log   -- 竞价更新记录
+bid_update_detail -- 竞价更新明细行
 ```
 
-- `data` 列存储完整的 `ads_compact` JSON（序列化为 TEXT）
+- `data` 列存储完整的 `ads_compact` JSON（LONGTEXT）
 - `config` 中的 `acos_targets` key 存储各产品 ACoS 目标值
 
 ## 数据处理流程
@@ -121,6 +127,36 @@ PRODS = ['SL','DL','DSL2','Toy','ToyDH','MFL','SFM','ShortL','WB']
 
 `template.html` 包含完整的 JS + CSS + HTML 结构，直接编辑即可。  
 修改后重启服务（`--reload` 模式下自动生效），刷新报告页面即可看到变化。
+
+## Mode 1 竞价分析与导出流程
+
+### 分析端点
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/analysis/mode1` | 3 轮竞价分析 |
+| POST | `/api/analysis/mode1/6r` | 6 轮竞价分析 |
+| POST | `/api/analysis/mode1/export-bulk` | 将分析结果写回 Bulk 文件 |
+| POST | `/api/analysis/mode1/confirm-update` | 确认更新，写入 bid_update_log |
+
+### 导出数据传递方式（前端 → 后端）
+
+分析结果**不在服务器内存中缓存**。流程如下：
+
+1. 分析端点返回 `consensus.rows`（每条 targeting 的标签 + 调价幅度等）
+2. 前端将 rows 存入 JS 变量：
+   - 3R：`window._mode1ExportMeta = { rows, product_target, report_start, report_end }`
+   - 6R：`window._tgt6ExportMeta = { rows, product_target, report_start, report_end }`
+3. 用户点击"导出 Bulk"时，前端将 `rows_json`（JSON 序列化的 rows 数组）连同 Bulk 文件一起 POST 到 `export-bulk` 端点
+4. 后端解析 `rows_json`，筛选符合条件的行（高ACoS出单/高点击不出单 且 orders < 阈值），写入 Bulk 文件并返回
+
+### 服务端内存缓存
+
+| 变量 | 位置 | 内容 | 有效期 |
+|------|------|------|--------|
+| `_catalog_df` | `targeting_analysis.py` | `product_catalog.xlsx` | 1 小时 TTL，超时重新读盘 |
+
+> **注意**：`_mode1_cache` / `_mode1_6r_cache`（分析结果缓存）已于 2026-05-26 删除，改为前端回传方案，避免服务器内存持续增长。
 
 ## 协作规则
 
