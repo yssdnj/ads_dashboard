@@ -47,6 +47,23 @@ for _cn, _vals in _COUNTRY_ALIASES.items():
     for _v in _vals:
         _COUNTRY_REVERSE[_v] = _vals
 
+# 任意别名 → ISO 两字母代码（用于文件名）
+_COUNTRY_CODE: dict[str, str] = {
+    '美国': 'US', 'United States': 'US', 'US': 'US',
+    '英国': 'UK', 'United Kingdom': 'UK', 'UK': 'UK',
+    '德国': 'DE', 'Germany': 'DE', 'DE': 'DE',
+    '法国': 'FR', 'France': 'FR', 'FR': 'FR',
+    '加拿大': 'CA', 'Canada': 'CA', 'CA': 'CA',
+    '日本': 'JP', 'Japan': 'JP', 'JP': 'JP',
+    '意大利': 'IT', 'Italy': 'IT', 'IT': 'IT',
+    '西班牙': 'ES', 'Spain': 'ES', 'ES': 'ES',
+}
+
+
+def _country_code(country: str) -> str:
+    """将任意国家表示转为两字母代码，未匹配返回空字符串。"""
+    return _COUNTRY_CODE.get(country.strip(), '') if country else ''
+
 
 def _resolve_country(country: str) -> set[str] | None:
     """将任意国家表示（中文/英文/ISO 码）转为完整别名集合，匹配失败返回 None。"""
@@ -415,6 +432,7 @@ async def api_mode1_export_bulk(
     bulk_file:        UploadFile = File(..., description='Amazon Bulk 文件（xlsx，文件名须以 Bulk 开头）'),
     cache_id:         str        = Form(..., description='Mode 1 分析结果的缓存 ID'),
     orders_threshold: int        = Form(10,  description='订单数筛选阈值，默认 10'),
+    report_country:   str        = Form('',  description='当前页面国家（中文，如 美国），用于文件名'),
 ):
     """
     将 Mode 1 分析结果写回 Amazon Bulk 文件，同时生成更新版 targeting_labels CSV。
@@ -444,10 +462,12 @@ async def api_mode1_export_bulk(
     except Exception as e:
         raise HTTPException(500, f'Bulk 更新失败: {e}')
 
-    today   = datetime.now().strftime('%Y%m%d')
-    pt_part = f'_{product_target}' if product_target else ''
+    today        = datetime.now().strftime('%Y%m%d')
+    cc           = _country_code(report_country)
+    country_part = f'_{cc}' if cc else ''
+    pt_part      = f'_{product_target}' if product_target else ''
 
-    bulk_filename  = f'bulk{pt_part}_{today}_updated.xlsx'
+    bulk_filename  = f'bulk{country_part}{pt_part}_{today}_updated.xlsx'
     label_filename = f'targeting_labels{pt_part}_{report_start}_{report_end}_updated.csv'
 
     return {

@@ -3464,6 +3464,7 @@ async function exportBulk6r(){
     fd.append('bulk_file',        bulkFileEl.files[0]);
     fd.append('cache_id',         cacheId);
     fd.append('orders_threshold', ordersThresh);
+    fd.append('report_country',   REPORT_COUNTRY);
 
     const resp = await fetch('api/analysis/mode1/export-bulk', {method:'POST', body:fd});
     if(!resp.ok){
@@ -4458,6 +4459,7 @@ async function exportBulkFile(){
     fd.append('bulk_file',        bulkFileEl.files[0]);
     fd.append('cache_id',         window.MODE1_CACHE_ID);
     fd.append('orders_threshold', ordersThresh);
+    fd.append('report_country',   REPORT_COUNTRY);
 
     const resp = await fetch('api/analysis/mode1/export-bulk', {method:'POST', body:fd});
     if(!resp.ok){
