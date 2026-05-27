@@ -195,7 +195,9 @@ def _prep_raw(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _upsert_lx(tbl: str, df_new: pd.DataFrame, keys: list):
-    """通用 upsert（领星表）：按唯一键合并新旧数据，新行覆盖旧行"""
+    """通用 upsert（领星表）：按唯一键合并新旧数据，新行覆盖旧行。
+    优化：优先走无重叠路径（直接 append），仅在日期窗口有重叠时才读取旧数据。
+    """
     engine = get_engine()
     insp = sa_inspect(engine)
     tables = set(insp.get_table_names())
@@ -209,16 +211,40 @@ def _upsert_lx(tbl: str, df_new: pd.DataFrame, keys: list):
     if row_count == 0:
         df_new.to_sql(tbl, engine, if_exists='replace', index=False)
     else:
-        df_old = pd.read_sql(f'SELECT * FROM `{tbl}`', engine)
-        df_old = df_old.drop(columns=['report_id'], errors='ignore')
-        avail_keys = [k for k in keys if k in df_old.columns and k in df_new.columns]
-        if avail_keys:
-            sep = '\x00'
-            old_comp = df_old[avail_keys].astype(str).agg(sep.join, axis=1)
-            new_comp = df_new[avail_keys].astype(str).agg(sep.join, axis=1)
-            df_old = df_old[~old_comp.isin(set(new_comp))]
-        df_merged = pd.concat([df_old, df_new], ignore_index=True)
-        df_merged.to_sql(tbl, engine, if_exists='replace', index=False)
+        date_col = '日期'
+        new_min = str(df_new[date_col].min())
+        new_max = str(df_new[date_col].max())
+
+        with engine.connect() as conn:
+            overlap = conn.execute(
+                text(f'SELECT COUNT(*) FROM `{tbl}` WHERE `{date_col}` BETWEEN :a AND :b'),
+                {'a': new_min, 'b': new_max}
+            ).scalar()
+
+        if overlap == 0:
+            # 无重叠：直接追加，零历史数据读取
+            df_new.to_sql(tbl, engine, if_exists='append', index=False)
+        else:
+            # 有重叠：只读重叠窗口，新数据覆盖旧数据
+            df_old = pd.read_sql(
+                f'SELECT * FROM `{tbl}` WHERE `{date_col}` BETWEEN :a AND :b',
+                engine, params={'a': new_min, 'b': new_max}
+            )
+            df_old = df_old.drop(columns=['report_id'], errors='ignore')
+            avail_keys = [k for k in keys if k in df_old.columns and k in df_new.columns]
+            if avail_keys:
+                sep = '\x00'
+                old_comp = df_old[avail_keys].astype(str).agg(sep.join, axis=1)
+                new_comp = df_new[avail_keys].astype(str).agg(sep.join, axis=1)
+                df_old = df_old[~old_comp.isin(set(new_comp))]
+            with engine.begin() as conn:
+                conn.execute(
+                    text(f'DELETE FROM `{tbl}` WHERE `{date_col}` BETWEEN :a AND :b'),
+                    {'a': new_min, 'b': new_max}
+                )
+            pd.concat([df_old, df_new], ignore_index=True).to_sql(
+                tbl, engine, if_exists='append', index=False
+            )
 
     try:
         with engine.begin() as conn:
@@ -489,7 +515,9 @@ def _prep_ap_daily(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _upsert_df(engine, tbl: str, df_new: pd.DataFrame, keys: list, date_col: str):
-    """通用 upsert：按唯一键合并新旧数据，新行覆盖旧行"""
+    """通用 upsert：按唯一键合并新旧数据，新行覆盖旧行。
+    优化：优先走无重叠路径（直接 append），仅在日期窗口有重叠时才读取旧数据。
+    """
     insp = sa_inspect(engine)
     tables = set(insp.get_table_names())
 
@@ -502,15 +530,38 @@ def _upsert_df(engine, tbl: str, df_new: pd.DataFrame, keys: list, date_col: str
     if row_count == 0:
         df_new.to_sql(tbl, engine, if_exists='replace', index=False)
     else:
-        df_old = pd.read_sql(f'SELECT * FROM `{tbl}`', engine)
-        avail_keys = [k for k in keys if k in df_old.columns and k in df_new.columns]
-        if avail_keys:
-            sep = '\x00'
-            old_comp = df_old[avail_keys].astype(str).agg(sep.join, axis=1)
-            new_comp = df_new[avail_keys].astype(str).agg(sep.join, axis=1)
-            df_old = df_old[~old_comp.isin(set(new_comp))]
-        df_merged = pd.concat([df_old, df_new], ignore_index=True)
-        df_merged.to_sql(tbl, engine, if_exists='replace', index=False)
+        new_min = str(df_new[date_col].min())
+        new_max = str(df_new[date_col].max())
+
+        with engine.connect() as conn:
+            overlap = conn.execute(
+                text(f'SELECT COUNT(*) FROM `{tbl}` WHERE `{date_col}` BETWEEN :a AND :b'),
+                {'a': new_min, 'b': new_max}
+            ).scalar()
+
+        if overlap == 0:
+            # 无重叠：直接追加，零历史数据读取
+            df_new.to_sql(tbl, engine, if_exists='append', index=False)
+        else:
+            # 有重叠：只读重叠窗口，新数据覆盖旧数据
+            df_old = pd.read_sql(
+                f'SELECT * FROM `{tbl}` WHERE `{date_col}` BETWEEN :a AND :b',
+                engine, params={'a': new_min, 'b': new_max}
+            )
+            avail_keys = [k for k in keys if k in df_old.columns and k in df_new.columns]
+            if avail_keys:
+                sep = '\x00'
+                old_comp = df_old[avail_keys].astype(str).agg(sep.join, axis=1)
+                new_comp = df_new[avail_keys].astype(str).agg(sep.join, axis=1)
+                df_old = df_old[~old_comp.isin(set(new_comp))]
+            with engine.begin() as conn:
+                conn.execute(
+                    text(f'DELETE FROM `{tbl}` WHERE `{date_col}` BETWEEN :a AND :b'),
+                    {'a': new_min, 'b': new_max}
+                )
+            pd.concat([df_old, df_new], ignore_index=True).to_sql(
+                tbl, engine, if_exists='append', index=False
+            )
 
     try:
         safe_col = date_col.replace('日期', 'rq')
