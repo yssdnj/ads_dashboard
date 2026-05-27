@@ -609,6 +609,7 @@ def get_tar_ap_for_analysis(n_weeks: int = 6, country_values: set | None = None)
     从 raw_tar / raw_ap 读取最近 n_weeks 个完整日历周（周日开始）的数据。
     country_values 不为 None 时按 Country / 国家/地区 列过滤。
     返回 (tar_df, ap_df, week_sundays) 或 (None, None, []) 若数据不足。
+    优化：国家和日期过滤下推到 SQL，Python 只接收实际需要的行。
     """
     engine = get_engine()
     insp = sa_inspect(engine)
@@ -616,36 +617,54 @@ def get_tar_ap_for_analysis(n_weeks: int = 6, country_values: set | None = None)
     if 'raw_tar' not in tables or 'raw_ap' not in tables:
         return None, None, []
 
-    tar_df = pd.read_sql('SELECT * FROM `raw_tar`', engine)
-    ap_df  = pd.read_sql('SELECT * FROM `raw_ap`',  engine)
-    if tar_df.empty or ap_df.empty:
+    # 构建国家过滤片段（两表均用 Country 列）
+    country_clause_max = ''   # MAX 查询用 WHERE
+    country_clause_tar = ''   # read_sql 用 AND（已有 WHERE date >= :cutoff）
+    country_clause_ap  = ''
+    country_params: dict = {}
+    if country_values is not None:
+        ph = ', '.join([f':c{i}' for i in range(len(country_values))])
+        country_params     = {f'c{i}': v for i, v in enumerate(country_values)}
+        country_clause_max = f' WHERE `Country` IN ({ph})'
+        country_clause_tar = f' AND `Country` IN ({ph})'
+        country_clause_ap  = f' AND `Country` IN ({ph})'
+
+    # 1. 取 raw_tar 最新日期（带国家过滤，确保 cutoff 与数据范围一致）
+    with engine.connect() as conn:
+        max_date_val = conn.execute(
+            text(f'SELECT MAX(`Date`) FROM `raw_tar`{country_clause_max}'),
+            country_params
+        ).scalar()
+
+    if max_date_val is None:
         return None, None, []
 
-    if country_values:
-        for col in ('Country', '国家/地区'):
-            if col in tar_df.columns:
-                tar_df = tar_df[tar_df[col].isin(country_values)].copy()
-                break
-        for col in ('Country', '国家/地区'):
-            if col in ap_df.columns:
-                ap_df = ap_df[ap_df[col].isin(country_values)].copy()
-                break
-        if tar_df.empty or ap_df.empty:
-            return None, None, []
-
-    tar_df['Date'] = pd.to_datetime(tar_df['Date'])
-    ap_df['日期']  = pd.to_datetime(ap_df['日期'])
-
-    max_date    = tar_df['Date'].max()
-    base_sunday = _week_start(max_date)
+    # 2. 计算 cutoff（周计算逻辑与原代码完全相同）
+    max_date     = pd.Timestamp(max_date_val)
+    base_sunday  = _week_start(max_date)
     week_sundays = sorted([
         base_sunday - pd.Timedelta(weeks=i)
         for i in range(n_weeks - 1, -1, -1)
     ])
+    cutoff_str = week_sundays[0].strftime('%Y-%m-%d')
 
-    cutoff = week_sundays[0]
-    tar_df = tar_df[tar_df['Date'] >= cutoff].copy()
-    ap_df  = ap_df[ap_df['日期']   >= cutoff].copy()
+    # 3. 精准读取：只取 cutoff 之后 + 当前国家的行
+    query_params = {**country_params, 'cutoff': cutoff_str}
+
+    tar_df = pd.read_sql(
+        text(f'SELECT * FROM `raw_tar` WHERE `Date` >= :cutoff{country_clause_tar}'),
+        engine, params=query_params
+    )
+    ap_df = pd.read_sql(
+        text(f'SELECT * FROM `raw_ap` WHERE `日期` >= :cutoff{country_clause_ap}'),
+        engine, params=query_params
+    )
+
+    if tar_df.empty or ap_df.empty:
+        return None, None, []
+
+    tar_df['Date'] = pd.to_datetime(tar_df['Date'])
+    ap_df['日期']  = pd.to_datetime(ap_df['日期'])
 
     return tar_df, ap_df, week_sundays
 
