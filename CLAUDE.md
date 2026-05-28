@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **Maintenance:** Ruthlessly edit this file over time — add new patterns as you discover them, remove stale or redundant content, keep it concise and accurate.
+> **Complex tasks:** Start every complex task in plan mode before writing any code.
+> **Agent review agent:** Every implementer subagent's output gets reviewed by two fresh subagents — spec compliance first, then code quality. Never skip either review.
+
 ## 项目概述
 
 广告漏斗分析系统 v2.0：FastAPI 后端 + MySQL 数据库 + 单页 Web UI，用于亚马逊广告数据的漏斗分析和竞价优化。
@@ -107,3 +111,29 @@ daily_*     按日期键的每日汇总
 1. **后端改动**（`api/` 目录）：必须先与用户明确需求、确认方案，再执行代码修改。
 2. **前端改动**（`template.html` / `frontend/`）：改动较大时建议先出方案。
 3. **禁止自动提交**：仅在收到明确指令时才执行 commit + push。
+
+## 标准开发流程
+
+严格遵循 superpowers skills 的定义顺序，不跳步、不简化：
+
+**Step 1 — 需求澄清：`superpowers:brainstorming`**
+探索代码现状 → 逐个提问（一次只问一个）→ 提出 2-3 个方案 → 展示设计稿逐段获得确认
+→ 写 spec 到 `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` → 请用户 review spec
+→ 用户确认后调用 `superpowers:writing-plans`
+
+**Step 2 — 实施计划：`superpowers:writing-plans`**
+每个 Task 必须包含：精确文件路径、完整代码、可运行的测试命令和预期输出，零占位符
+→ 保存到 `docs/superpowers/plans/YYYY-MM-DD-<feature>.md`
+→ 询问执行方式：Subagent-Driven（推荐）或 Inline
+
+**Step 3 — 执行计划：`superpowers:subagent-driven-development`（推荐）**
+每个 Task 依次：派发 implementer subagent → Spec 合规审查 → Code Quality 审查 → 标记完成
+全部 Task 完成后跑 final review
+
+**Step 4 — 验证：`superpowers:verification-before-completion`**
+必须实际运行程序到达改动代码路径，拿到真实输出，才能声明完成
+禁止用"跑测试"或"看起来对"替代运行时验证
+
+**Step 5 — 提交（用户明确指令后执行）**
+- "**提交到本地仓库**" → `git add + commit`，不 push
+- "**提交到 GitHub**" → `git add + commit + git push origin HEAD`
