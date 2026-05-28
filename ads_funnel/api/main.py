@@ -432,6 +432,8 @@ async def api_mode1_export_bulk(
 
     bulk_bytes = await bulk_file.read()
 
+    history_map = db.get_targeting_history(product_target, report_country)
+
     try:
         bulk_out_bytes, label_csv_bytes, log, details = bulk_update.apply_mode1_to_bulk(
             bulk_bytes, rows,
@@ -440,6 +442,7 @@ async def api_mode1_export_bulk(
             report_end          = report_end,
             orders_threshold    = orders_threshold,
             up_orders_threshold = up_orders_threshold,
+            history_map         = history_map,
         )
     except Exception as e:
         raise HTTPException(500, f'Bulk 更新失败: {e}')
