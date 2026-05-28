@@ -963,34 +963,69 @@ body.dark .drs-lbl{color:#64748b}
   <div class="tgt-module-body closed" id="tgt6-m3-body">
   <div class="tgt-card" style="margin-top:8px">
 
-    <!-- 筛选条件 -->
+    <!-- 筛选条件 + 调价逻辑：左降价 右提价 -->
     <div class="tgt-info-section">
-      <div class="tgt-info-hd">📌 筛选条件</div>
-      <div class="tgt-info-row">
-        <span class="ir-label">条件 ①  标签</span>
-        <span>包含 <span class="tgt-info-tag y">⚠️ 高ACoS出单</span> 或 <span class="tgt-info-tag r">🔴 高点击不出单</span></span>
-      </div>
-      <div class="tgt-info-row" style="align-items:center">
-        <span class="ir-label">条件 ②  订单数</span>
-        <span>orders &lt; </span>
-        <input id="tgt6-orders-thresh" type="number" min="1" max="999" value="10"
-          style="width:64px;padding:4px 8px;font-size:13px;font-weight:700;border:1.5px solid var(--tg);border-radius:6px;background:var(--tgbg);color:var(--tgd);text-align:center;outline:none">
-        <span style="color:var(--g4);font-size:11px;margin-left:4px">（默认 10，可修改）</span>
-      </div>
-      <div style="font-size:11px;color:var(--g4);margin-top:6px">两个条件须同时满足，核心流量（出单 Top10 或销售占比 ≥ 20%）即使命中也会被标记为 🔒 保护，不调价。</div>
-    </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
 
-    <!-- 调价逻辑 -->
-    <div class="tgt-info-section">
-      <div class="tgt-info-hd">📐 调价逻辑（来自分析结果 adj_pct 字段）</div>
-      <div class="tgt-info-row"><span class="ir-label"><span class="tgt-info-tag y">⚠️ 高ACoS出单</span></span><span style="color:var(--g4)">（非核心流量）</span></div>
-      <div style="padding-left:128px;margin-bottom:6px">
-        <div class="tgt-info-row" style="margin-bottom:3px"><span style="min-width:160px;color:var(--g6)">ACoS 超目标 ≤ 20%</span><span class="tgt-info-tag r">降价 −5%</span></div>
-        <div class="tgt-info-row" style="margin-bottom:3px"><span style="min-width:160px;color:var(--g6)">ACoS 超目标 20%–50%</span><span class="tgt-info-tag r">降价 −10%</span></div>
-        <div class="tgt-info-row" style="margin-bottom:3px"><span style="min-width:160px;color:var(--g6)">ACoS 超目标 &gt; 50%</span><span class="tgt-info-tag r">降价 −15%</span></div>
+        <!-- ── 左：降价 ── -->
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#b45309;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #fde68a">↘ 降价</div>
+          <div class="tgt-info-hd">📌 筛选条件</div>
+          <div class="tgt-info-row">
+            <span class="ir-label">条件 ①  标签</span>
+            <span>包含 <span class="tgt-info-tag y">⚠️ 高ACoS出单</span> 或 <span class="tgt-info-tag r">🔴 高点击不出单</span></span>
+          </div>
+          <div class="tgt-info-row" style="align-items:center">
+            <span class="ir-label">条件 ②  订单数</span>
+            <span>orders &lt; </span>
+            <input id="tgt6-orders-thresh" type="number" min="1" max="999" value="10"
+              style="width:64px;padding:4px 8px;font-size:13px;font-weight:700;border:1.5px solid var(--tg);border-radius:6px;background:var(--tgbg);color:var(--tgd);text-align:center;outline:none">
+            <span style="color:var(--g4);font-size:11px;margin-left:4px">（默认 10，可修改）</span>
+          </div>
+          <div style="font-size:11px;color:var(--g4);margin-top:4px;margin-bottom:14px">两个条件须同时满足，核心流量（出单 Top10 或销售占比 ≥ 20%）即使命中也会被标记为 🔒 保护，不调价。</div>
+          <div class="tgt-info-hd">📉 降幅逻辑（超出比 = (实际−目标) / 目标）</div>
+          <div class="tgt-info-row"><span class="ir-label"><span class="tgt-info-tag y">⚠️ 高ACoS出单</span></span><span style="color:var(--g4)">（非核心流量）</span></div>
+          <div style="padding-left:128px;margin-bottom:6px">
+            <div class="tgt-info-row" style="margin-bottom:3px"><span style="min-width:160px;color:var(--g6)">超出比 ≤ 20%</span><span class="tgt-info-tag r">降价 −5%</span></div>
+            <div class="tgt-info-row" style="margin-bottom:3px"><span style="min-width:160px;color:var(--g6)">超出比 20%–50%</span><span class="tgt-info-tag r">降价 −10%</span></div>
+            <div class="tgt-info-row" style="margin-bottom:3px"><span style="min-width:160px;color:var(--g6)">超出比 &gt; 50%</span><span class="tgt-info-tag r">降价 −15%</span></div>
+          </div>
+          <div class="tgt-info-row"><span class="ir-label"><span class="tgt-info-tag r">🔴 高点击不出单</span></span><span style="color:var(--g4)">（非核心流量）</span><span class="tgt-info-tag r" style="margin-left:8px">固定降价 −20%</span></div>
+          <div class="tgt-info-row" style="margin-top:4px"><span class="ir-label"><span class="tgt-info-tag b">🔒 核心流量</span></span><span>出单 Top10 或销售占比 ≥ 20%，<b>保护，不调价</b></span></div>
+        </div>
+
+        <!-- ── 右：提价 ── -->
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #bbf7d0">↗ 提价</div>
+          <div class="tgt-info-hd" style="color:#14532d">📌 筛选条件</div>
+          <div class="tgt-info-row">
+            <span class="ir-label">条件 ①  标签</span>
+            <span><span class="tgt-info-tag g">✅ 低ACoS出单</span></span>
+          </div>
+          <div class="tgt-info-row" style="align-items:center">
+            <span class="ir-label">条件 ②  订单数</span>
+            <span>orders ≥ </span>
+            <input id="tgt6-up-orders-thresh" type="number" min="1" max="999" value="2"
+              style="width:64px;padding:4px 8px;font-size:13px;font-weight:700;border:1.5px solid #16a34a;border-radius:6px;background:#f0fdf4;color:#15803d;text-align:center;outline:none">
+            <span style="color:var(--g4);font-size:11px;margin-left:4px">（默认 2，可修改）</span>
+          </div>
+          <div class="tgt-info-row">
+            <span class="ir-label">条件 ③  轮次</span>
+            <span>≥ 3/6 轮命中且 <strong>R3 必须命中</strong></span>
+          </div>
+          <div style="font-size:11px;color:var(--g4);margin-top:4px;margin-bottom:14px">三个条件须同时满足，核心流量（出单 Top10 或销售占比 ≥ 20%）标记为 🔒 保护，不提价。</div>
+          <div class="tgt-info-hd" style="color:#14532d">📐 提幅逻辑（headroom = (目标−实际) / 目标）</div>
+          <div class="tgt-info-row"><span class="ir-label"><span class="tgt-info-tag g">✅ 低ACoS出单</span></span><span style="color:var(--g4)">（非核心流量）</span></div>
+          <div style="padding-left:128px;margin-bottom:6px">
+            <div class="tgt-info-row" style="margin-bottom:3px"><span style="min-width:160px;color:var(--g6)">headroom &lt; 10%</span><span class="tgt-info-tag g">维持 +0%</span></div>
+            <div class="tgt-info-row" style="margin-bottom:3px"><span style="min-width:160px;color:var(--g6)">headroom 10%–20%</span><span class="tgt-info-tag g">提价 +5%</span></div>
+            <div class="tgt-info-row" style="margin-bottom:3px"><span style="min-width:160px;color:var(--g6)">headroom 20%–50%</span><span class="tgt-info-tag g">提价 +10%</span></div>
+            <div class="tgt-info-row" style="margin-bottom:3px"><span style="min-width:160px;color:var(--g6)">headroom &gt; 50%</span><span class="tgt-info-tag g">提价 +15%</span></div>
+          </div>
+          <div class="tgt-info-row" style="margin-top:4px"><span class="ir-label"><span class="tgt-info-tag b">🔒 核心流量</span></span><span>出单 Top10 或销售占比 ≥ 20%，<b>保护，不提价</b></span></div>
+        </div>
+
       </div>
-      <div class="tgt-info-row"><span class="ir-label"><span class="tgt-info-tag r">🔴 高点击不出单</span></span><span style="color:var(--g4)">（非核心流量）</span><span class="tgt-info-tag r" style="margin-left:8px">固定降价 −20%</span></div>
-      <div class="tgt-info-row" style="margin-top:4px"><span class="ir-label"><span class="tgt-info-tag b">🔒 核心流量</span></span><span>出单 Top10 或销售占比 ≥ 20%，<b>保护，不调价</b></span></div>
     </div>
 
     <!-- 输出文件 -->
@@ -3395,7 +3430,7 @@ async function runMode1Analysis6r(){
   fd.append('target_acos',          acos);
   fd.append('avg_clicks_per_order', cpo);
   fd.append('report_country',       REPORT_COUNTRY);
-  fd.append('up_orders_threshold',  2);
+  fd.append('up_orders_threshold',  parseInt(document.getElementById('tgt6-up-orders-thresh')?.value) || 2);
 
   try{
     if(prog) prog.style.width = '60%';
@@ -3427,6 +3462,8 @@ async function runMode1Analysis6r(){
     if (!d.consensus) d.consensus = {rows: [], count: 0};
     d.consensus.rows  = [...(d.consensus.rows || []), ..._upRows];
     d.consensus.count = d.consensus.rows.length;
+    // 同步 export meta：让生成更新文件能拿到完整的降价+提价 rows
+    if(window._tgt6ExportMeta) window._tgt6ExportMeta.rows = d.consensus.rows;
 
     const consensus6rData = {
       ...(d.R6 || {}),
@@ -3488,12 +3525,13 @@ function bulkDzDrop6r(e){
 }
 
 async function exportBulk6r(){
-  const exportMeta    = window._tgt6ExportMeta;
-  const bulkFileEl    = document.getElementById('tgt6-bulk-file');
-  const ordersThresh  = parseInt(document.getElementById('tgt6-orders-thresh')?.value) || 10;
-  const statusEl      = document.getElementById('tgt6-export-status');
-  const logEl         = document.getElementById('tgt6-bulk-log');
-  const btn           = document.getElementById('tgt6-export-btn');
+  const exportMeta       = window._tgt6ExportMeta;
+  const bulkFileEl       = document.getElementById('tgt6-bulk-file');
+  const ordersThresh     = parseInt(document.getElementById('tgt6-orders-thresh')?.value)    || 10;
+  const upOrdersThresh   = parseInt(document.getElementById('tgt6-up-orders-thresh')?.value) || 2;
+  const statusEl         = document.getElementById('tgt6-export-status');
+  const logEl            = document.getElementById('tgt6-bulk-log');
+  const btn              = document.getElementById('tgt6-export-btn');
 
   if(!exportMeta){ alert('请先执行六轮分析'); return; }
   if(!bulkFileEl.files.length){ alert('请先上传 Bulk 文件（文件名须以 Bulk 开头，xlsx 格式）'); return; }
@@ -3509,13 +3547,14 @@ async function exportBulk6r(){
 
   try{
     const fd = new FormData();
-    fd.append('bulk_file',        bulkFileEl.files[0]);
-    fd.append('rows_json',        JSON.stringify(exportMeta.rows));
-    fd.append('product_target',   exportMeta.product_target);
-    fd.append('report_start',     exportMeta.report_start);
-    fd.append('report_end',       exportMeta.report_end);
-    fd.append('orders_threshold', ordersThresh);
-    fd.append('report_country',   REPORT_COUNTRY);
+    fd.append('bulk_file',           bulkFileEl.files[0]);
+    fd.append('rows_json',           JSON.stringify(exportMeta.rows));
+    fd.append('product_target',      exportMeta.product_target);
+    fd.append('report_start',        exportMeta.report_start);
+    fd.append('report_end',          exportMeta.report_end);
+    fd.append('orders_threshold',    ordersThresh);
+    fd.append('up_orders_threshold', upOrdersThresh);
+    fd.append('report_country',      REPORT_COUNTRY);
 
     const resp = await fetch('api/analysis/mode1/export-bulk', {method:'POST', body:fd});
     if(!resp.ok){
@@ -4687,7 +4726,51 @@ async function toggleBidDetail(logId){
     if(!details.length){ inner.innerHTML='<span style="color:#94a3b8">无明细数据</span>'; }
     else{
       const pct = v => v==null ? '—' : Number(v).toFixed(0)+'%';
-      inner.innerHTML = `<div style="width:100%;overflow-x:auto"><div style="display:grid;grid-template-columns:3fr 2fr 2fr 1fr 1fr 1fr 1.5fr 3fr 1.2fr 1.2fr 1fr;font-size:11px"><div class="tgt-gh">广告活动</div><div class="tgt-gh">广告组</div><div class="tgt-gh">策略</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">Top</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">Rest</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">PP</div><div class="tgt-gh">标签</div><div class="tgt-gh">Targeting</div><div class="tgt-gh" style="justify-content:flex-end;display:flex;align-items:center">原竞价</div><div class="tgt-gh" style="justify-content:flex-end;display:flex;align-items:center">新竞价</div><div class="tgt-gh" style="justify-content:flex-end;display:flex;align-items:center">调整</div>${details.map(d=>`<div class="tgt-gd" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.campaign}">${d.campaign}</div><div class="tgt-gd">${d.ad_group}</div><div class="tgt-gd" style="white-space:nowrap">${d.strategy||'—'}</div><div class="tgt-gd" style="justify-content:center;display:flex;align-items:center">${pct(d.top)}</div><div class="tgt-gd" style="justify-content:center;display:flex;align-items:center">${pct(d.rest)}</div><div class="tgt-gd" style="justify-content:center;display:flex;align-items:center">${pct(d.product_page)}</div><div class="tgt-gd" style="color:#92400e">${d.label}</div><div class="tgt-gd" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.targeting}">${d.targeting}</div><div class="tgt-gd r">$${Number(d.old_bid).toFixed(4)}</div><div class="tgt-gd r" style="font-weight:600;color:#1a7f4f">$${Number(d.new_bid).toFixed(4)}</div><div class="tgt-gd r" style="color:#c0392b">${(d.adj_pct*100).toFixed(0)}%</div>`).join('')}</div></div>`;
+
+      // 共用表头 + 行渲染，isUp 控制颜色
+      const _grid = (items, isUp) => {
+        const adjClr = isUp ? '#15803d' : '#c0392b';
+        const newClr = isUp ? '#15803d' : '#1a7f4f';
+        const hd =
+          '<div class="tgt-gh">广告活动</div><div class="tgt-gh">广告组</div>' +
+          '<div class="tgt-gh">策略</div>' +
+          '<div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">Top</div>' +
+          '<div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">Rest</div>' +
+          '<div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">PP</div>' +
+          '<div class="tgt-gh">标签</div><div class="tgt-gh">Targeting</div>' +
+          '<div class="tgt-gh" style="justify-content:flex-end;display:flex;align-items:center">原竞价</div>' +
+          '<div class="tgt-gh" style="justify-content:flex-end;display:flex;align-items:center">新竞价</div>' +
+          '<div class="tgt-gh" style="justify-content:flex-end;display:flex;align-items:center">调整</div>';
+        const rows = items.map(d =>
+          `<div class="tgt-gd" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.campaign}">${d.campaign}</div>` +
+          `<div class="tgt-gd">${d.ad_group}</div>` +
+          `<div class="tgt-gd" style="white-space:nowrap">${d.strategy||'—'}</div>` +
+          `<div class="tgt-gd" style="justify-content:center;display:flex;align-items:center">${pct(d.top)}</div>` +
+          `<div class="tgt-gd" style="justify-content:center;display:flex;align-items:center">${pct(d.rest)}</div>` +
+          `<div class="tgt-gd" style="justify-content:center;display:flex;align-items:center">${pct(d.product_page)}</div>` +
+          `<div class="tgt-gd" style="color:#92400e">${d.label}</div>` +
+          `<div class="tgt-gd" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.targeting}">${d.targeting}</div>` +
+          `<div class="tgt-gd r">$${Number(d.old_bid).toFixed(4)}</div>` +
+          `<div class="tgt-gd r" style="font-weight:600;color:${newClr}">$${Number(d.new_bid).toFixed(4)}</div>` +
+          `<div class="tgt-gd r" style="color:${adjClr}">${(d.adj_pct*100).toFixed(0)}%</div>`
+        ).join('');
+        return `<div style="display:grid;grid-template-columns:3fr 2fr 2fr 1fr 1fr 1fr 1.5fr 3fr 1.2fr 1.2fr 1fr;font-size:11px">${hd}${rows}</div>`;
+      };
+
+      const downRows = details.filter(d => d.adj_pct < 0);
+      const upRows   = details.filter(d => d.adj_pct > 0);
+
+      let html = '<div style="width:100%;overflow-x:auto">';
+      if(downRows.length){
+        html += `<div style="font-size:11px;font-weight:700;color:#b45309;padding:6px 4px 4px">↘ 降价（${downRows.length} 条）</div>`;
+        html += _grid(downRows, false);
+      }
+      if(upRows.length){
+        html += `<div style="font-size:11px;font-weight:700;color:#15803d;padding:${downRows.length?'12px':'6px'} 4px 4px">↗ 提价（${upRows.length} 条）</div>`;
+        html += _grid(upRows, true);
+      }
+      html += '</div>';
+      inner.innerHTML = html;
     }
     inner.dataset.loaded = '1';
   }catch(e){

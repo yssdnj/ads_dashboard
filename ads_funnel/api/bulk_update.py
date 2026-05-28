@@ -326,44 +326,57 @@ def apply_mode1_to_bulk(
     report_start: str = '',
     report_end: str = '',
     orders_threshold: int = 10,
+    up_orders_threshold: int = 2,
 ) -> tuple[bytes, bytes, list[str]]:
     """
     将 Mode 1 分析结果写回 Amazon Bulk 文件，同时生成含 原竞价/新竞价/操作日期 的
     targeting_labels CSV。
 
-    筛选条件（与 ad_bulk_update.py load_label_df 一致）：
-        label 含 "高ACoS出单" 或 "高点击不出单"，且 orders < 10
+    筛选条件：
+      降价：label 含 "高ACoS出单" 或 "高点击不出单"，且 orders < orders_threshold
+      提价：label 含 "低ACoS出单"，orders >= up_orders_threshold，adj_pct > 0
 
     Returns
     -------
-    (bulk_out_bytes, label_csv_bytes, log_lines)
+    (bulk_out_bytes, label_csv_bytes, log_lines, details)
     """
     log: list[str] = []
 
     # ── 1. rows → DataFrame，列名对齐为 v2.py CSV 格式 ───────────────────────
     df_label = pd.DataFrame(rows).rename(columns=_ROW_COL_RENAME)
 
-    # 衔接：将 adj_pct 从 "-10%" 字符串转为小数 -0.10（process_updates 依赖此格式）
+    # 衔接：将 adj_pct 从 "-10%"/"+5%" 字符串转为小数（process_updates 依赖此格式）
     df_label['adj_pct'] = df_label['adj_pct'].apply(_pct_str_to_decimal)
 
-    # 预留三列（原版 load_label_df 读入的 xlsx 可能已有，此处初始化为空字符串）
+    # 预留三列（初始化为空字符串）
     df_label['原竞价']  = ''
     df_label['新竞价']  = ''
     df_label['操作日期'] = ''
 
-    # ── 2. 筛选（复用 load_label_df 逻辑，阈值由调用方传入）─────────────────
+    # ── 2. 降价筛选 ───────────────────────────────────────────────────────────
     df_filtered, df_full = load_label_df(df_label, orders_threshold=orders_threshold)
     log.append(
-        f'筛选: {len(df_filtered)}/{len(df_full)} 行符合条件'
+        f'降价筛选: {len(df_filtered)}/{len(df_full)} 行符合条件'
         f'（高ACoS出单/高点击不出单 且 orders<{orders_threshold}）'
     )
 
-    if df_filtered.empty:
+    # ── 2b. 提价筛选 ──────────────────────────────────────────────────────────
+    _mask_up_label  = df_full['label'].fillna('').str.contains('低ACoS出单', na=False)
+    _mask_up_orders = df_full['orders'] >= up_orders_threshold
+    _adj_vals       = pd.to_numeric(df_full['adj_pct'], errors='coerce').fillna(0)
+    _mask_up_adj    = _adj_vals > 0
+    df_up_filtered  = df_full[_mask_up_label & _mask_up_orders & _mask_up_adj].copy()
+    log.append(
+        f'提价筛选: {len(df_up_filtered)}/{len(df_full)} 行符合条件'
+        f'（低ACoS出单 且 orders≥{up_orders_threshold} 且 adj_pct>0）'
+    )
+
+    if df_filtered.empty and df_up_filtered.empty:
         log.insert(0, '共更新 0 条 | 筛选结果为空，无需处理')
         empty_csv = save_label_updated(df_full)
         return bulk_bytes, empty_csv, log, []
 
-    # ── 3. 读取 Bulk（复用 load_label_df 中的 dtype=str 模式）────────────────
+    # ── 3. 读取 Bulk（dtype=str 模式）────────────────────────────────────────
     df_bulk = pd.read_excel(
         io.BytesIO(bulk_bytes),
         sheet_name='Sponsored Products Campaigns',
@@ -371,25 +384,39 @@ def apply_mode1_to_bulk(
     )
     df_bulk.columns = df_bulk.columns.str.strip()
 
-    # ── 4. 建立索引（复用 build_bulk_index，label_type='BOTH' 覆盖 KW+ASIN）──
+    # ── 4. 建立索引（KW + ASIN）──────────────────────────────────────────────
     index_map = build_bulk_index(df_bulk, 'BOTH')
 
     # ── 4b. 建立活动元数据索引（出价策略 + 展示位置调整）────────────────────
     camp_meta = build_campaign_meta_index(df_bulk)
 
-    # ── 5. 执行更新（直接复用 process_updates）───────────────────────────────
-    df_full, df_bulk, updated_rows, details = process_updates(
-        df_filtered, df_full, df_bulk, index_map, 'BOTH', log, camp_meta=camp_meta
-    )
+    # ── 5. 降价处理 ───────────────────────────────────────────────────────────
+    all_updated_rows: list = []
+    all_details:      list = []
 
-    # ── 6. 保存 Bulk（复用 save_bulk_updated）────────────────────────────────
-    bulk_out_bytes = save_bulk_updated(bulk_bytes, df_bulk, updated_rows)
+    if not df_filtered.empty:
+        df_full, df_bulk, updated_rows, details = process_updates(
+            df_filtered, df_full, df_bulk, index_map, 'BOTH', log, camp_meta=camp_meta
+        )
+        all_updated_rows.extend(updated_rows)
+        all_details.extend(details)
 
-    # ── 7. 保存 targeting_labels（复用 save_label_updated）──────────────────
+    # ── 5b. 提价处理 ──────────────────────────────────────────────────────────
+    if not df_up_filtered.empty:
+        df_full, df_bulk, up_updated_rows, up_details = process_updates(
+            df_up_filtered, df_full, df_bulk, index_map, 'BOTH', log, camp_meta=camp_meta
+        )
+        all_updated_rows.extend(up_updated_rows)
+        all_details.extend(up_details)
+
+    # ── 6. 保存 Bulk ──────────────────────────────────────────────────────────
+    bulk_out_bytes = save_bulk_updated(bulk_bytes, df_bulk, all_updated_rows)
+
+    # ── 7. 保存 targeting_labels ──────────────────────────────────────────────
     label_csv_bytes = save_label_updated(df_full)
 
     # ── 8. 汇总日志 ────────────────────────────────────────────────────────────
-    n_matched   = len(updated_rows)
+    n_matched   = len(all_updated_rows)
     n_unmatched = sum(1 for l in log if '[未匹配]' in l)
     n_skip      = sum(1 for l in log if '[跳过' in l)
     log.insert(0,
@@ -397,4 +424,4 @@ def apply_mode1_to_bulk(
         f'跳过 {n_skip} 条（Bid为空/adj无效）'
     )
 
-    return bulk_out_bytes, label_csv_bytes, log, details
+    return bulk_out_bytes, label_csv_bytes, log, all_details

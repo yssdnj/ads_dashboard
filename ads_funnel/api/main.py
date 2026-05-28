@@ -414,8 +414,9 @@ async def api_mode1_export_bulk(
     product_target:   str        = Form('',  description='产品标识，用于文件名'),
     report_start:     str        = Form('',  description='报告开始日期，用于文件名'),
     report_end:       str        = Form('',  description='报告结束日期，用于文件名'),
-    orders_threshold: int        = Form(10,  description='订单数筛选阈值，默认 10'),
-    report_country:   str        = Form('',  description='当前页面国家（中文，如 美国），用于文件名'),
+    orders_threshold:    int        = Form(10,  description='降价订单数筛选阈值，默认 10'),
+    up_orders_threshold: int        = Form(2,   description='提价订单数筛选阈值，默认 2'),
+    report_country:      str        = Form('',  description='当前页面国家（中文，如 美国），用于文件名'),
 ):
     """
     将 Mode 1 分析结果写回 Amazon Bulk 文件，同时生成更新版 targeting_labels CSV。
@@ -434,10 +435,11 @@ async def api_mode1_export_bulk(
     try:
         bulk_out_bytes, label_csv_bytes, log, details = bulk_update.apply_mode1_to_bulk(
             bulk_bytes, rows,
-            product_target   = product_target,
-            report_start     = report_start,
-            report_end       = report_end,
-            orders_threshold = orders_threshold,
+            product_target      = product_target,
+            report_start        = report_start,
+            report_end          = report_end,
+            orders_threshold    = orders_threshold,
+            up_orders_threshold = up_orders_threshold,
         )
     except Exception as e:
         raise HTTPException(500, f'Bulk 更新失败: {e}')
