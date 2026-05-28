@@ -132,7 +132,22 @@ def get_action(row, target_acos: float, core_sales_share: float, core_keys: set)
     if "低ACoS出单" in label:
         if is_core:
             return "🔒 保护", "0%", "$0.00", "核心流量，维持出价"
-        return "↗ 维持/提价", "+0~5%", "$0.00", "表现良好，可小幅提价测试"
+        if pd.isna(row["acos"]):
+            return "↗ 维持/提价", "+0%", "$0.00", "ACoS 数据缺失，维持出价"
+        headroom = (target_acos - row["acos"]) / target_acos
+        headroom = max(headroom, 0.0)
+        if headroom < 0.10:
+            pct, reason = 0,  f"ACoS({row['acos']*100:.1f}%)接近目标，维持出价"
+        elif headroom < 0.20:
+            pct, reason = 5,  f"ACoS低于目标{headroom*100:.0f}%，小幅提价"
+        elif headroom < 0.50:
+            pct, reason = 10, f"ACoS低于目标{headroom*100:.0f}%，中幅提价"
+        else:
+            pct, reason = 15, f"ACoS低于目标{headroom*100:.0f}%，大幅提价"
+        cpc = row["cpc"] if pd.notna(row["cpc"]) else 0
+        adj_dollar = max(cpc * pct / 100, 0.01) if pct > 0 else 0.0
+        action_str = "↗ 提价" if pct > 0 else "↗ 维持"
+        return action_str, f"+{pct}%", f"${adj_dollar:.2f}", reason
 
     if "高ACoS出单" in label:
         if is_core:
@@ -425,7 +440,7 @@ _ADJ_LABELS = {'⚠️ 高ACoS出单', '🔴 高点击不出单'}
 
 
 def _parse_adj_pct(s) -> float | None:
-    """'-10%' → -0.10，'+0~5%' / None → None"""
+    """'-10%' → -0.10，'+5%' → +0.05，'+0~5%' / '+0%' / None → None"""
     if s is None:
         return None
     s = str(s).strip()
