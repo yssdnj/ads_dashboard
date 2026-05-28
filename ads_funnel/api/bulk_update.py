@@ -264,7 +264,7 @@ def save_label_updated(df_label_full: pd.DataFrame) -> bytes:
         'impressions', 'clicks', 'orders', 'spend', 'sales',
         'ACoS(%)', 'CVR(%)', 'CPC($)', '销售占比(%)', '花费占比(%)',
         'label', 'action', 'adj_pct', 'adj_dollar', 'reason',
-        '原竞价', '新竞价', '操作日期',
+        '原竞价', '新竞价', '操作日期', 'history',
     ]
     out_cols = [c for c in CSV_COLS if c in df_label_full.columns]
     df_out = df_label_full[out_cols]
@@ -319,6 +319,30 @@ def _pct_str_to_decimal(val) -> object:
         return float('nan')
 
 
+def _fmt_history(
+    campaign:     str,
+    ad_group:     str,
+    targeting:    str,
+    history_map:  dict,
+    guard_days:   int,
+) -> str:
+    """
+    为单条 targeting 行生成 history 列字符串。
+    无记录 → ''；有记录 → '{confirmed_at} | {days:.2f}天前 | {调价/不调价}'
+    """
+    key = (
+        str(campaign).strip(),
+        str(ad_group).strip(),
+        str(targeting).strip(),
+    )
+    h = history_map.get(key)
+    if not h:
+        return ''
+    days   = h['days_ago']
+    result = '不调价' if days <= guard_days else '调价'
+    return f"{h['confirmed_at']} | {days:.2f}天前 | {result}"
+
+
 def apply_mode1_to_bulk(
     bulk_bytes: bytes,
     rows: list[dict],
@@ -327,7 +351,9 @@ def apply_mode1_to_bulk(
     report_end: str = '',
     orders_threshold: int = 10,
     up_orders_threshold: int = 2,
-) -> tuple[bytes, bytes, list[str]]:
+    history_map: dict | None = None,
+    history_guard_days: int = 21,
+) -> tuple[bytes, bytes, list[str], list]:
     """
     将 Mode 1 分析结果写回 Amazon Bulk 文件，同时生成含 原竞价/新竞价/操作日期 的
     targeting_labels CSV。
@@ -353,6 +379,21 @@ def apply_mode1_to_bulk(
     df_label['新竞价']  = ''
     df_label['操作日期'] = ''
 
+    # ── Step A: 填充 history 列 ────────────────────────────────────────────
+    if history_map:
+        df_label['history'] = df_label.apply(
+            lambda row: _fmt_history(
+                row['Campaign Name'],
+                row['Ad Group Name'],
+                row['Targeting'],
+                history_map,
+                history_guard_days,
+            ),
+            axis=1,
+        )
+    else:
+        df_label['history'] = ''
+
     # ── 2. 降价筛选 ───────────────────────────────────────────────────────────
     df_filtered, df_full = load_label_df(df_label, orders_threshold=orders_threshold)
     log.append(
@@ -370,6 +411,33 @@ def apply_mode1_to_bulk(
         f'提价筛选: {len(df_up_filtered)}/{len(df_full)} 行符合条件'
         f'（低ACoS出单 且 orders≥{up_orders_threshold} 且 adj_pct>0）'
     )
+
+    # ── Step B: 构建受保护 targeting 集合 ─────────────────────────────────
+    protected_keys: set = set()
+    if history_map:
+        for (camp, adgrp, tgt), h in history_map.items():
+            if h['days_ago'] <= history_guard_days:
+                protected_keys.add((camp, adgrp, tgt))
+        if protected_keys:
+            log.append(
+                f'[历史保护] {len(protected_keys)} 条 targeting 在 '
+                f'{history_guard_days} 天内已调价，已跳过'
+            )
+
+    # ── Step C: 从降价/提价筛选结果中剔除受保护行 ────────────────────────
+    if protected_keys:
+        def _row_key(row) -> tuple:
+            return (
+                str(row['Campaign Name']).strip(),
+                str(row['Ad Group Name']).strip(),
+                str(row['Targeting']).strip(),
+            )
+        df_filtered    = df_filtered[
+            ~df_filtered.apply(_row_key, axis=1).isin(protected_keys)
+        ]
+        df_up_filtered = df_up_filtered[
+            ~df_up_filtered.apply(_row_key, axis=1).isin(protected_keys)
+        ]
 
     if df_filtered.empty and df_up_filtered.empty:
         log.insert(0, '共更新 0 条 | 筛选结果为空，无需处理')

@@ -6,6 +6,7 @@ db.py — MySQL 数据库操作层
 import json
 import pandas as pd
 from pathlib import Path
+from datetime import datetime
 from sqlalchemy import create_engine, text, inspect as sa_inspect
 
 _CONFIG_PATH = Path(__file__).parent.parent / 'db_config.json'
@@ -485,6 +486,58 @@ def list_bid_update_logs(limit: int = 100, country: str = '') -> list:
                 {'lim': limit}
             )
         return [dict(r) for r in result.mappings().all()]
+
+
+def get_targeting_history(product_target: str, country: str) -> dict:
+    """
+    返回每个 (campaign, ad_group, targeting) 三元组最近一次已确认调价的时间，
+    按 product_target + country 范围查询。
+
+    返回格式：
+        {
+            ('Camp1', 'AG1', 'kw_abc'): {
+                'confirmed_at': '2026-05-10 14:23:00',
+                'days_ago': 17.92,
+            },
+            ...
+        }
+    DB 异常时返回 {}，不中断调用方。
+    """
+    try:
+        with get_engine().connect() as conn:
+            result = conn.execute(
+                text(
+                    'SELECT d.campaign, d.ad_group, d.targeting, '
+                    '       MAX(l.confirmed_at) AS last_confirmed_at '
+                    'FROM   bid_update_detail d '
+                    'JOIN   bid_update_log    l ON d.log_id = l.id '
+                    'WHERE  l.product_target = :pt '
+                    '  AND  l.country        = :co '
+                    'GROUP  BY d.campaign, d.ad_group, d.targeting'
+                ),
+                {'pt': product_target, 'co': country},
+            )
+            now = datetime.now()
+            out: dict = {}
+            for row in result.mappings():
+                conf_at = row['last_confirmed_at']   # MySQL 返回 datetime 对象
+                if conf_at is None:
+                    continue
+                days_ago = (now - conf_at).total_seconds() / 86400
+                key = (
+                    str(row['campaign']).strip(),
+                    str(row['ad_group']).strip(),
+                    str(row['targeting']).strip(),
+                )
+                out[key] = {
+                    'confirmed_at': conf_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'days_ago':     days_ago,
+                }
+            return out
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        return {}
 
 
 # ── 分析原始数据（raw_tar / raw_ap）──────────────────────────────────────────
