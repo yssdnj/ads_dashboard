@@ -625,6 +625,7 @@ def run_multi_round_analysis_6r(
     target_acos:          float,
     avg_clicks_per_order: float,
     core_sales_share:     float = 0.20,
+    up_orders_threshold:  int   = 2,      # 提价 consensus 入围最低订单数
 ) -> dict:
     """
     六轮多窗口分析 + 投票 consensus（含向好趋势排除）。
@@ -782,6 +783,54 @@ def run_multi_round_analysis_6r(
         row['hit_rounds_adj'] = hit_rounds_adj
         consensus_rows.append(row)
 
+    # ── 提价 consensus ──────────────────────────────────────────────────────────
+    _UP_LABEL = '✅ 低ACoS出单'
+    vote_up: dict[tuple, dict] = {}        # key → {rname: (adj_dec, adj_raw)}
+    r3_up_row_map: dict[tuple, dict] = {}  # metrics 来源（取 R3）
+    r1_up_row_map: dict[tuple, dict] = {}  # label/action 来源（取 R1）
+
+    for rname in ('R6', 'R5', 'R4', 'R3', 'R2', 'R1'):
+        for row in rounds[rname].get('rows', []):
+            if row.get('label') != _UP_LABEL:
+                continue
+            if (row.get('orders') or 0) < up_orders_threshold:
+                continue
+            adj_raw = str(row.get('adj_pct') or '').strip()
+            adj_dec = _parse_adj_pct(adj_raw)
+            if adj_dec is None:
+                continue   # +0% / 数据缺失 → 跳过（不计票）
+            key = (row.get('campaign'), row.get('ad_group'), row.get('targeting'))
+            if key not in vote_up:
+                vote_up[key] = {}
+            vote_up[key][rname] = (adj_dec, adj_raw)
+            if rname == 'R3':
+                r3_up_row_map[key] = row
+            if rname == 'R1':
+                r1_up_row_map[key] = row
+
+    consensus_up_rows: list[dict] = []
+    for key, hit_map in vote_up.items():
+        hit_set = set(hit_map.keys())
+        # 门槛：≥3/6 且 R3 必须命中
+        if len(hit_set) < 3 or 'R3' not in hit_set:
+            continue
+        # 最保守提幅（最小值）
+        best_adj = min(hit_map.values(), key=lambda x: x[0])[0]
+        best_str = f'+{int(best_adj * 100)}%' if best_adj > 0 else '0%'
+        hit_rounds_str = ','.join(sorted(hit_map.keys()))
+        hit_rounds_adj = ','.join(
+            f'{r}:{hit_map[r][1]}' for r in sorted(hit_map.keys())
+        )
+        # metrics 取 R3，fallback R1
+        base = r3_up_row_map.get(key) or r1_up_row_map.get(key) or {}
+        row_out = dict(base)
+        row_out['adj_pct']        = best_str
+        row_out['action']         = '↗ 提价' if best_adj > 0 else '↗ 维持'
+        row_out['reason']         = f'六轮分析命中（{hit_rounds_str}），取最保守提幅'
+        row_out['hit_rounds']     = hit_rounds_str
+        row_out['hit_rounds_adj'] = hit_rounds_adj
+        consensus_up_rows.append(row_out)
+
     r6 = rounds.get('R6', {})
     return {
         'R1': rounds.get('R1', {}),
@@ -790,10 +839,8 @@ def run_multi_round_analysis_6r(
         'R4': rounds.get('R4', {}),
         'R5': rounds.get('R5', {}),
         'R6': r6,
-        'consensus': {
-            'rows':  consensus_rows,
-            'count': len(consensus_rows),
-        },
+        'consensus':    {'rows': consensus_rows,    'count': len(consensus_rows)},
+        'consensus_up': {'rows': consensus_up_rows, 'count': len(consensus_up_rows)},
         'product_target': product_target,
         'report_start':   r6.get('date_start', ''),
         'report_end':     r6.get('date_end',   ''),

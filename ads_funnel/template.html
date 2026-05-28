@@ -869,20 +869,49 @@ body.dark .drs-lbl{color:#64748b}
             <div style="font-size:10px;color:#fb923c">全量数据</div>
           </div>
         </div>
-        <!-- 投票规则 -->
-        <div style="background:#fff8ec;border:1px solid #fde68a;border-radius:8px;padding:10px 12px">
-          <div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:4px">🗳 投票规则</div>
-          <div style="font-size:12px;color:#78350f;line-height:1.7">
-            投放在 <strong style="color:#dc2626">≥ 3/6 轮</strong> 中命中调价标签 → 进入 Consensus
-            <span style="color:var(--g5);font-size:11px">（&lt;3 轮视为偶然，不调）</span>
+        <!-- 降价 / 提价 左右分栏 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1">
+          <!-- 左：降价 -->
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="background:#fff8ec;border:1px solid #fde68a;border-radius:8px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:4px">↘ 降价入围条件</div>
+              <div style="font-size:12px;color:#78350f;line-height:1.7">
+                标签「⚠️ 高ACoS出单」或「🔴 高点击不出单」<br>
+                <strong style="color:#dc2626">≥ 3/6 轮</strong> 命中 → 入围<br>
+                指标来自 R6 · 标签来自 R1（未命中则 fallback R6）<br>
+                <span style="font-size:11px">命中=3 且仅 R4~R6 → 不降价（向好趋势）</span>
+              </div>
+            </div>
+            <div style="background:#fff8ec;border:1px solid #fde68a;border-radius:8px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:4px">📉 降幅逻辑（超出比 = (实际−目标) / 目标）</div>
+              <div style="font-size:12px;color:#78350f;line-height:1.7">
+                &lt; 20% → <strong>-5%</strong><br>
+                20~50% → <strong>-10%</strong><br>
+                &gt; 50% → <strong>-15%</strong><br>
+                高点击不出单 → <strong>-20%</strong>（固定）
+              </div>
+            </div>
           </div>
-        </div>
-        <!-- 向好排除 -->
-        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px">
-          <div style="font-size:12px;font-weight:700;color:#14532d;margin-bottom:4px">🌱 向好趋势排除</div>
-          <div style="font-size:12px;color:#166534;line-height:1.7">
-            命中=3 且仅 R4~R6 → <strong>不降价</strong>（近3周已好转）<br>
-            指标来自 R6 · 标签来自 R1 · 降幅取最保守值
+          <!-- 右：提价 -->
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;color:#14532d;margin-bottom:4px">↗ 提价入围条件</div>
+              <div style="font-size:12px;color:#166534;line-height:1.7">
+                标签「✅ 低ACoS出单」且订单 <strong>≥ 2</strong><br>
+                <strong style="color:#16a34a">≥ 3/6 轮</strong> 命中且 <strong>R3 必须命中</strong> → 入围<br>
+                指标来自 R3 · 提幅取最小值（最保守）<br>
+                <span style="font-size:11px">核心流量（Top10 / 占比≥20%）→ 保护不提</span>
+              </div>
+            </div>
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px">
+              <div style="font-size:12px;font-weight:700;color:#14532d;margin-bottom:4px">📐 提幅逻辑（headroom = (目标−实际) / 目标）</div>
+              <div style="font-size:12px;color:#166534;line-height:1.7">
+                &lt; 10% → <strong>+0%</strong> 维持<br>
+                10~20% → <strong>+5%</strong><br>
+                20~50% → <strong>+10%</strong><br>
+                &gt; 50% → <strong>+15%</strong>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -3366,6 +3395,7 @@ async function runMode1Analysis6r(){
   fd.append('target_acos',          acos);
   fd.append('avg_clicks_per_order', cpo);
   fd.append('report_country',       REPORT_COUNTRY);
+  fd.append('up_orders_threshold',  2);
 
   try{
     if(prog) prog.style.width = '60%';
@@ -3392,9 +3422,15 @@ async function runMode1Analysis6r(){
 
     ['R1','R2','R3','R4','R5','R6'].forEach(r => _renderRoundPanel6r(r, d[r]));
     // consensus：指标来自 R6（最全窗口），rows 用 consensus 投票结果
+    // 合并降价 + 提价 rows，提价行标记 _is_up:true
+    const _upRows = (d.consensus_up?.rows || []).map(r => ({...r, _is_up: true}));
+    if (!d.consensus) d.consensus = {rows: [], count: 0};
+    d.consensus.rows  = [...(d.consensus.rows || []), ..._upRows];
+    d.consensus.count = d.consensus.rows.length;
+
     const consensus6rData = {
       ...(d.R6 || {}),
-      rows:           d.consensus?.rows || [],
+      rows:           d.consensus.rows,
       label_counts:   d.consensus?.label_counts || d.R6?.label_counts || {},
       product_target: d.product_target,
       report_start:   d.report_start,
@@ -3414,12 +3450,14 @@ async function runMode1Analysis6r(){
     _renderRoundCsvBtns6r(d);
 
     const cnt = document.getElementById('tgt6-rtab-consensus-cnt');
-    if(cnt) cnt.textContent = d.consensus?.count ?? '';
+    if(cnt) cnt.textContent = d.consensus?.count || '';
 
     switchRoundTab6r('consensus');
 
     status.style.color = 'var(--gn)';
-    status.textContent = `✅ 六轮分析完成，Consensus ${d.consensus?.count ?? 0} 条`;
+    const _nDown = d.consensus.rows.filter(r => !r._is_up).length;
+    const _nUp   = d.consensus.rows.filter(r =>  r._is_up).length;
+    status.textContent = `✅ 六轮分析完成，降价 ${_nDown} 条 · 提价 ${_nUp} 条`;
   }catch(e){
     status.style.color = 'var(--rd)';
     status.textContent = '❌ ' + e.message;
@@ -4125,7 +4163,7 @@ function renderTargetingResult(data, targetId='tgt-panel-consensus', skipSideEff
           Object.entries(camps).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([camp,campRows])=>{
             html+=`<details style="border-top:1px solid var(--g1)">
               <summary style="padding:8px 16px 8px 48px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;background:var(--g0);user-select:none">
-                <span style="font-size:11px;color:var(--g6);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${camp}">📣 ${trn(camp,56)}</span>
+                <span style="font-size:11px;color:${campRows.some(r=>r._is_up)?'#15803d':'var(--g6)'};flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${camp}">📣 ${trn(camp,56)}</span>
                 <span style="font-size:11px;color:var(--g6);flex-shrink:0">${campRows.length} 个 targeting</span>
               </summary>
               <div style="overflow-x:auto;padding-left:76px;background:#fff">
@@ -4139,8 +4177,9 @@ function renderTargetingResult(data, targetId='tgt-panel-consensus', skipSideEff
                   <div style="${_gh}">说明</div>
                   ${campRows.map((r,_i)=>{
                     const hitSet=new Set(_parseRounds(r.hit_rounds||''));
+                    const _badgeColor=r._is_up?'#16a34a':'#dc2626';
                     const badges=_roundSlots.map(rn=>hitSet.has(rn)
-                      ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:18px;border-radius:3px;font-size:10px;font-weight:700;margin-right:2px;background:#dc2626;color:#fff">${rn}</span>`
+                      ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:18px;border-radius:3px;font-size:10px;font-weight:700;margin-right:2px;background:${_badgeColor};color:#fff">${rn}</span>`
                       :`<span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:18px;border-radius:3px;font-size:10px;font-weight:700;margin-right:2px;background:#f1f5f9;color:#94a3b8">—</span>`
                     ).join('');
                     const desc=_hitDesc(r.hit_rounds||'');
@@ -4293,7 +4332,7 @@ function renderTargetingResult(data, targetId='tgt-panel-consensus', skipSideEff
   });
   const fmtA=(sp,sl)=>sl>0?(sp/sl*100).toFixed(1)+'%':'—';
   const labelCls={'✅ 低ACoS出单':'g','⚠️ 高ACoS出单':'y','🔴 高点击不出单':'r','⚪ 低点击不出单':'gr','— 无点击':'gr'};
-  const actionCls={'🔒 保护':'dk','↘ 降价':'r','⛔ 大幅降价/暂停':'r','↗ 维持/提价':'g','观察':'gr'};
+  const actionCls={'🔒 保护':'dk','↘ 降价':'r','⛔ 大幅降价/暂停':'r','↗ 维持/提价':'g','↗ 提价':'g','↗ 维持':'g','观察':'gr'};
 
   html += `<div class="tgt-sec-div">层级明细 <span style="font-weight:400;color:var(--g4)">· 默认折叠，点击展开</span></div>
   <div style="background:#fff;border:1px solid var(--g2);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)">`;

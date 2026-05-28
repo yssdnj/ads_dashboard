@@ -362,6 +362,7 @@ async def api_mode1_bid_optimize_6r(
     avg_clicks_per_order: float = Form(...),
     core_sales_share:     float = Form(0.2),
     report_country:       str   = Form(''),
+    up_orders_threshold:  int   = Form(2,   description='提价入围最低订单数，默认 2'),
 ):
     """
     Mode 1 六轮分析：从数据库读取最近 6 个日历周数据，
@@ -392,6 +393,7 @@ async def api_mode1_bid_optimize_6r(
             target_acos          = target_acos / 100,
             avg_clicks_per_order = avg_clicks_per_order,
             core_sales_share     = core_sales_share,
+            up_orders_threshold  = up_orders_threshold,
         )
     except Exception as e:
         traceback.print_exc()
