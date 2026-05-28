@@ -9,7 +9,7 @@ build_bulk_index、process_updates、save_bulk_updated、save_label_updated）�
   run_analysis() 返回的 rows 中 adj_pct 为 "-5%" 字符串，
   而 process_updates 使用 pd.to_numeric 解析，需在调用前转为小数（-0.05）。
 
-返回：(bulk_out_bytes, label_csv_bytes, log_lines)
+返回：(bulk_out_bytes, label_csv_bytes, log_lines, details)
 """
 
 from __future__ import annotations
@@ -338,7 +338,9 @@ def _fmt_history(
     h = history_map.get(key)
     if not h:
         return ''
-    days   = h['days_ago']
+    days = h.get('days_ago')
+    if days is None:
+        return ''
     result = '不调价' if days <= guard_days else '调价'
     return f"{h['confirmed_at']} | {days:.2f}天前 | {result}"
 
@@ -379,17 +381,17 @@ def apply_mode1_to_bulk(
     df_label['新竞价']  = ''
     df_label['操作日期'] = ''
 
+    # ── 预计算三元组 key 列（供 Step A/C 共用）──────────────────────────────────
+    df_label['_key'] = list(zip(
+        df_label['Campaign Name'].str.strip(),
+        df_label['Ad Group Name'].str.strip(),
+        df_label['Targeting'].str.strip(),
+    ))
+
     # ── Step A: 填充 history 列 ────────────────────────────────────────────
     if history_map:
-        df_label['history'] = df_label.apply(
-            lambda row: _fmt_history(
-                row['Campaign Name'],
-                row['Ad Group Name'],
-                row['Targeting'],
-                history_map,
-                history_guard_days,
-            ),
-            axis=1,
+        df_label['history'] = df_label['_key'].apply(
+            lambda key: _fmt_history(*key, history_map, history_guard_days)
         )
     else:
         df_label['history'] = ''
@@ -426,17 +428,11 @@ def apply_mode1_to_bulk(
 
     # ── Step C: 从降价/提价筛选结果中剔除受保护行 ────────────────────────
     if protected_keys:
-        def _row_key(row) -> tuple:
-            return (
-                str(row['Campaign Name']).strip(),
-                str(row['Ad Group Name']).strip(),
-                str(row['Targeting']).strip(),
-            )
         df_filtered    = df_filtered[
-            ~df_filtered.apply(_row_key, axis=1).isin(protected_keys)
+            ~df_filtered['_key'].isin(protected_keys)
         ]
         df_up_filtered = df_up_filtered[
-            ~df_up_filtered.apply(_row_key, axis=1).isin(protected_keys)
+            ~df_up_filtered['_key'].isin(protected_keys)
         ]
 
     if df_filtered.empty and df_up_filtered.empty:
