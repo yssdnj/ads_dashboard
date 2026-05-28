@@ -227,7 +227,7 @@ def _upsert_lx(tbl: str, df_new: pd.DataFrame, keys: list):
         else:
             # 有重叠：只读重叠窗口，新数据覆盖旧数据
             df_old = pd.read_sql(
-                f'SELECT * FROM `{tbl}` WHERE `{date_col}` BETWEEN :a AND :b',
+                text(f'SELECT * FROM `{tbl}` WHERE `{date_col}` BETWEEN :a AND :b'),
                 engine, params={'a': new_min, 'b': new_max}
             )
             df_old = df_old.drop(columns=['report_id'], errors='ignore')
@@ -545,7 +545,7 @@ def _upsert_df(engine, tbl: str, df_new: pd.DataFrame, keys: list, date_col: str
         else:
             # 有重叠：只读重叠窗口，新数据覆盖旧数据
             df_old = pd.read_sql(
-                f'SELECT * FROM `{tbl}` WHERE `{date_col}` BETWEEN :a AND :b',
+                text(f'SELECT * FROM `{tbl}` WHERE `{date_col}` BETWEEN :a AND :b'),
                 engine, params={'a': new_min, 'b': new_max}
             )
             avail_keys = [k for k in keys if k in df_old.columns and k in df_new.columns]
