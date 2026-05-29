@@ -2763,7 +2763,18 @@ async function setL3WkRange(){
       l3WkData=data; l3WkNoData=false;
     }
   }catch(e){l3WkData=null; l3WkNoData=true;}
+
+  // 记住当前展开的活动，清缓存，renderL3后重新展开
+  const wasOpen=l3OpenCamp;
+  if(wasOpen) delete l3TrendCache[wasOpen];
   renderL3();
+  if(wasOpen){
+    const rows=document.querySelectorAll('#l3-table tbody tr:not(.exp-row)');
+    for(const tr of rows){
+      const n=tr.querySelector('td:first-child')?.textContent?.replace('▶','').trim();
+      if(n===wasOpen){await toggleL3Row(wasOpen,tr);break;}
+    }
+  }
 }
 
 function renderL3(){
@@ -2883,33 +2894,17 @@ async function toggleL3Row(name,tr){
 }
 
 function _buildL3TrendPanel(name,safeId,camp,trend){
-  // 12 metric tiles (use RAW.camps totals)
-  const items=[
-    {l:'花费',v:fmt(camp.sp,'$')},{l:'销售额',v:fmt(camp.sl,'$')},
-    {l:'ACoS',v:fmt(camp.ac,'pct')},{l:'ROAS',v:fmt(camp.ro,'x')},
-    {l:'点击',v:fmt(camp.cl,'int')},{l:'订单',v:fmt(camp.or_||camp.or,'int')},
-    {l:'曝光',v:fmt(camp.im,'int')},{l:'CTR',v:fmt(camp.ct,'pct2')},
-    {l:'CVR',v:fmt(camp.cv,'pct2')},{l:'CPC',v:fmt(camp.cp,'$')},
-    {l:'广告组合',v:camp.po||''},{l:'状态',v:camp.st||''},
-  ];
-  const grid=items.map(it=>
-    `<div style="background:#fff;border-radius:6px;padding:6px 10px;border:1px solid #e2e8f0">`+
-    `<div style="font-size:9px;color:#718096;font-weight:600;text-transform:uppercase">${it.l}</div>`+
-    `<div style="font-size:13px;font-weight:700">${it.v}</div></div>`
-  ).join('');
-
+  const esc=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   const modeBtns=(chart)=>`
-    <button id="${safeId}-${chart}-spend" onclick="setL3TrendMode(${JSON.stringify(name)},'${chart}','spend')"
+    <button id="${safeId}-${chart}-spend" onclick="setL3TrendMode('${esc}','${chart}','spend')"
       style="padding:2px 8px;font-size:11px;border:1px solid #3b82f6;border-radius:4px;cursor:pointer;background:#eff6ff;color:#3b82f6;font-weight:600">花费/ACoS</button>
-    <button id="${safeId}-${chart}-click" onclick="setL3TrendMode(${JSON.stringify(name)},'${chart}','click')"
-      style="padding:2px 8px;font-size:11px;border:1px solid #94a3b8;border-radius:4px;cursor:pointer;background:#f8fafc;color:#64748b">点击/订单/ACoS</button>`;
+    <button id="${safeId}-${chart}-click" onclick="setL3TrendMode('${esc}','${chart}','click')"
+      style="padding:2px 8px;font-size:11px;border:1px solid #94a3b8;border-radius:4px;cursor:pointer;background:#f8fafc;color:#64748b">点击/订单/CTR/ACoS</button>`;
 
   const noData='<div style="text-align:center;color:#94a3b8;padding:12px;font-size:12px">暂无数据</div>';
 
-  return `<div style="padding:14px 16px">
-    <div style="font-size:13px;font-weight:700;margin-bottom:8px">${name}</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-bottom:14px">${grid}</div>
-    <div style="margin-bottom:14px">
+  return `<div style="padding:10px 16px">
+    <div style="margin-bottom:10px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
         <span style="font-size:12px;font-weight:600">📈 周趋势</span>${modeBtns('wk')}
       </div>
@@ -2919,7 +2914,8 @@ function _buildL3TrendPanel(name,safeId,camp,trend){
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
         <span style="font-size:12px;font-weight:600">📅 日趋势</span>${modeBtns('day')}
       </div>
-      ${trend.daily.length>0?`<canvas id="${safeId}-day" height="70"></canvas>`:noData}
+      ${trend.daily.length>0?`<canvas id="${safeId}-day" height="70"></canvas>
+      <div class="drs-wrap"><div class="drs-track"><div class="drs-fill" id="${safeId}DrsFill"></div><input class="drs-input" type="range" id="${safeId}DrsFrom"><input class="drs-input" type="range" id="${safeId}DrsTo"></div><div class="drs-labels"><span class="drs-lbl" id="${safeId}DrsLblFrom"></span><span class="drs-lbl" id="${safeId}DrsLblTo"></span></div></div>`:noData}
     </div>
   </div>`;
 }
@@ -2927,74 +2923,80 @@ function _buildL3TrendPanel(name,safeId,camp,trend){
 function _drawL3Charts(name,safeId,trend){
   if(!l3TrendModes[name])l3TrendModes[name]={wk:'spend',day:'spend'};
   const modes=l3TrendModes[name];
+  const dlBar=(fmt)=>({display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:fmt});
 
-  // Weekly trend chart
-  if(trend.weekly.length>0){
+  // ── 周趋势（x轴显示选中范围全部周次，无数据填0）──────────────────────
+  {
     const wkEl=document.getElementById(safeId+'-wk');
     if(wkEl){
       destroyChart(safeId+'-wk');
-      const labels=trend.weekly.map(w=>w.wk);
-      let datasets;
-      if(modes.wk==='spend'){
-        datasets=[
-          {type:'bar',label:'花费($)',data:trend.weekly.map(w=>w.sp||0),backgroundColor:'rgba(59,130,246,0.6)',yAxisID:'y'},
-          {type:'line',label:'ACoS%',data:trend.weekly.map(w=>w.ac),borderColor:'#ef4444',backgroundColor:'transparent',yAxisID:'y2',tension:0.3,pointRadius:3},
-        ];
-      }else{
-        datasets=[
-          {type:'bar',label:'点击',data:trend.weekly.map(w=>w.cl||0),backgroundColor:'rgba(16,185,129,0.6)',yAxisID:'y'},
-          {type:'line',label:'订单',data:trend.weekly.map(w=>w.or_||0),borderColor:'#8b5cf6',backgroundColor:'transparent',yAxisID:'y',tension:0.3,pointRadius:3},
-          {type:'line',label:'ACoS%',data:trend.weekly.map(w=>w.ac),borderColor:'#ef4444',backgroundColor:'transparent',yAxisID:'y2',tension:0.3,pointRadius:3},
-        ];
-      }
-      {const base=comboChartOpts('','%');
-      _charts[safeId+'-wk']=new Chart(wkEl,{
-        data:{labels,datasets},
-        options:{...base,plugins:{...base.plugins,legend:{display:true,labels:{font:{size:10}}},datalabels:{display:false}}},
-      });}
+      const allWks=rangeWks(l3WkFrom,l3WkTo);
+      const wkMap={};(trend.weekly||[]).forEach(w=>{wkMap[w.wk]=w;});
+      const labels=allWks.map(w=>w+(WK_DATES[w]?' ('+WK_DATES[w]+')':''));
+      const get=(w,k)=>(wkMap[w]?wkMap[w][k]:0)||0;
+      const getN=(w,k)=>wkMap[w]?wkMap[w][k]:null;
+      let ds;
+      if(modes.wk==='spend') ds=[
+        {type:'bar',label:'花费($)',data:allWks.map(w=>get(w,'sp')),backgroundColor:'rgba(59,130,246,.7)',yAxisID:'y',datalabels:dlBar(v=>v>0?'$'+Math.round(v):'')},
+        {type:'bar',label:'销售额($)',data:allWks.map(w=>get(w,'sl')),backgroundColor:'rgba(16,185,129,.7)',yAxisID:'y',datalabels:dlBar(v=>v>0?'$'+Math.round(v):'')},
+        {type:'line',label:'ACoS(%)',data:allWks.map(w=>getN(w,'ac')),borderColor:'#ef4444',yAxisID:'y2',tension:.3,pointRadius:4,fill:false},
+      ];
+      else ds=[
+        {type:'bar',label:'曝光(百)',data:allWks.map(w=>+(get(w,'im')/100).toFixed(1)),backgroundColor:'rgba(148,163,184,0.5)',yAxisID:'y',hidden:true},
+        {type:'bar',label:'点击',data:allWks.map(w=>get(w,'cl')),backgroundColor:'rgba(59,130,246,.7)',yAxisID:'y',datalabels:dlBar(v=>v>0?v:'')},
+        {type:'bar',label:'订单',data:allWks.map(w=>get(w,'or_')),backgroundColor:'rgba(16,185,129,.7)',yAxisID:'y',datalabels:dlBar(v=>v>0?v:'')},
+        {type:'line',label:'CVR(%)',data:allWks.map(w=>getN(w,'cv')),borderColor:'#8b5cf6',yAxisID:'y2',tension:.3,pointRadius:4,fill:false,hidden:true},
+        {type:'line',label:'CTR(%)',data:allWks.map(w=>getN(w,'ct')),borderColor:'#f59e0b',yAxisID:'y2',tension:.3,pointRadius:4,fill:false},
+        {type:'line',label:'ACoS(%)',data:allWks.map(w=>getN(w,'ac')),borderColor:'#ef4444',yAxisID:'y2',tension:.3,pointRadius:4,fill:false},
+      ];
+      _charts[safeId+'-wk']=new Chart(wkEl,{type:'bar',data:{labels,datasets:ds},options:comboChartOpts('','%')});
     }
   }
 
-  // Daily trend chart with bid event annotations
-  if(trend.daily.length>0){
+  // ── 日趋势（x轴显示选中范围全部日期，无数据填0）──────────────────────
+  {
     const dayEl=document.getElementById(safeId+'-day');
     if(dayEl){
       destroyChart(safeId+'-day');
-      const labels=trend.daily.map(d=>d.date);
-      // Build annotation objects for bid events
+      const allDays=rangeDays(l3WkFrom,l3WkTo);
+      const dayMap={};(trend.daily||[]).forEach(d=>{dayMap[d.date]=d;});
+      const labels=allDays.map(d=>d.slice(5));  // MM-DD
+      const getD=(d,k)=>(dayMap[d]?dayMap[d][k]:0)||0;
+      const getDN=(d,k)=>dayMap[d]?dayMap[d][k]:null;
+
+      // 调价事件垂直线（用 MM-DD 匹配 x 轴）
       const annotations={};
       (trend.bid_events||[]).forEach((ev,i)=>{
-        if(!labels.includes(ev.date))return;
+        const s=ev.date?ev.date.slice(5):'';
+        if(!labels.includes(s))return;
         const parts=[];
         if(ev.up_count>0)parts.push(`↑${ev.up_count}`);
         if(ev.dn_count>0)parts.push(`↓${ev.dn_count}`);
         annotations['bid'+i]={
-          type:'line',scaleID:'x',value:ev.date,
+          type:'line',scaleID:'x',value:s,
           borderColor:'#f59e0b',borderWidth:1.5,borderDash:[4,3],
           label:{display:true,content:parts.join(' ')||'调价',position:'start',
             backgroundColor:'rgba(245,158,11,0.15)',color:'#b45309',font:{size:10},yAdjust:-4},
         };
       });
-      let datasets;
-      if(modes.day==='spend'){
-        datasets=[
-          {type:'bar',label:'花费($)',data:trend.daily.map(d=>d.sp||0),backgroundColor:'rgba(59,130,246,0.5)',yAxisID:'y'},
-          {type:'line',label:'ACoS%',data:trend.daily.map(d=>d.ac),borderColor:'#ef4444',backgroundColor:'transparent',yAxisID:'y2',tension:0.3,pointRadius:2},
-        ];
-      }else{
-        datasets=[
-          {type:'bar',label:'点击',data:trend.daily.map(d=>d.cl||0),backgroundColor:'rgba(16,185,129,0.5)',yAxisID:'y'},
-          {type:'line',label:'订单',data:trend.daily.map(d=>d.or_||0),borderColor:'#8b5cf6',backgroundColor:'transparent',yAxisID:'y',tension:0.3,pointRadius:2},
-          {type:'line',label:'ACoS%',data:trend.daily.map(d=>d.ac),borderColor:'#ef4444',backgroundColor:'transparent',yAxisID:'y2',tension:0.3,pointRadius:2},
-        ];
-      }
-      const _base=comboChartOpts('','%');
-      const opts={..._base,plugins:{..._base.plugins,legend:{display:true,labels:{font:{size:10}}},datalabels:{display:false}}};
-      // Add annotation plugin if available
-      if(Object.keys(annotations).length>0&&typeof Chart!=='undefined'&&Chart.registry){
-        try{opts.plugins.annotation={annotations};}catch(e){}
-      }
-      _charts[safeId+'-day']=new Chart(dayEl,{data:{labels,datasets},options:opts});
+      let ds2;
+      if(modes.day==='spend') ds2=[
+        {type:'bar',label:'花费($)',data:allDays.map(d=>getD(d,'sp')),backgroundColor:'rgba(59,130,246,.6)',yAxisID:'y',datalabels:dlBar(v=>v>0?'$'+Math.round(v):'')},
+        {type:'bar',label:'销售额($)',data:allDays.map(d=>getD(d,'sl')),backgroundColor:'rgba(16,185,129,.6)',yAxisID:'y',datalabels:dlBar(v=>v>0?'$'+Math.round(v):'')},
+        {type:'line',label:'ACoS(%)',data:allDays.map(d=>getDN(d,'ac')),borderColor:'#ef4444',yAxisID:'y2',tension:.2,pointRadius:2,fill:false},
+      ];
+      else ds2=[
+        {type:'bar',label:'曝光(百)',data:allDays.map(d=>+(getD(d,'im')/100).toFixed(1)),backgroundColor:'rgba(148,163,184,0.5)',yAxisID:'y',hidden:true},
+        {type:'bar',label:'点击',data:allDays.map(d=>getD(d,'cl')),backgroundColor:'rgba(59,130,246,.6)',yAxisID:'y',datalabels:dlBar(v=>v>0?v:'')},
+        {type:'bar',label:'订单',data:allDays.map(d=>getD(d,'or_')),backgroundColor:'rgba(16,185,129,.6)',yAxisID:'y',datalabels:dlBar(v=>v>0?v:'')},
+        {type:'line',label:'CVR(%)',data:allDays.map(d=>getDN(d,'cv')),borderColor:'#8b5cf6',yAxisID:'y2',tension:.2,pointRadius:2,fill:false,hidden:true},
+        {type:'line',label:'CTR(%)',data:allDays.map(d=>getDN(d,'ct')),borderColor:'#f59e0b',yAxisID:'y2',tension:.2,pointRadius:2,fill:false},
+        {type:'line',label:'ACoS(%)',data:allDays.map(d=>getDN(d,'ac')),borderColor:'#ef4444',yAxisID:'y2',tension:.2,pointRadius:2,fill:false},
+      ];
+      const opts=dayChartOpts('','%');
+      if(Object.keys(annotations).length>0){try{opts.plugins.annotation={annotations};}catch(e){}}
+      _charts[safeId+'-day']=new Chart(dayEl,{type:'bar',data:{labels,datasets:ds2},options:opts});
+      initDaySlider(safeId+'-day', safeId, allDays);
     }
   }
 }

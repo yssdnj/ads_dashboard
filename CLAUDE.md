@@ -62,15 +62,23 @@ POST /api/import (领星导出: 广告活动每日明细 + 广告组合每日明
 
 `GET /` 直接服务端渲染：读取 report 数据 → `export.to_html_webapp()` → 注入 `template.html`。
 
+其他漏斗报告端点：`GET /api/reports`、`GET /api/reports/{id}`、`DELETE /api/reports/{id}`；导出：`/export/html`、`/export/json`、`/export/csv`；配置：`GET|POST /api/config/acos-targets`、`GET|POST /api/config/avg-clicks`。
+
 ### Mode 1 竞价优化
 
 ```
-POST /api/analysis/mode1/import-data   每周上传：推广商品报告 + 投放报告 → raw_tar / raw_ap
-POST /api/analysis/mode1              读取最近 6 个日历周，跑 R1/R2/R3 三轮分析
-POST /api/analysis/mode1/bid-optimize-6r  跑 R1~R6 六轮分析
-POST /api/analysis/mode1/export-bulk  将分析结果 + 竞价建议写回 Amazon Bulk xlsx
-POST /api/analysis/mode1/confirm-update  记录已上传到亚马逊，入 bid_update_log
+POST /api/analysis/mode1/import-data      每周上传：推广商品报告 + 投放报告 → raw_tar / raw_ap
+POST /api/analysis/mode1                  读取最近 6 个日历周，跑 R1/R2/R3 三轮分析
+POST /api/analysis/mode1/bid-optimize-6r  跑 R1~R6 六轮分析；返回 consensus（降价）+ consensus_up（提价）
+POST /api/analysis/mode1/export-bulk      将分析结果 + 竞价建议写回 Amazon Bulk xlsx
+POST /api/analysis/mode1/confirm-update   记录已上传到亚马逊，入 bid_update_log
+GET  /api/analysis/mode1/data-stats       查看已导入数据的周次覆盖情况
+GET  /api/analysis/mode1/update-logs      竞价更新历史记录列表
 ```
+
+**bid-optimize-6r 返回两组 consensus：**
+- `consensus`（降价）：标签含「高ACoS出单」或「高点击不出单」，≥ 3/6 轮命中，指标取 R6；排除仅命中 R4~R6 的向好趋势
+- `consensus_up`（提价）：标签为「低ACoS出单」，≥ 3/6 轮命中且 R3 必须命中，订单 ≥ `up_orders_threshold`（默认 2），指标取 R3
 
 分析结果临时缓存在 `_mode1_cache` / `_mode1_6r_cache`（内存 dict，进程重启后失效）。
 

@@ -25,7 +25,7 @@ def classify_port(name: str):
     if   '_SB' in n or n.startswith('SB'):                    cat = '1_SB'
     elif '_SD' in n or n.startswith('SD'):                    cat = '2_SD'
     elif 'KW精准' in n_m or 'KW防守' in n_m:                   cat = '3_SP_KW精准'
-    elif 'KW拓展' in n_m:                                      cat = '4_SP_KW拓展'
+    elif 'KW拓展' in n_m or 'KW扩展' in n_m:                   cat = '4_SP_KW拓展'
     elif 'ASIN精准' in n_m or 'ASIN进攻' in n_m or 'ASIN防守' in n_m:  cat = '5_SP_ASIN精准'
     elif 'ASIN拓展' in n_m:                                          cat = '6_SP_ASIN拓展'
     return prod, cat
