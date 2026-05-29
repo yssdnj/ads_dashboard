@@ -10,6 +10,9 @@ legacy/
 # 原始 Excel 数据（可能含敏感信息）
 data/
 
+# 测试文件（本地调试用，不入库）
+tests/
+
 # Python 缓存
 __pycache__/
 *.py[cod]

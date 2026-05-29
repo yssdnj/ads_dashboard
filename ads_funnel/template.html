@@ -3020,19 +3020,13 @@ function _drawL3Charts(name,safeId,trend){
           borderColor:'#f59e0b',borderWidth:1.5,borderDash:[4,3],
           label:{display:true,content:shortParts.join(' ')||'调价',position:'start',
             backgroundColor:'rgba(245,158,11,0.15)',color:'#b45309',font:{size:10},yAdjust:-4},
-          // 自定义数据，供 tooltip 使用（chartjs-plugin-annotation v3 enter callback 可读）
-          enter({chart,element}){
-            element.options.label.content=lines;
-            element.options.label.font={size:10,weight:'600'};
-            chart.update('none');
-          },
-          leave({chart,element}){
-            element.options.label.content=shortParts.join(' ')||'调价';
-            element.options.label.font={size:10};
-            chart.update('none');
-          }
+          _lines:lines, _short:shortParts.join(' ')||'调价'
         };
       });
+      // 构建 bid event 日期→annotation key 映射，供 onHover 使用
+      const bidDateMap={};
+      Object.entries(annotations).forEach(([k,a])=>{ bidDateMap[a.value]=k; });
+
       let ds2;
       if(modes.day==='spend') ds2=[
         {type:'bar',label:'花费($)',data:allDays.map(d=>getD(d,'sp')),backgroundColor:'rgba(59,130,246,.6)',yAxisID:'y',datalabels:dlBar(v=>v>0?'$'+Math.round(v):'')},
@@ -3048,7 +3042,30 @@ function _drawL3Charts(name,safeId,trend){
         {type:'line',label:'ACoS(%)',data:allDays.map(d=>getDN(d,'ac')),borderColor:'#ef4444',yAxisID:'y2',tension:.2,pointRadius:2,fill:false},
       ];
       const opts=dayChartOpts('','%');
-      if(Object.keys(annotations).length>0){try{opts.plugins.annotation={annotations};}catch(e){}}
+      if(Object.keys(annotations).length>0){
+        try{opts.plugins.annotation={annotations};}catch(e){}
+        // 用 onHover 检测当前悬停的 x label 是否为调价日期，更新 label 内容
+        let _lastHoveredBid=null;
+        opts.onHover=(evt,elems,chart)=>{
+          const xs=chart.scales?.x;if(!xs)return;
+          const pt=chart.getElementsAtEventForMode(evt,'index',{intersect:false},false);
+          const label=pt.length>0?chart.data.labels[pt[0].index]:null;
+          const bidKey=label?bidDateMap[label]:null;
+          if(bidKey===_lastHoveredBid)return;
+          // 恢复上一个
+          if(_lastHoveredBid&&annotations[_lastHoveredBid]){
+            annotations[_lastHoveredBid].label.content=annotations[_lastHoveredBid]._short;
+            annotations[_lastHoveredBid].label.font={size:10};
+          }
+          _lastHoveredBid=bidKey||null;
+          // 展开新的
+          if(bidKey&&annotations[bidKey]){
+            annotations[bidKey].label.content=annotations[bidKey]._lines;
+            annotations[bidKey].label.font={size:10,weight:'600'};
+          }
+          chart.update('none');
+        };
+      }
       _charts[safeId+'-day']=new Chart(dayEl,{type:'bar',data:{labels,datasets:ds2},options:opts});
       initDaySlider(safeId+'-day', safeId, allDays);
     }
