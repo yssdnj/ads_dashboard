@@ -2827,6 +2827,9 @@ async function toggleL3Row(name,tr){
   // Collapse if already open
   const next=tr.nextSibling;
   if(next&&next.classList.contains('exp-row')){
+    // Destroy any Chart.js instances in the expanding row before removing DOM
+    const sid=next.id;
+    if(sid){destroyChart(sid+'-wk');destroyChart(sid+'-day');}
     next.remove();tr.classList.remove('expanded-row');
     tr.querySelector('.exp-toggle').textContent='▶';
     l3OpenCamp=null;return;
@@ -2944,10 +2947,11 @@ function _drawL3Charts(name,safeId,trend){
           {type:'line',label:'ACoS%',data:trend.weekly.map(w=>w.ac),borderColor:'#ef4444',backgroundColor:'transparent',yAxisID:'y2',tension:0.3,pointRadius:3},
         ];
       }
+      {const base=comboChartOpts('','%');
       _charts[safeId+'-wk']=new Chart(wkEl,{
         data:{labels,datasets},
-        options:{...comboChartOpts('','%'),plugins:{legend:{display:true,labels:{font:{size:10}}},datalabels:{display:false}}},
-      });
+        options:{...base,plugins:{...base.plugins,legend:{display:true,labels:{font:{size:10}}},datalabels:{display:false}}},
+      });}
     }
   }
 
@@ -2984,7 +2988,8 @@ function _drawL3Charts(name,safeId,trend){
           {type:'line',label:'ACoS%',data:trend.daily.map(d=>d.ac),borderColor:'#ef4444',backgroundColor:'transparent',yAxisID:'y2',tension:0.3,pointRadius:2},
         ];
       }
-      const opts={...comboChartOpts('','%'),plugins:{legend:{display:true,labels:{font:{size:10}}},datalabels:{display:false}}};
+      const _base=comboChartOpts('','%');
+      const opts={..._base,plugins:{..._base.plugins,legend:{display:true,labels:{font:{size:10}}},datalabels:{display:false}}};
       // Add annotation plugin if available
       if(Object.keys(annotations).length>0&&typeof Chart!=='undefined'&&Chart.registry){
         try{opts.plugins.annotation={annotations};}catch(e){}
