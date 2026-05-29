@@ -541,46 +541,42 @@ def get_targeting_history(product_target: str, country: str) -> dict:
 
 
 def get_campaign_stats_by_date_range(
-    country_values: set,
+    country: str,
     date_from: str,
     date_to: str,
 ) -> dict[str, dict]:
     """
-    查询 raw_tar，按 Campaign Name 聚合指定日期范围内的指标。
-    country_values: 国家别名集合，如 {'UK', 'United Kingdom', '英国'}。
+    查询 raw_camp_lx（领星广告活动每日明细），按广告活动聚合指定日期范围内的指标。
+    country: 国家代码，如 'UK'（与 raw_camp_lx.国家 字段一致）。
     返回 {campaign_name: {sp, sl, cl, im, or_, ac, ro, cp, ct, cv}}
-    ac/ro/cp/ct/cv 在 SQL 端计算，None 表示分母为 0。
     DB 异常时返回 {}，不中断调用方。
     """
     try:
-        cv_list = list(country_values) if country_values else []
-        ph = ', '.join([f':c{i}' for i in range(len(cv_list))])
-        c_params = {f'c{i}': v for i, v in enumerate(cv_list)}
         with get_engine().connect() as conn:
             result = conn.execute(
                 text(
-                    'SELECT `Campaign Name`,'
-                    '  SUM(`Spend`) AS sp,'
-                    '  SUM(`7 Day Total Sales`) AS sl,'
-                    '  SUM(`Clicks`) AS cl,'
-                    '  SUM(`Impressions`) AS im,'
-                    '  SUM(`7 Day Total Orders (#)`) AS or_,'
-                    '  SUM(`Spend`) / NULLIF(SUM(`7 Day Total Sales`), 0) * 100 AS ac,'
-                    '  SUM(`7 Day Total Sales`) / NULLIF(SUM(`Spend`), 0) AS ro,'
-                    '  SUM(`Spend`) / NULLIF(SUM(`Clicks`), 0) AS cp,'
-                    '  SUM(`Clicks`) / NULLIF(SUM(`Impressions`), 0) * 100 AS ct,'
-                    '  SUM(`7 Day Total Orders (#)`) / NULLIF(SUM(`Clicks`), 0) * 100 AS cv'
-                    f' FROM `raw_tar`'
-                    f' WHERE `Country` IN ({ph})'
-                    '   AND `Date` >= :date_from'
-                    '   AND `Date` <= :date_to'
-                    ' GROUP BY `Campaign Name`'
+                    'SELECT `广告活动`,'
+                    '  SUM(`花费`) AS sp,'
+                    '  SUM(`广告销售额`) AS sl,'
+                    '  SUM(`点击`) AS cl,'
+                    '  SUM(`曝光量`) AS im,'
+                    '  SUM(`广告订单`) AS or_,'
+                    '  SUM(`花费`) / NULLIF(SUM(`广告销售额`), 0) * 100 AS ac,'
+                    '  SUM(`广告销售额`) / NULLIF(SUM(`花费`), 0) AS ro,'
+                    '  SUM(`花费`) / NULLIF(SUM(`点击`), 0) AS cp,'
+                    '  SUM(`点击`) / NULLIF(SUM(`曝光量`), 0) * 100 AS ct,'
+                    '  SUM(`广告订单`) / NULLIF(SUM(`点击`), 0) * 100 AS cv'
+                    ' FROM `raw_camp_lx`'
+                    ' WHERE `国家` = :country'
+                    '   AND `日期` >= :date_from'
+                    '   AND `日期` <= :date_to'
+                    ' GROUP BY `广告活动`'
                 ),
-                {**c_params, 'date_from': date_from, 'date_to': date_to},
+                {'country': country, 'date_from': date_from, 'date_to': date_to},
             )
             out: dict = {}
             for row in result.mappings():
-                name = str(row['Campaign Name'])
+                name = str(row['广告活动'])
                 out[name] = {
                     'sp':  float(row['sp']  or 0),
                     'sl':  float(row['sl']  or 0),
@@ -602,45 +598,41 @@ def get_campaign_stats_by_date_range(
 
 def get_campaign_trend(
     campaign: str,
-    country_values: set,
-    country_log: str,
+    country: str,
     date_from: str,
     date_to: str,
 ) -> dict:
     """
     返回指定广告活动在日期范围内的周趋势、日趋势和调价事件。
-    country_values: 国家别名集合，用于匹配 raw_tar.Country（如 'United Kingdom'）。
-    country_log: 原始国家标识符，用于匹配 bid_update_log.country（如 'UK'）。
+    查询 raw_camp_lx（领星广告活动每日明细）获取指标数据。
+    country: 国家代码如 'UK'，与 raw_camp_lx.国家 和 bid_update_log.country 一致。
     weekly: 在 Python 端按 ISO week 聚合日数据。
     查询失败返回 {'weekly': [], 'daily': [], 'bid_events': []}。
     """
     empty = {'weekly': [], 'daily': [], 'bid_events': []}
     try:
-        cv_list = list(country_values) if country_values else []
-        ph = ', '.join([f':c{i}' for i in range(len(cv_list))])
-        c_params = {f'c{i}': v for i, v in enumerate(cv_list)}
         with get_engine().connect() as conn:
-            # 1. 日趋势
+            # 1. 日趋势（来自 raw_camp_lx）
             daily_rows = conn.execute(
                 text(
-                    'SELECT `Date` AS date,'
-                    '  SUM(`Spend`) AS sp,'
-                    '  SUM(`7 Day Total Sales`) AS sl,'
-                    '  SUM(`Clicks`) AS cl,'
-                    '  SUM(`Impressions`) AS im,'
-                    '  SUM(`7 Day Total Orders (#)`) AS or_'
-                    f' FROM `raw_tar`'
-                    f' WHERE `Campaign Name` = :campaign'
-                    f'   AND `Country` IN ({ph})'
-                    '   AND `Date` BETWEEN :date_from AND :date_to'
-                    ' GROUP BY `Date`'
-                    ' ORDER BY `Date`'
+                    'SELECT `日期` AS date,'
+                    '  SUM(`花费`) AS sp,'
+                    '  SUM(`广告销售额`) AS sl,'
+                    '  SUM(`点击`) AS cl,'
+                    '  SUM(`曝光量`) AS im,'
+                    '  SUM(`广告订单`) AS or_'
+                    ' FROM `raw_camp_lx`'
+                    ' WHERE `广告活动` = :campaign'
+                    '   AND `国家` = :country'
+                    '   AND `日期` BETWEEN :date_from AND :date_to'
+                    ' GROUP BY `日期`'
+                    ' ORDER BY `日期`'
                 ),
-                {**c_params, 'campaign': campaign,
+                {'campaign': campaign, 'country': country,
                  'date_from': date_from, 'date_to': date_to},
             ).mappings().all()
 
-            # 2. 调价事件（bid_update_log.country 存储原始标识符如 'UK'）
+            # 2. 调价事件
             bid_rows = conn.execute(
                 text(
                     'SELECT DATE(l.confirmed_at) AS event_date,'
@@ -652,11 +644,11 @@ def get_campaign_trend(
                     ' FROM bid_update_detail d'
                     ' JOIN bid_update_log l ON d.log_id = l.id'
                     ' WHERE d.campaign = :campaign'
-                    '   AND l.country  = :country_log'
+                    '   AND l.country  = :country'
                     ' GROUP BY DATE(l.confirmed_at)'
                     ' ORDER BY event_date'
                 ),
-                {'campaign': campaign, 'country_log': country_log},
+                {'campaign': campaign, 'country': country},
             ).mappings().all()
 
         # 3. 构建 daily 列表

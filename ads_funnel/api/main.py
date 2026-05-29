@@ -523,16 +523,14 @@ def api_mode1_update_log_details(log_id: int):
 @app.get('/api/analysis/mode1/campaign-weekly-stats')
 def api_campaign_weekly_stats(country: str, date_from: str, date_to: str):
     """返回指定日期范围内各广告活动的聚合指标，用于 L3 周次筛选。"""
-    country_values = _resolve_country(country) or {country}
-    result = db.get_campaign_stats_by_date_range(country_values, date_from, date_to)
+    result = db.get_campaign_stats_by_date_range(country, date_from, date_to)
     return {'data': result}
 
 
 @app.get('/api/analysis/mode1/campaign-trend')
 def api_campaign_trend(campaign: str, country: str, date_from: str, date_to: str):
     """返回单一广告活动的周趋势、日趋势和调价事件，用于 L3 趋势面板。"""
-    country_values = _resolve_country(country) or {country}
-    return db.get_campaign_trend(campaign, country_values, country, date_from, date_to)
+    return db.get_campaign_trend(campaign, country, date_from, date_to)
 
 
 @app.get('/api/health')
