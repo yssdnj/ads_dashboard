@@ -184,7 +184,7 @@ _KEYS_P = ['国家', '广告组合', '日期']
 
 
 def _prep_raw(df: pd.DataFrame) -> pd.DataFrame:
-    """日期列统一转为 YYYY-MM-DD 字符串，去掉旧 report_id 列"""
+    """日期列统一转为 YYYY-MM-DD 字符串，非数值占位符替换为 None，去掉旧 report_id 列"""
     d = df.copy()
     if '日期' in d.columns:
         try:
@@ -192,6 +192,10 @@ def _prep_raw(df: pd.DataFrame) -> pd.DataFrame:
         except Exception:
             d['日期'] = d['日期'].astype(str)
     d = d.drop(columns=['report_id'], errors='ignore')
+    # 将非数值占位符替换为 None，避免写入 double/bigint 列时报截断错误
+    # 领星导出常见占位符：'--', '有花费无点击', '有花费无销售额', '有花费无订单' 等
+    d = d.replace({'--': None, '有花费无点击': None, '有花费无销售额': None,
+                   '有花费无订单': None, '有花费无数据': None}, regex=False)
     return d
 
 
