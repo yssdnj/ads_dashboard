@@ -3001,17 +3001,14 @@ function _drawL3Charts(name,safeId,trend){
       (trend.bid_events||[]).forEach((ev,i)=>{
         const s=ev.date?ev.date.slice(5):'';
         if(!labels.includes(s))return;
-        // 多行内容：第一行日期，第二行↑提价N条+X%，第三行↓降价N条-Y%
+        // hover 展开：日期行 + 每条记录的原价→新价 (幅度%)
         const lines=[ev.date||s];
-        if(ev.up_count>0){
-          const pct=ev.avg_up_pct!=null?` ${ev.avg_up_pct>0?'+':''}${ev.avg_up_pct}%`:'';
-          lines.push(`↑提${ev.up_count}条${pct}`);
-        }
-        if(ev.dn_count>0){
-          const pct=ev.avg_dn_pct!=null?` ${ev.avg_dn_pct}%`:'';
-          lines.push(`↓降${ev.dn_count}条${pct}`);
-        }
-        // 顶部短标签（点击/订单模式空间小，只显示↑N↓N）
+        (ev.records||[]).forEach(r=>{
+          const dir=r.new_bid>r.old_bid?'↑':'↓';
+          const pct=r.adj_pct!=null?` (${(r.adj_pct*100).toFixed(0)}%)`:'';
+          lines.push(`${dir} $${r.old_bid.toFixed(2)}→$${r.new_bid.toFixed(2)}${pct}`);
+        });
+        // 顶部短标签：↑N↓N
         const shortParts=[];
         if(ev.up_count>0)shortParts.push(`↑${ev.up_count}`);
         if(ev.dn_count>0)shortParts.push(`↓${ev.dn_count}`);

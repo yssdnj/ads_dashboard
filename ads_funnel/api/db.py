@@ -636,21 +636,16 @@ def get_campaign_trend(
                  'date_from': date_from, 'date_to': date_to},
             ).mappings().all()
 
-            # 2. 调价事件
+            # 2. 调价明细（逐条，含原价/新价/幅度）
             bid_rows = conn.execute(
                 text(
                     'SELECT DATE(l.confirmed_at) AS event_date,'
-                    '  COUNT(DISTINCT d.targeting) AS tgt_count,'
-                    '  SUM(CASE WHEN d.new_bid > d.old_bid THEN 1 ELSE 0 END) AS up_count,'
-                    '  SUM(CASE WHEN d.new_bid < d.old_bid THEN 1 ELSE 0 END) AS dn_count,'
-                    '  ROUND(AVG(CASE WHEN d.new_bid > d.old_bid THEN d.adj_pct END), 1) AS avg_up_pct,'
-                    '  ROUND(AVG(CASE WHEN d.new_bid < d.old_bid THEN d.adj_pct END), 1) AS avg_dn_pct'
+                    '  d.targeting, d.old_bid, d.new_bid, d.adj_pct'
                     ' FROM bid_update_detail d'
                     ' JOIN bid_update_log l ON d.log_id = l.id'
                     ' WHERE d.campaign = :campaign'
                     '   AND l.country  = :country'
-                    ' GROUP BY DATE(l.confirmed_at)'
-                    ' ORDER BY event_date'
+                    ' ORDER BY event_date, d.targeting'
                 ),
                 {'campaign': campaign, 'country': country},
             ).mappings().all()
@@ -698,17 +693,31 @@ def get_campaign_trend(
                 'cv': round(or_ / cl * 100, 4) if cl > 0 else None,
             })
 
-        # 5. 调价事件列表
-        bid_events = []
+        # 5. 调价事件列表（按日期分组，每组含逐条明细）
+        bid_by_date: dict = {}
         for r in bid_rows:
-            ev_date = r['event_date']
+            dt = str(r['event_date']) if r['event_date'] else ''
+            if not dt:
+                continue
+            if dt not in bid_by_date:
+                bid_by_date[dt] = []
+            bid_by_date[dt].append({
+                'targeting': str(r['targeting'] or ''),
+                'old_bid':   round(float(r['old_bid'] or 0), 4),
+                'new_bid':   round(float(r['new_bid'] or 0), 4),
+                'adj_pct':   round(float(r['adj_pct']), 4) if r['adj_pct'] is not None else None,
+            })
+
+        bid_events = []
+        for dt, records in sorted(bid_by_date.items()):
+            up = sum(1 for x in records if x['new_bid'] > x['old_bid'])
+            dn = sum(1 for x in records if x['new_bid'] < x['old_bid'])
             bid_events.append({
-                'date':        str(ev_date) if ev_date else '',
-                'tgt_count':   int(r['tgt_count'] or 0),
-                'up_count':    int(r['up_count']  or 0),
-                'dn_count':    int(r['dn_count']  or 0),
-                'avg_up_pct':  float(r['avg_up_pct']) if r['avg_up_pct'] is not None else None,
-                'avg_dn_pct':  float(r['avg_dn_pct']) if r['avg_dn_pct'] is not None else None,
+                'date':      dt,
+                'tgt_count': len(records),
+                'up_count':  up,
+                'dn_count':  dn,
+                'records':   records,
             })
 
         return {'weekly': weekly, 'daily': daily, 'bid_events': bid_events}
