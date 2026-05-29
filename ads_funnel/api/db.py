@@ -668,10 +668,10 @@ def get_campaign_trend(
             })
 
         # 4. Python 端按 ISO week 聚合为周数据
-        from datetime import datetime as dt_type
+        from datetime import datetime as _dt
         wk_buckets: dict = {}
         for d in daily:
-            date_obj = dt_type.strptime(d['date'], '%Y-%m-%d').date()
+            date_obj = _dt.strptime(d['date'], '%Y-%m-%d').date()
             wk = f'W{date_obj.isocalendar().week}'
             if wk not in wk_buckets:
                 wk_buckets[wk] = {'sp': 0, 'sl': 0, 'cl': 0, 'im': 0, 'or_': 0}
@@ -681,7 +681,7 @@ def get_campaign_trend(
             b['or_'] += d['or_']
 
         weekly = []
-        for wk, b in sorted(wk_buckets.items(), key=lambda x: x[0]):
+        for wk, b in sorted(wk_buckets.items(), key=lambda x: int(x[0][1:])):
             sp, sl, cl, im, or_ = b['sp'], b['sl'], b['cl'], b['im'], b['or_']
             weekly.append({
                 'wk': wk, 'sp': sp, 'sl': sl, 'cl': cl, 'im': im, 'or_': or_,
