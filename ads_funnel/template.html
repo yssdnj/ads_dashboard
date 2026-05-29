@@ -1706,6 +1706,7 @@ let l2WkFrom=WEEKS[0], l2WkTo=WEEKS[WEEKS.length-1];
 let l3Prod='all', l3Cat='all', l3St='all', l3Page=0, l3PerPage=50, l3Search='', l3PortSearch='', l3AcosFlt='all';
 let l3WkFrom=WEEKS[0], l3WkTo=WEEKS[WEEKS.length-1];
 let l3WkData=null;   // null=全范围使用RAW.camps; object=DB查询结果
+let l3WkNoData=false; // true=查询返回空，已降级回总计
 let l3OpenCamp=null; // 当前展开的广告活动名，防止快速切换时数据错位
 const l3TrendCache={};  // {campName: trendData}，切换图表模式时复用
 const l3TrendModes={};  // {campName: {wk:'spend', day:'spend'}}
@@ -2742,10 +2743,10 @@ async function setL3WkRange(){
   l3Page=0;
   // 全范围不查 DB
   if(l3WkFrom===WEEKS[0]&&l3WkTo===WEEKS[WEEKS.length-1]){
-    l3WkData=null; renderL3(); return;
+    l3WkData=null; l3WkNoData=false; renderL3(); return;
   }
-  const isoFrom=(WK_ISO_DATES[l3WkFrom]||[])[0];
-  const isoTo=(WK_ISO_DATES[l3WkTo]||[])[1];
+  const fromDays=wkDays(l3WkFrom), toDays=wkDays(l3WkTo);
+  const isoFrom=fromDays[0], isoTo=toDays[toDays.length-1];
   if(!isoFrom||!isoTo){renderL3();return;}
   document.getElementById('l3-count').textContent='加载中…';
   try{
@@ -2753,8 +2754,14 @@ async function setL3WkRange(){
       `api/analysis/mode1/campaign-weekly-stats?country=${encodeURIComponent(REPORT_COUNTRY)}&date_from=${isoFrom}&date_to=${isoTo}`
     );
     const json=await resp.json();
-    l3WkData=json.data||{};
-  }catch(e){l3WkData={};}
+    const data=json.data||{};
+    if(Object.keys(data).length===0){
+      // 无原始数据，降级回总计
+      l3WkData=null; l3WkNoData=true;
+    } else {
+      l3WkData=data; l3WkNoData=false;
+    }
+  }catch(e){l3WkData=null; l3WkNoData=true;}
   renderL3();
 }
 
@@ -2776,7 +2783,7 @@ function renderL3(){
   const total=camps.length,pages=Math.max(1,Math.ceil(total/l3PerPage));
   if(l3Page>=pages)l3Page=pages-1;
   const slice=camps.slice(l3Page*l3PerPage,(l3Page+1)*l3PerPage);
-  document.getElementById('l3-count').textContent=total+' 个活动';
+  document.getElementById('l3-count').textContent=total+' 个活动'+(l3WkNoData?' ⚠️ 无周次数据，已显示总计':'');
   const ST={converting:'✅',click_no_order:'🔶',imp_only:'⬜',no_imp:'🚫'};
   const _l3th=(c,l,xs='')=>_th(l3SortCol,l3SortDir,c,l,'sortL3',xs);
   let html=`<table><thead><tr>
