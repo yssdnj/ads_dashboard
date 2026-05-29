@@ -2725,6 +2725,38 @@ function jumpToL3Port(portName){
   switchTab('l3');
   renderL3();
 }
+function jumpToL3Camp(campName){
+  // 重置其他过滤条件，仅按广告活动名搜索
+  l3Prod='all'; l3Cat='all'; l3St='all'; l3AcosFlt='all';
+  l3PortSearch=''; l3Search=campName; l3Page=0;
+  const inp=document.getElementById('l3SearchInput');if(inp)inp.value=campName;
+  const inpP=document.getElementById('l3PortSearchInput');if(inpP)inpP.value='';
+  // 重置筛选 pill 状态
+  document.querySelectorAll('[id^="l3pd-"]').forEach(el=>el.classList.remove('active'));
+  document.getElementById('l3pd-all')?.classList.add('active');
+  document.querySelectorAll('[id^="l3ca-"]').forEach(el=>el.classList.remove('active'));
+  document.getElementById('l3ca-all')?.classList.add('active');
+  document.querySelectorAll('[id^="l3st-"]').forEach(el=>el.classList.remove('active'));
+  document.getElementById('l3st-all')?.classList.add('active');
+  switchTab('l3');
+  renderL3();
+  // 滚动到第一个匹配的活动行，并自动展开日趋势
+  setTimeout(async ()=>{
+    const rows=document.querySelectorAll('#l3-table tbody tr:not(.exp-row)');
+    for(const tr of rows){
+      const n=tr.querySelector('td:first-child')?.textContent?.replace('▶','').trim();
+      if(n===campName){
+        tr.scrollIntoView({behavior:'smooth',block:'center'});
+        tr.style.transition='background 0.6s';
+        tr.style.background='#fef3c7';
+        setTimeout(()=>{tr.style.background='';},1500);
+        // 自动展开趋势面板（显示日趋势和调价标记）
+        await toggleL3Row(campName, tr);
+        break;
+      }
+    }
+  },150);
+}
 function jumpToL2Prod(prod,cat){
   setL2Prod(prod);
   setL2Cat(cat||l1Cat);
@@ -2964,19 +2996,41 @@ function _drawL3Charts(name,safeId,trend){
       const getD=(d,k)=>(dayMap[d]?dayMap[d][k]:0)||0;
       const getDN=(d,k)=>dayMap[d]?dayMap[d][k]:null;
 
-      // 调价事件垂直线（用 MM-DD 匹配 x 轴）
+      // 调价事件垂直线（用 MM-DD 匹配 x 轴；显示提价/降价条数 + 平均幅度）
       const annotations={};
       (trend.bid_events||[]).forEach((ev,i)=>{
         const s=ev.date?ev.date.slice(5):'';
         if(!labels.includes(s))return;
-        const parts=[];
-        if(ev.up_count>0)parts.push(`↑${ev.up_count}`);
-        if(ev.dn_count>0)parts.push(`↓${ev.dn_count}`);
+        // 多行内容：第一行日期，第二行↑提价N条+X%，第三行↓降价N条-Y%
+        const lines=[ev.date||s];
+        if(ev.up_count>0){
+          const pct=ev.avg_up_pct!=null?` ${ev.avg_up_pct>0?'+':''}${ev.avg_up_pct}%`:'';
+          lines.push(`↑提${ev.up_count}条${pct}`);
+        }
+        if(ev.dn_count>0){
+          const pct=ev.avg_dn_pct!=null?` ${ev.avg_dn_pct}%`:'';
+          lines.push(`↓降${ev.dn_count}条${pct}`);
+        }
+        // 顶部短标签（点击/订单模式空间小，只显示↑N↓N）
+        const shortParts=[];
+        if(ev.up_count>0)shortParts.push(`↑${ev.up_count}`);
+        if(ev.dn_count>0)shortParts.push(`↓${ev.dn_count}`);
         annotations['bid'+i]={
           type:'line',scaleID:'x',value:s,
           borderColor:'#f59e0b',borderWidth:1.5,borderDash:[4,3],
-          label:{display:true,content:parts.join(' ')||'调价',position:'start',
+          label:{display:true,content:shortParts.join(' ')||'调价',position:'start',
             backgroundColor:'rgba(245,158,11,0.15)',color:'#b45309',font:{size:10},yAdjust:-4},
+          // 自定义数据，供 tooltip 使用（chartjs-plugin-annotation v3 enter callback 可读）
+          enter({chart,element}){
+            element.options.label.content=lines;
+            element.options.label.font={size:10,weight:'600'};
+            chart.update('none');
+          },
+          leave({chart,element}){
+            element.options.label.content=shortParts.join(' ')||'调价';
+            element.options.label.font={size:10};
+            chart.update('none');
+          }
         };
       });
       let ds2;
@@ -4973,7 +5027,10 @@ async function toggleBidDetail(logId){
           '<div class="tgt-gh" style="justify-content:flex-end;display:flex;align-items:center">新竞价</div>' +
           '<div class="tgt-gh" style="justify-content:flex-end;display:flex;align-items:center">调整</div>';
         const rows = items.map(d =>
-          `<div class="tgt-gd" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.campaign}">${d.campaign}</div>` +
+          `<div class="tgt-gd" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:4px" title="${d.campaign}">` +
+            `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${d.campaign}</span>` +
+            `<button onclick="jumpToL3Camp(${JSON.stringify(d.campaign).replace(/"/g,'&quot;')})" style="flex-shrink:0;padding:0 5px;font-size:9px;border:1px solid #3b82f6;color:#3b82f6;background:none;border-radius:3px;cursor:pointer;line-height:1.4">→L3</button>` +
+          `</div>` +
           `<div class="tgt-gd">${d.ad_group}</div>` +
           `<div class="tgt-gd" style="white-space:nowrap">${d.strategy||'—'}</div>` +
           `<div class="tgt-gd" style="justify-content:center;display:flex;align-items:center">${pct(d.top)}</div>` +

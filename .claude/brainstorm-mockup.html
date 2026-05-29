@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>六轮分析 UI 方案对比</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f5f6fa; color: #222; }
+  h1 { font-size: 18px; padding: 20px 24px 8px; color: #333; }
+  .subtitle { font-size: 13px; color: #888; padding: 0 24px 20px; }
+
+  /* ── 方案切换 ── */
+  .scheme-bar { display: flex; gap: 8px; padding: 0 24px 20px; }
+  .scheme-btn { padding: 7px 18px; border-radius: 20px; border: 1.5px solid #d0d0d0;
+    background: #fff; font-size: 13px; cursor: pointer; transition: all .15s; }
+  .scheme-btn.active { background: #4f6ef7; color: #fff; border-color: #4f6ef7; font-weight: 600; }
+
+  .scheme { display: none; padding: 0 24px 40px; }
+  .scheme.active { display: block; }
+
+  .scheme-label { font-size: 12px; color: #4f6ef7; font-weight: 700; letter-spacing: .05em;
+    text-transform: uppercase; margin-bottom: 10px; }
+  .scheme-desc { font-size: 13px; color: #555; margin-bottom: 18px; line-height: 1.6; }
+
+  /* ── 通用 card ── */
+  .card { background: #fff; border-radius: 12px; padding: 16px 18px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.07); margin-bottom: 16px; }
+  .card-title { font-size: 13px; font-weight: 600; color: #333; margin-bottom: 12px; }
+
+  /* ── Tab bar ── */
+  .tab-bar { display: flex; gap: 4px; flex-wrap: wrap; }
+  .tab { padding: 6px 14px; border-radius: 8px 8px 0 0; font-size: 13px; cursor: pointer;
+    border: 1.5px solid #e0e0e0; border-bottom: none; background: #f9f9f9; color: #666; }
+  .tab.active { background: #4f6ef7; color: #fff; border-color: #4f6ef7; font-weight: 600; }
+  .tab.consensus { background: #ff6b35; color: #fff; border-color: #ff6b35; font-weight: 700; }
+  .tab-content { border: 1.5px solid #e0e0e0; border-radius: 0 8px 8px 8px;
+    padding: 14px; font-size: 13px; color: #555; min-height: 60px; }
+
+  /* ── 命中标签 ── */
+  .hit-badge { display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: 700; margin: 2px; }
+  .hit-6 { background: #ff4444; color: #fff; }
+  .hit-5 { background: #ff7700; color: #fff; }
+  .hit-4 { background: #ffaa00; color: #fff; }
+  .hit-3 { background: #88c057; color: #fff; }
+  .hit-2 { background: #4f6ef7; color: #fff; }
+  .hit-1 { background: #ccc; color: #fff; }
+
+  /* ── 趋势条 ── */
+  .trend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .trend-label { font-size: 12px; color: #888; width: 120px; flex-shrink: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trend-dots { display: flex; gap: 3px; }
+  .dot { width: 18px; height: 18px; border-radius: 4px; font-size: 9px;
+    display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; }
+  .dot.hit  { background: #ff4444; }
+  .dot.miss { background: #e8e8e8; color: #bbb; }
+  .dot-label { font-size: 10px; color: #aaa; }
+  .trend-adj { font-size: 12px; color: #ff4444; font-weight: 700; margin-left: 6px; }
+  .trend-tag { font-size: 11px; padding: 1px 6px; border-radius: 6px; margin-left: 4px; }
+  .tag-bad  { background: #fff0f0; color: #ff4444; }
+  .tag-good { background: #f0fff4; color: #18a058; }
+  .tag-new  { background: #fff8e6; color: #ff9900; }
+
+  /* ── 置信度 ── */
+  .conf-bar { display: flex; align-items: center; gap: 6px; }
+  .conf-fill { height: 8px; border-radius: 4px; }
+  .conf-6 { width: 100%; background: #ff4444; }
+  .conf-5 { width: 83%;  background: #ff7700; }
+  .conf-4 { width: 67%;  background: #ffaa00; }
+  .conf-3 { width: 50%;  background: #88c057; }
+  .conf-2 { width: 33%;  background: #4f6ef7; }
+  .conf-text { font-size: 12px; color: #888; }
+
+  /* ── 对比表 ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f0f2ff; padding: 8px 10px; text-align: left; font-weight: 600; color: #4f6ef7; }
+  td { padding: 7px 10px; border-bottom: 1px solid #f0f0f0; color: #444; }
+  tr:last-child td { border: none; }
+  .pro  { color: #18a058; font-weight: 600; }
+  .con  { color: #ff4444; }
+  .rec  { background: #f0f5ff; }
+
+  .divider { height: 1px; background: #f0f0f0; margin: 16px 0; }
+  .note { font-size: 12px; color: #888; background: #fafafa; border-radius: 8px;
+    padding: 10px 14px; margin-top: 10px; line-height: 1.7; }
+  .note b { color: #4f6ef7; }
+</style>
+</head>
+<body>
+
+<h1>六轮分析设计方案对比</h1>
+<p class="subtitle">当前：3轮（1w / 3w / 6w）→ 提案：6轮（每轮+1周）</p>
+
+<div class="scheme-bar">
+  <button class="scheme-btn active" onclick="showScheme('A')">方案 A — 标签页模式</button>
+  <button class="scheme-btn" onclick="showScheme('B')">方案 B — 趋势热图模式</button>
+  <button class="scheme-btn" onclick="showScheme('C')">方案 C — 折叠分组模式</button>
+  <button class="scheme-btn" onclick="showScheme('compare')">三方案对比</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- 方案 A -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="scheme active" id="scheme-A">
+  <div class="scheme-label">方案 A — 标签页模式（沿用现有设计）</div>
+  <div class="scheme-desc">
+    在现有 R1/R2/R3/Consensus 标签基础上扩展为 R1~R6 + Consensus，共 7 个标签。<br>
+    用户可点击各轮查看明细，Consensus 聚合所有命中。
+  </div>
+
+  <div class="card">
+    <div class="card-title">UI 预览</div>
+    <div class="tab-bar">
+      <div class="tab active">R1 · 1周</div>
+      <div class="tab">R2 · 2周</div>
+      <div class="tab">R3 · 3周</div>
+      <div class="tab">R4 · 4周</div>
+      <div class="tab">R5 · 5周</div>
+      <div class="tab">R6 · 6周</div>
+      <div class="tab consensus">✦ Consensus</div>
+    </div>
+    <div class="tab-content">
+      R1（最近 1 周）：共 12 个 targeting 触发降价条件<br>
+      时间范围：05/12 - 05/18 &nbsp;|&nbsp; ACoS 均值：48.3%
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Consensus 结果中的命中信息</div>
+    <div class="trend-row">
+      <div class="trend-label">SL_KW精准_电钻</div>
+      <div class="trend-dots">
+        <div class="dot hit">R1</div><div class="dot hit">R2</div>
+        <div class="dot hit">R3</div><div class="dot hit">R4</div>
+        <div class="dot hit">R5</div><div class="dot hit">R6</div>
+      </div>
+      <span class="trend-adj">-10%</span>
+      <span class="trend-tag tag-bad">长期问题</span>
+    </div>
+    <div class="trend-row">
+      <div class="trend-label">SL_KW拓展_无线电钻</div>
+      <div class="trend-dots">
+        <div class="dot hit">R1</div><div class="dot hit">R2</div>
+        <div class="dot hit">R3</div><div class="dot miss">—</div>
+        <div class="dot miss">—</div><div class="dot miss">—</div>
+      </div>
+      <span class="trend-adj">-5%</span>
+      <span class="trend-tag tag-new">近期恶化</span>
+    </div>
+    <div class="trend-row">
+      <div class="trend-label">SL_ASIN精准_B08XYZ</div>
+      <div class="trend-dots">
+        <div class="dot miss">—</div><div class="dot miss">—</div>
+        <div class="dot hit">R3</div><div class="dot hit">R4</div>
+        <div class="dot hit">R5</div><div class="dot hit">R6</div>
+      </div>
+      <span class="trend-adj">-5%</span>
+      <span class="trend-tag tag-good">正在好转</span>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>优点：</b>沿用现有交互习惯，改动最小，每轮数据可独立查看<br>
+    <b>缺点：</b>7 个标签页较多，用户需点击才能对比各轮；标签栏可能换行
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- 方案 B -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="scheme" id="scheme-B">
+  <div class="scheme-label">方案 B — 趋势热图模式（主推 Consensus，各轮降为辅助信息）</div>
+  <div class="scheme-desc">
+    不展示 R1~R6 各独立标签，只展示 Consensus 结果。<br>
+    每条 targeting 用热图色块显示命中了哪几轮，命中数即置信度。
+  </div>
+
+  <div class="card">
+    <div class="card-title">Consensus 列表（热图视图）</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;font-size:11px;color:#888;">
+      <span>命中轮次热图：</span>
+      <span style="display:flex;gap:3px;align-items:center;">
+        <div class="dot hit" style="font-size:9px">●</div><span>命中</span>
+        <div class="dot miss" style="font-size:9px;margin-left:6px">○</div><span>未中</span>
+      </span>
+      <span style="margin-left:auto;">R1=近1周 … R6=近6周</span>
+    </div>
+
+    <div style="display:flex;font-size:11px;color:#aaa;margin-bottom:4px;">
+      <div style="width:160px"></div>
+      <div style="display:flex;gap:3px;">
+        <div style="width:18px;text-align:center;">R6</div>
+        <div style="width:18px;text-align:center;">R5</div>
+        <div style="width:18px;text-align:center;">R4</div>
+        <div style="width:18px;text-align:center;">R3</div>
+        <div style="width:18px;text-align:center;">R2</div>
+        <div style="width:18px;text-align:center;">R1</div>
+      </div>
+      <div style="width:50px;text-align:right;margin-left:8px;">降幅</div>
+      <div style="margin-left:8px;">趋势</div>
+    </div>
+
+    <div class="trend-row">
+      <div class="trend-label">SL_KW精准_电钻</div>
+      <div class="trend-dots">
+        <div class="dot hit"></div><div class="dot hit"></div><div class="dot hit"></div>
+        <div class="dot hit"></div><div class="dot hit"></div><div class="dot hit"></div>
+      </div>
+      <span class="trend-adj" style="width:40px;">-10%</span>
+      <span class="trend-tag tag-bad">长期持续</span>
+    </div>
+    <div class="trend-row">
+      <div class="trend-label">SL_KW拓展_无线电钻</div>
+      <div class="trend-dots">
+        <div class="dot miss"></div><div class="dot miss"></div><div class="dot miss"></div>
+        <div class="dot hit"></div><div class="dot hit"></div><div class="dot hit"></div>
+      </div>
+      <span class="trend-adj" style="width:40px;">-5%</span>
+      <span class="trend-tag tag-new">近期恶化</span>
+    </div>
+    <div class="trend-row">
+      <div class="trend-label">DL_ASIN精准_B08XYZ</div>
+      <div class="trend-dots">
+        <div class="dot hit"></div><div class="dot hit"></div><div class="dot hit"></div>
+        <div class="dot miss"></div><div class="dot miss"></div><div class="dot miss"></div>
+      </div>
+      <span class="trend-adj" style="width:40px;">-5%</span>
+      <span class="trend-tag tag-good">正在好转</span>
+    </div>
+    <div class="trend-row">
+      <div class="trend-label">SL_KW精准_锂电钻</div>
+      <div class="trend-dots">
+        <div class="dot hit"></div><div class="dot miss"></div><div class="dot hit"></div>
+        <div class="dot miss"></div><div class="dot hit"></div><div class="dot miss"></div>
+      </div>
+      <span class="trend-adj" style="width:40px;">-5%</span>
+      <span class="trend-tag" style="background:#f5f0ff;color:#7c3aed;">间断波动</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="card-title">置信度说明（命中轮数/6）</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
+      <div class="conf-bar"><span class="hit-badge hit-6">6/6</span><div class="conf-fill conf-6"></div><span class="conf-text">极高置信，长期问题</span></div>
+      <div class="conf-bar"><span class="hit-badge hit-5">5/6</span><div class="conf-fill conf-5"></div><span class="conf-text">很高置信</span></div>
+      <div class="conf-bar"><span class="hit-badge hit-4">4/6</span><div class="conf-fill conf-4"></div><span class="conf-text">较高置信</span></div>
+      <div class="conf-bar"><span class="hit-badge hit-3">3/6</span><div class="conf-fill conf-3"></div><span class="conf-text">中等置信（门槛线）</span></div>
+      <div class="conf-bar"><span class="hit-badge hit-2">2/6</span><div class="conf-fill conf-2"></div><span class="conf-text">低置信，谨慎参考</span></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>优点：</b>一屏看清每条 targeting 的时间趋势，信息密度高；命中数即置信度，决策依据直观<br>
+    <b>缺点：</b>各轮明细数据不可见（需要额外入口），改动前端较多
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- 方案 C -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="scheme" id="scheme-C">
+  <div class="scheme-label">方案 C — 折叠分组模式（Consensus 主视图 + 各轮按需展开）</div>
+  <div class="scheme-desc">
+    主界面只展示 Consensus，上方有 R1~R6 的摘要数字。<br>
+    点击任意轮次数字可展开该轮详情（Accordion 折叠）。
+  </div>
+
+  <div class="card">
+    <div class="card-title">轮次摘要栏（点击展开）</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+      <div style="flex:1;min-width:80px;border:1.5px solid #e0e0e0;border-radius:8px;padding:10px;text-align:center;cursor:pointer;">
+        <div style="font-size:11px;color:#888;">R1 · 1周</div>
+        <div style="font-size:20px;font-weight:700;color:#ff4444;">12</div>
+        <div style="font-size:10px;color:#aaa;">条建议</div>
+      </div>
+      <div style="flex:1;min-width:80px;border:1.5px solid #e0e0e0;border-radius:8px;padding:10px;text-align:center;cursor:pointer;">
+        <div style="font-size:11px;color:#888;">R2 · 2周</div>
+        <div style="font-size:20px;font-weight:700;color:#ff7700;">18</div>
+        <div style="font-size:10px;color:#aaa;">条建议</div>
+      </div>
+      <div style="flex:1;min-width:80px;border:1.5px solid #e0e0e0;border-radius:8px;padding:10px;text-align:center;cursor:pointer;">
+        <div style="font-size:11px;color:#888;">R3 · 3周</div>
+        <div style="font-size:20px;font-weight:700;color:#ffaa00;">21</div>
+        <div style="font-size:10px;color:#aaa;">条建议</div>
+      </div>
+      <div style="flex:1;min-width:80px;border:1.5px solid #e0e0e0;border-radius:8px;padding:10px;text-align:center;cursor:pointer;">
+        <div style="font-size:11px;color:#888;">R4 · 4周</div>
+        <div style="font-size:20px;font-weight:700;color:#88c057;">24</div>
+        <div style="font-size:10px;color:#aaa;">条建议</div>
+      </div>
+      <div style="flex:1;min-width:80px;border:1.5px solid #e0e0e0;border-radius:8px;padding:10px;text-align:center;cursor:pointer;">
+        <div style="font-size:11px;color:#888;">R5 · 5周</div>
+        <div style="font-size:20px;font-weight:700;color:#4f6ef7;">27</div>
+        <div style="font-size:10px;color:#aaa;">条建议</div>
+      </div>
+      <div style="flex:1;min-width:80px;border:1.5px solid #e0e0e0;border-radius:8px;padding:10px;text-align:center;cursor:pointer;">
+        <div style="font-size:11px;color:#888;">R6 · 6周</div>
+        <div style="font-size:20px;font-weight:700;color:#4f6ef7;">29</div>
+        <div style="font-size:10px;color:#aaa;">条建议</div>
+      </div>
+    </div>
+
+    <div style="border:1.5px solid #ff6b35;border-radius:8px;padding:12px;">
+      <div style="font-size:13px;font-weight:700;color:#ff6b35;margin-bottom:8px;">
+        ✦ Consensus &nbsp;<span style="font-weight:400;font-size:12px;color:#888;">共 9 条（≥3/6 轮命中）</span>
+      </div>
+      <div class="trend-row">
+        <div class="trend-label">SL_KW精准_电钻</div>
+        <div class="trend-dots">
+          <div class="dot hit"></div><div class="dot hit"></div><div class="dot hit"></div>
+          <div class="dot hit"></div><div class="dot hit"></div><div class="dot hit"></div>
+        </div>
+        <span class="trend-adj">-10%</span>
+      </div>
+      <div class="trend-row">
+        <div class="trend-label">DL_KW拓展_无线</div>
+        <div class="trend-dots">
+          <div class="dot miss"></div><div class="dot miss"></div><div class="dot miss"></div>
+          <div class="dot hit"></div><div class="dot hit"></div><div class="dot hit"></div>
+        </div>
+        <span class="trend-adj">-5%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>优点：</b>主界面简洁，各轮数据按需查看，灵活性强；卡片数字一眼看出各轮建议量趋势<br>
+    <b>缺点：</b>改动量最大，交互逻辑较复杂
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- 对比 -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="scheme" id="scheme-compare">
+  <div class="scheme-label">三方案对比总览</div>
+  <div class="card">
+    <table>
+      <tr>
+        <th>维度</th>
+        <th>方案 A · 标签页</th>
+        <th>方案 B · 热图</th>
+        <th class="rec">方案 C · 折叠分组</th>
+      </tr>
+      <tr>
+        <td>前端改动量</td>
+        <td class="pro">小（沿用现有）</td>
+        <td>中</td>
+        <td class="con">大</td>
+      </tr>
+      <tr>
+        <td>信息密度</td>
+        <td>低（需点击切换）</td>
+        <td class="pro">高（一屏全览）</td>
+        <td>中（主次分明）</td>
+      </tr>
+      <tr>
+        <td>趋势可读性</td>
+        <td class="con">差（需对比多个 tab）</td>
+        <td class="pro">最好</td>
+        <td>好</td>
+      </tr>
+      <tr>
+        <td>Tab 数量</td>
+        <td class="con">7 个（可能拥挤）</td>
+        <td class="pro">1 个（只有 Consensus）</td>
+        <td>1 主 + 6 折叠</td>
+      </tr>
+      <tr>
+        <td>各轮明细可见</td>
+        <td class="pro">全可见</td>
+        <td class="con">不可见</td>
+        <td class="pro">可展开</td>
+      </tr>
+      <tr>
+        <td>适合场景</td>
+        <td>需要逐轮审查</td>
+        <td>快速决策</td>
+        <td class="rec">兼顾概览与明细</td>
+      </tr>
+    </table>
+  </div>
+  <div class="note" style="margin:0 0 0 0;">
+    <b>推荐：</b>方案 B（热图）用于 Consensus 主视图，命中热图 + 趋势标签让决策依据一目了然。<br>
+    各轮明细可在 Consensus 页内点击行展开，或保留少量关键轮次（R1 / R3 / R6）的标签页供参考。
+  </div>
+</div>
+
+<script>
+  function showScheme(id) {
+    document.querySelectorAll('.scheme').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.scheme-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById('scheme-' + id).classList.add('active');
+    event.target.classList.add('active');
+  }
+</script>
+</body>
+</html>

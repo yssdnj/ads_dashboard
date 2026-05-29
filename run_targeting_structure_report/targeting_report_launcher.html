@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>广告结构分析 · 快速启动</title>
+<style>
+  :root {
+    color-scheme: light;
+    --orange: #FF9900;
+    --orange-dark: #e07b00;
+    --orange-light: #FFF3D6;
+    --blue: #146EB4;
+    --green: #1a7f4f;
+    --green-bg: #edfaf3;
+    --red: #c0392b;
+    --red-bg: #fdf0ef;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-400: #9ca3af;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-900: #111827;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--gray-50);
+    color: var(--gray-900);
+    min-height: 100vh;
+    padding: 24px 20px 48px;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .logo {
+    width: 40px; height: 40px;
+    background: var(--orange);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--gray-900);
+    line-height: 1.2;
+  }
+  .header p {
+    font-size: 13px;
+    color: var(--gray-600);
+    margin-top: 2px;
+  }
+  .version-badge {
+    margin-left: auto;
+    background: var(--orange-light);
+    color: var(--orange-dark);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1px solid #ffd88a;
+    white-space: nowrap;
+  }
+
+  /* ── Reminder Banner ── */
+  .banner {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .banner-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .banner p { font-size: 13px; color: #1e40af; line-height: 1.5; }
+  .banner strong { font-weight: 600; }
+
+  /* ── Cards ── */
+  .card {
+    background: #fff;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .card-num {
+    width: 22px; height: 22px;
+    background: var(--orange);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-900);
+  }
+  .card-sub {
+    font-size: 12px;
+    color: var(--gray-400);
+    margin-left: auto;
+  }
+
+  /* ── ASIN Textarea ── */
+  .asin-wrap { position: relative; }
+  textarea {
+    width: 100%;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    border: 1.5px solid var(--gray-200);
+    border-radius: 8px;
+    padding: 12px 14px;
+    resize: vertical;
+    min-height: 180px;
+    color: var(--gray-900);
+    background: var(--gray-50);
+    transition: border-color .15s;
+    outline: none;
+  }
+  textarea:focus { border-color: var(--orange); background: #fff; }
+  .asin-counter {
+    position: absolute;
+    bottom: 10px; right: 12px;
+    font-size: 12px;
+    color: var(--gray-400);
+    pointer-events: none;
+    background: rgba(249,250,251,.85);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .asin-counter.has-asins { color: var(--orange-dark); font-weight: 600; }
+
+  /* ── Paste helpers ── */
+  .paste-hint {
+    font-size: 12px;
+    color: var(--gray-400);
+    margin-top: 6px;
+  }
+  .paste-hint span {
+    display: inline-block;
+    background: var(--gray-100);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: monospace;
+    color: var(--gray-700);
+  }
+
+  /* ── Quick ASIN chips ── */
+  .quick-asins {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .chip {
+    font-size: 11px;
+    background: var(--gray-100);
+    border: 1px solid var(--gray-200);
+    border-radius: 5px;
+    padding: 3px 8px;
+    cursor: pointer;
+    color: var(--gray-700);
+    font-family: monospace;
+    transition: background .1s;
+    user-select: none;
+  }
+  .chip:hover { background: var(--orange-light); border-color: var(--orange); color: var(--orange-dark); }
+  .chip.active { background: var(--orange); color: #fff; border-color: var(--orange); }
+
+  /* ── Param grid ── */
+  .param-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  .param-group { display: flex; flex-direction: column; gap: 5px; }
+  .param-group.full { grid-column: 1 / -1; }
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-700);
+    letter-spacing: .02em;
+  }
+  .label-hint {
+    font-weight: 400;
+    color: var(--gray-400);
+    margin-left: 4px;
+  }
+  input[type="number"], input[type="text"] {
+    width: 100%;
+    padding: 9px 12px;
+    font-size: 14px;
+    border: 1.5px solid var(--gray-200);
+    border-radius: 8px;
+    background: var(--gray-50);
+    color: var(--gray-900);
+    outline: none;
+    transition: border-color .15s;
+  }
+  input:focus { border-color: var(--orange); background: #fff; }
+
+  /* ── ACoS slider ── */
+  .acos-row { display: flex; align-items: center; gap: 10px; }
+  .acos-row input[type="range"] {
+    flex: 1;
+    accent-color: var(--orange);
+    cursor: pointer;
+    height: 4px;
+    padding: 0;
+    border: none;
+    background: transparent;
+  }
+  .acos-display {
+    min-width: 46px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--orange-dark);
+    background: var(--orange-light);
+    border-radius: 6px;
+    padding: 4px 8px;
+  }
+
+  /* ── Version toggle ── */
+  .version-toggle {
+    display: flex;
+    gap: 0;
+    border: 1.5px solid var(--gray-200);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--gray-50);
+  }
+  .ver-btn {
+    flex: 1;
+    padding: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--gray-600);
+    transition: all .15s;
+  }
+  .ver-btn.active {
+    background: var(--orange);
+    color: #fff;
+    font-weight: 600;
+  }
+
+  /* ── v1 extra field ── */
+  #v1-fields {
+    margin-top: 14px;
+    display: none;
+  }
+  #v1-fields.show { display: block; }
+
+  /* ── Run button ── */
+  .run-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--orange);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background .15s, transform .1s;
+    letter-spacing: .02em;
+    margin-top: 4px;
+  }
+  .run-btn:hover { background: var(--orange-dark); }
+  .run-btn:active { transform: scale(.98); }
+  .run-btn:disabled { background: var(--gray-400); cursor: not-allowed; transform: none; }
+
+  /* ── Preview box ── */
+  .preview-card {
+    background: var(--gray-900);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-top: 16px;
+    display: none;
+  }
+  .preview-card.show { display: block; }
+  .preview-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gray-400);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .preview-text {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    color: #e5e7eb;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .preview-text .kw { color: #93c5fd; }
+  .preview-text .val { color: #86efac; }
+  .preview-text .num { color: #fde68a; }
+
+  /* ── Stats strip ── */
+  .stats-strip {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .stat-pill {
+    background: #fff;
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+    padding: 10px 14px;
+    flex: 1;
+    min-width: 100px;
+    box-shadow: var(--shadow);
+  }
+  .stat-pill .sl { font-size: 11px; color: var(--gray-400); margin-bottom: 2px; }
+  .stat-pill .sv { font-size: 17px; font-weight: 700; color: var(--gray-900); }
+  .stat-pill .sv.orange { color: var(--orange-dark); }
+  .stat-pill .sv.green { color: var(--green); }
+  .stat-pill .sv.red { color: var(--red); }
+
+  /* ── History section ── */
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--gray-100);
+    font-size: 13px;
+    color: var(--gray-700);
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    flex-shrink: 0;
+  }
+  .history-time { color: var(--gray-400); font-size: 12px; margin-left: auto; }
+
+  .empty-history {
+    text-align: center;
+    padding: 20px;
+    color: var(--gray-400);
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">📊</div>
+  <div>
+    <h1>广告结构分析</h1>
+    <p>Amazon Sponsored Products · Targeting 分层报告</p>
+  </div>
+  <div class="version-badge" id="active-version-badge">v1 默认</div>
+</div>
+
+<!-- File reminder -->
+<div class="banner">
+  <div class="banner-icon">📎</div>
+  <p>
+    <strong>使用前请先上传两个报表文件：</strong><br>
+    ① <strong>Advertised Product Report</strong>（.xlsx）&nbsp;&nbsp;
+    ② <strong>Targeting Report（每日）</strong>（.xlsx）<br>
+    文件就绪后，填写下方参数，点击 <strong>开始分析</strong> 即可。
+  </p>
+</div>
+
+<!-- Last run stats (populated from localStorage) -->
+<div class="stats-strip" id="stats-strip" style="display:none">
+  <div class="stat-pill">
+    <div class="sl">上次 ACoS</div>
+    <div class="sv orange" id="stat-acos">—</div>
+  </div>
+  <div class="stat-pill">
+    <div class="sl">日均订单</div>
+    <div class="sv green" id="stat-orders">—</div>
+  </div>
+  <div class="stat-pill">
+    <div class="sl">无效花费占比</div>
+    <div class="sv red" id="stat-waste">—</div>
+  </div>
+  <div class="stat-pill">
+    <div class="sl">有效投放</div>
+    <div class="sv" id="stat-effective">—</div>
+  </div>
+</div>
+
+<!-- Card 1: ASINs -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-num">1</div>
+    <div class="card-title">ASIN 列表</div>
+    <div class="card-sub" id="asin-sub">0 个 ASIN</div>
+  </div>
+
+  <div class="asin-wrap">
+    <textarea id="asin-input" placeholder="每行一个 ASIN，例如：&#10;B0BMQLMKG1&#10;B0BMQLT5LW&#10;B0BMQKFDQ7" spellcheck="false"></textarea>
+    <div class="asin-counter" id="asin-counter">0</div>
+  </div>
+  <p class="paste-hint">支持每行一个 或 空格/逗号分隔 · 自动去重 · 粘贴后按 <span>Tab</span> 跳转下一项</p>
+
+  <div class="quick-asins" id="quick-asins">
+    <!-- Chips rendered by JS -->
+  </div>
+</div>
+
+<!-- Card 2: Parameters -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-num">2</div>
+    <div class="card-title">分析参数</div>
+  </div>
+
+  <div class="param-grid">
+    <!-- Target ACoS -->
+    <div class="param-group full">
+      <label>目标 ACoS <span class="label-hint">Target ACoS</span></label>
+      <div class="acos-row">
+        <input type="range" id="acos-slider" min="5" max="60" step="1" value="35">
+        <div class="acos-display" id="acos-display">35%</div>
+      </div>
+    </div>
+
+    <!-- Avg clicks -->
+    <div class="param-group">
+      <label>平均出单点击数 <span class="label-hint">Avg Clicks/Order</span></label>
+      <input type="number" id="clicks-input" value="8.5" min="1" max="100" step="0.5">
+    </div>
+
+    <!-- Analysis days -->
+    <div class="param-group">
+      <label>分析窗口 <span class="label-hint">Analysis Days</span></label>
+      <input type="number" id="days-input" value="14" min="7" max="60" step="1">
+    </div>
+  </div>
+</div>
+
+<!-- Card 3: Version & product target -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-num">3</div>
+    <div class="card-title">脚本版本</div>
+  </div>
+
+  <div class="version-toggle">
+    <button class="ver-btn active" data-ver="v1" onclick="setVersion('v1')">v1（默认）· 带产品标识 + 时间戳目录</button>
+    <button class="ver-btn" data-ver="v0" onclick="setVersion('v0')">v0 · 原版</button>
+  </div>
+
+  <div id="v1-fields" class="show">
+    <div class="param-group" style="margin-top:14px">
+      <label>产品标识符 <span class="label-hint">--product-target</span></label>
+      <input type="text" id="product-target" value="DL_ASIN" placeholder="如 DL_ASIN、SL_KW、BRAND_KW">
+    </div>
+    <p class="paste-hint" style="margin-top:6px">用于输出子目录与文件命名，如 <span>20260518_DL_ASIN/</span></p>
+  </div>
+</div>
+
+<!-- Run button -->
+<button class="run-btn" id="run-btn" onclick="runAnalysis()">
+  <span>🚀</span> 开始分析
+</button>
+
+<!-- Command preview -->
+<div class="preview-card" id="preview-card">
+  <div class="preview-label">将发送给 Claude 的指令预览</div>
+  <div class="preview-text" id="preview-text"></div>
+</div>
+
+<!-- History card -->
+<div class="card" style="margin-top:16px">
+  <div class="card-header">
+    <div class="card-num">🕐</div>
+    <div class="card-title">历史记录</div>
+    <button style="margin-left:auto;font-size:11px;background:none;border:none;color:var(--gray-400);cursor:pointer" onclick="clearHistory()">清除</button>
+  </div>
+  <div id="history-list">
+    <div class="empty-history">暂无历史记录</div>
+  </div>
+</div>
+
+<script>
+// ── State ──
+let currentVersion = 'v1';
+
+const LAST_27 = [
+  'B0BMQLMKG1','B0BMQLT5LW','B0BMQKFDQ7','B0CCD43X84','B0BMQL779Q',
+  'B0CDBV251P','B0FWJWJBMW','B0G1S3B39S','B0G1S91KDN','B0BMQQ74H2',
+  'B09VGHLFCJ','B0BMQL4HQJ','B0CCD6N43K','B09VGG4ZP2','B0CDBT9CBN',
+  'B0FWJQZ287','B0G1S41W43','B0G1SFGSL8','B0D6G27DNH','B0DGKXLZDV',
+  'B0D8TB18VS','B0D6FW6XSN','B0DGKV1PV7','B0D8SWZX4J','B0FWJR8CT6',
+  'B0G1S4S678','B0G1S69FMT'
+];
+
+// ── Init ──
+(function init() {
+  renderChips();
+  updateCounter();
+  updatePreview();
+  renderHistory();
+
+  // ACoS slider
+  const slider = document.getElementById('acos-slider');
+  const display = document.getElementById('acos-display');
+  slider.addEventListener('input', () => {
+    display.textContent = slider.value + '%';
+    updatePreview();
+  });
+
+  // ASIN textarea
+  document.getElementById('asin-input').addEventListener('input', () => {
+    updateCounter();
+    updatePreview();
+  });
+
+  // other inputs
+  ['clicks-input', 'days-input', 'product-target'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', updatePreview);
+  });
+})();
+
+function renderChips() {
+  const wrap = document.getElementById('quick-asins');
+  // Show "上次 27 个" shortcut
+  const chip = document.createElement('div');
+  chip.className = 'chip';
+  chip.textContent = '↑ 加载上次 27 个 ASIN';
+  chip.onclick = () => {
+    document.getElementById('asin-input').value = LAST_27.join('\n');
+    updateCounter();
+    updatePreview();
+    chip.classList.add('active');
+    setTimeout(() => chip.classList.remove('active'), 800);
+  };
+  wrap.appendChild(chip);
+
+  // Clear chip
+  const clear = document.createElement('div');
+  clear.className = 'chip';
+  clear.textContent = '✕ 清空';
+  clear.onclick = () => {
+    document.getElementById('asin-input').value = '';
+    updateCounter();
+    updatePreview();
+  };
+  wrap.appendChild(clear);
+}
+
+function parseAsins() {
+  const raw = document.getElementById('asin-input').value;
+  const tokens = raw.split(/[\n,\s]+/).map(s => s.trim()).filter(s => /^B[A-Z0-9]{9}$/i.test(s));
+  // dedupe, preserve order
+  return [...new Set(tokens.map(a => a.toUpperCase()))];
+}
+
+function updateCounter() {
+  const asins = parseAsins();
+  const n = asins.length;
+  const counter = document.getElementById('asin-counter');
+  const sub = document.getElementById('asin-sub');
+  counter.textContent = n;
+  counter.className = 'asin-counter' + (n > 0 ? ' has-asins' : '');
+  sub.textContent = n > 0 ? `${n} 个 ASIN` : '0 个 ASIN';
+}
+
+function setVersion(ver) {
+  currentVersion = ver;
+  document.querySelectorAll('.ver-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.ver === ver);
+  });
+  document.getElementById('v1-fields').classList.toggle('show', ver === 'v1');
+  document.getElementById('active-version-badge').textContent = ver === 'v1' ? 'v1 默认' : 'v0 原版';
+  updatePreview();
+}
+
+function buildPrompt() {
+  const asins = parseAsins();
+  const acos = document.getElementById('acos-slider').value;
+  const clicks = document.getElementById('clicks-input').value;
+  const days = document.getElementById('days-input').value;
+  const pt = (document.getElementById('product-target')?.value || 'DL_ASIN').trim();
+
+  if (asins.length === 0) return null;
+
+  let msg = `请运行 amazon-targeting-structure-report skill（${currentVersion}）分析以下数据：\n\n`;
+  msg += `上传的报表文件已就位。参数如下：\n`;
+  msg += `- ASINs（${asins.length} 个）：${asins.join(' ')}\n`;
+  msg += `- Target ACoS：${acos}%（${(parseInt(acos)/100).toFixed(2)}）\n`;
+  msg += `- Avg Clicks/Order：${clicks}\n`;
+  if (currentVersion === 'v1') {
+    msg += `- Product Target：${pt}\n`;
+  }
+  if (days !== '14') {
+    msg += `- Analysis Days：${days}\n`;
+  }
+
+  return msg;
+}
+
+function updatePreview() {
+  const prompt = buildPrompt();
+  const card = document.getElementById('preview-card');
+  const pre = document.getElementById('preview-text');
+  const btn = document.getElementById('run-btn');
+
+  if (!prompt) {
+    card.classList.remove('show');
+    btn.disabled = true;
+    btn.innerHTML = '<span>🚀</span> 开始分析';
+    return;
+  }
+
+  btn.disabled = false;
+
+  // Syntax-highlight preview
+  const highlighted = prompt
+    .replace(/^(请运行.*?)$/m, '<span class="kw">$1</span>')
+    .replace(/(- [^：]+：)\s*(.+)/g, (_, k, v) => {
+      const isNum = /^[\d.%（）]+$/.test(v.trim().split(' ')[0]);
+      return k + ' <span class="' + (isNum ? 'num' : 'val') + '">' + v + '</span>';
+    });
+
+  pre.innerHTML = highlighted;
+  card.classList.add('show');
+}
+
+function runAnalysis() {
+  const prompt = buildPrompt();
+  if (!prompt) return;
+
+  // Save to history
+  const asins = parseAsins();
+  const acos = document.getElementById('acos-slider').value;
+  const pt = document.getElementById('product-target')?.value || '';
+  saveHistory({ asins, acos, pt, ver: currentVersion, time: Date.now() });
+
+  sendPrompt(prompt);
+}
+
+// ── History ──
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem('amz_report_history') || '[]'); } catch { return []; }
+}
+function saveHistory(entry) {
+  const h = getHistory();
+  h.unshift(entry);
+  if (h.length > 8) h.length = 8;
+  localStorage.setItem('amz_report_history', JSON.stringify(h));
+  renderHistory();
+}
+function clearHistory() {
+  localStorage.removeItem('amz_report_history');
+  renderHistory();
+}
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  const h = getHistory();
+  if (h.length === 0) {
+    list.innerHTML = '<div class="empty-history">暂无历史记录，点击「开始分析」后将自动记录</div>';
+    return;
+  }
+  list.innerHTML = h.map(e => {
+    const d = new Date(e.time);
+    const timeStr = d.toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+    const label = e.pt ? `${e.pt}` : `ACoS ${e.acos}%`;
+    return `<div class="history-item">
+      <div class="history-dot"></div>
+      <span>${e.asins.length} 个 ASIN · ${label} · ${e.ver}</span>
+      <span class="history-time">${timeStr}</span>
+    </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>

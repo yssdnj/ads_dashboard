@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Targeting 结构分析 · v1 浏览器版</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --orange: #FF9900;
+  --orange-d: #c97700;
+  --orange-bg: #fff8ec;
+  --blue: #146EB4;
+  --green: #1a7f4f;
+  --green-bg: #edfaf3;
+  --red: #c0392b;
+  --red-bg: #fdf0ef;
+  --yellow: #b45309;
+  --yellow-bg: #fffbeb;
+  --gray-50: #f8f9fa;
+  --gray-100: #f1f3f5;
+  --gray-200: #dee2e6;
+  --gray-400: #adb5bd;
+  --gray-600: #495057;
+  --gray-700: #343a40;
+  --gray-900: #212529;
+  --r: 10px;
+  --sh: 0 1px 4px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--gray-50);color:var(--gray-900);min-height:100vh;padding-bottom:60px;}
+
+/* ─ NAV ─ */
+.nav{background:#fff;border-bottom:1px solid var(--gray-200);padding:0 24px;display:flex;align-items:center;gap:12px;height:52px;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.nav-logo{width:32px;height:32px;background:var(--orange);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.nav-title{font-size:15px;font-weight:700;color:var(--gray-900);}
+.nav-sub{font-size:12px;color:var(--gray-400);margin-left:4px;}
+.nav-badge{margin-left:auto;background:var(--orange-bg);color:var(--orange-d);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid #ffd580;}
+
+/* ─ LAYOUT ─ */
+.wrap{max-width:960px;margin:0 auto;padding:24px 20px;}
+
+/* ─ SECTION HEADERS ─ */
+.sec-hd{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.sec-hd h2{font-size:14px;font-weight:700;color:var(--gray-900);}
+.sec-num{width:22px;height:22px;background:var(--orange);color:#fff;border-radius:50%;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sec-hint{font-size:12px;color:var(--gray-400);margin-left:auto;}
+
+/* ─ CARD ─ */
+.card{background:#fff;border:1px solid var(--gray-200);border-radius:var(--r);padding:20px;margin-bottom:16px;box-shadow:var(--sh);}
+
+/* ─ FILE DROPS ─ */
+.file-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.drop-zone{border:2px dashed var(--gray-200);border-radius:var(--r);padding:22px 16px;text-align:center;cursor:pointer;transition:all .15s;background:var(--gray-50);}
+.drop-zone:hover,.drop-zone.over{border-color:var(--orange);background:var(--orange-bg);}
+.drop-zone.loaded{border-color:var(--green);background:var(--green-bg);}
+.drop-zone .dz-icon{font-size:28px;margin-bottom:8px;}
+.drop-zone .dz-label{font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:4px;}
+.drop-zone .dz-sub{font-size:11px;color:var(--gray-400);}
+.drop-zone.loaded .dz-label{color:var(--green);}
+.drop-zone input[type=file]{display:none;}
+
+/* ─ INPUTS ─ */
+.param-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:14px;}
+.param-group{display:flex;flex-direction:column;gap:5px;}
+.param-group.full{grid-column:1/-1;}
+label{font-size:12px;font-weight:600;color:var(--gray-700);}
+.lh{font-weight:400;color:var(--gray-400);margin-left:3px;}
+input[type=number],input[type=text],textarea{width:100%;padding:9px 11px;font-size:13px;border:1.5px solid var(--gray-200);border-radius:8px;background:var(--gray-50);color:var(--gray-900);outline:none;transition:border-color .15s;}
+input:focus,textarea:focus{border-color:var(--orange);background:#fff;}
+textarea{font-family:'SF Mono','Fira Code',monospace;font-size:12px;line-height:1.8;resize:vertical;min-height:140px;}
+.acos-row{display:flex;align-items:center;gap:10px;}
+.acos-row input[type=range]{flex:1;accent-color:var(--orange);height:4px;padding:0;border:none;background:transparent;cursor:pointer;}
+.acos-val{min-width:44px;text-align:center;font-size:14px;font-weight:700;color:var(--orange-d);background:var(--orange-bg);border-radius:6px;padding:4px 8px;}
+
+/* ─ RUN BUTTON ─ */
+.run-btn{width:100%;padding:14px;background:var(--orange);color:#fff;font-size:15px;font-weight:700;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s,transform .1s;margin-top:4px;}
+.run-btn:hover{background:var(--orange-d);}
+.run-btn:active{transform:scale(.98);}
+.run-btn:disabled{background:var(--gray-400);cursor:not-allowed;transform:none;}
+
+/* ─ PROGRESS ─ */
+.progress-bar{height:4px;background:var(--gray-100);border-radius:2px;overflow:hidden;margin-bottom:12px;display:none;}
+.progress-bar.show{display:block;}
+.progress-fill{height:100%;background:var(--orange);width:0%;transition:width .3s;}
+.progress-msg{font-size:12px;color:var(--gray-600);margin-bottom:8px;display:none;}
+.progress-msg.show{display:block;}
+
+/* ─ RESULTS ─ */
+#results{display:none;}
+#results.show{display:block;}
+
+.result-header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border-radius:var(--r);padding:22px 24px;margin-bottom:20px;color:#fff;}
+.rh-title{font-size:18px;font-weight:800;margin-bottom:6px;}
+.rh-meta{font-size:12px;color:#94a3b8;display:flex;flex-wrap:wrap;gap:16px;}
+.rh-meta span{display:flex;align-items:center;gap:4px;}
+
+/* ─ METRIC CARDS ─ */
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;}
+.metric{background:#fff;border:1px solid var(--gray-200);border-radius:var(--r);padding:14px;box-shadow:var(--sh);}
+.metric .ml{font-size:11px;color:var(--gray-400);margin-bottom:4px;}
+.metric .mv{font-size:20px;font-weight:800;}
+.metric .ms{font-size:11px;color:var(--gray-400);margin-top:2px;}
+.metric.ok .mv{color:var(--green);}
+.metric.warn .mv{color:var(--yellow);}
+.metric.bad .mv{color:var(--red);}
+.metric.orange .mv{color:var(--orange-d);}
+
+/* ─ TABLES ─ */
+.tbl-wrap{overflow-x:auto;margin-top:4px;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{background:var(--gray-50);color:var(--gray-600);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:9px 12px;text-align:left;border-bottom:2px solid var(--gray-200);}
+td{padding:9px 12px;border-bottom:1px solid var(--gray-100);vertical-align:middle;}
+tr:hover td{background:#fafafa;}
+tr:last-child td{border-bottom:none;}
+.mono{font-family:'SF Mono','Fira Code',monospace;font-size:12px;}
+.tag{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;}
+.tag-green{background:var(--green-bg);color:var(--green);}
+.tag-red{background:var(--red-bg);color:var(--red);}
+.tag-yellow{background:var(--yellow-bg);color:var(--yellow);}
+.tag-gray{background:var(--gray-100);color:var(--gray-600);}
+.tag-orange{background:var(--orange-bg);color:var(--orange-d);}
+.prot-badge{display:inline-block;background:#1a1a2e;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;}
+
+/* ─ LAYER STRIP ─ */
+.layer-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:8px 0 16px;}
+.layer-box{border-radius:8px;padding:10px 8px;text-align:center;}
+.layer-box .lb-label{font-size:10px;color:var(--gray-600);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.layer-box .lb-cnt{font-size:18px;font-weight:800;}
+.layer-box .lb-spend{font-size:11px;color:var(--gray-400);margin-top:2px;}
+.lb-low{background:var(--green-bg);}  .lb-low .lb-cnt{color:var(--green);}
+.lb-high{background:var(--yellow-bg);} .lb-high .lb-cnt{color:var(--yellow);}
+.lb-hcno{background:var(--red-bg);}   .lb-hcno .lb-cnt{color:var(--red);}
+.lb-lcno{background:var(--gray-100);} .lb-lcno .lb-cnt{color:var(--gray-600);}
+.lb-noclk{background:var(--gray-50);} .lb-noclk .lb-cnt{color:var(--gray-400);}
+
+/* ─ DOWNLOAD BAR ─ */
+.dl-bar{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
+.dl-btn{display:flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;}
+.dl-csv{background:var(--green-bg);color:var(--green);border:1px solid #a7f3d0;}
+.dl-md{background:var(--blue);color:#fff;}
+.dl-btn:hover{opacity:.85;}
+
+/* ─ CONCENTRATION BAR ─ */
+.conc-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.conc-row .conc-label{font-size:12px;color:var(--gray-600);width:50px;flex-shrink:0;}
+.conc-row .conc-bar-wrap{flex:1;background:var(--gray-100);border-radius:4px;height:10px;overflow:hidden;}
+.conc-row .conc-fill{height:100%;background:var(--orange);border-radius:4px;transition:width .4s ease;}
+.conc-row .conc-pct{font-size:12px;font-weight:700;color:var(--orange-d);width:44px;text-align:right;flex-shrink:0;}
+.conc-row .conc-amt{font-size:11px;color:var(--gray-400);width:70px;text-align:right;flex-shrink:0;}
+
+/* ─ ALERT ─ */
+.alert{padding:12px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none;}
+.alert.show{display:block;}
+.alert-err{background:var(--red-bg);color:var(--red);border:1px solid #fca5a5;}
+.alert-ok{background:var(--green-bg);color:var(--green);border:1px solid #6ee7b7;}
+
+/* ─ SECTION DIVIDER ─ */
+.sec-div{font-size:13px;font-weight:700;color:var(--gray-700);margin:20px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--gray-200);}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-logo">📊</div>
+  <div>
+    <span class="nav-title">Targeting 结构分析</span>
+    <span class="nav-sub">浏览器版</span>
+  </div>
+  <div class="nav-badge">v1 · 与脚本逻辑对齐</div>
+</nav>
+
+<div class="wrap">
+
+<!-- ERROR ALERT -->
+<div class="alert alert-err" id="alert-err"></div>
+
+<!-- ═══════════════ SETUP PANEL ═══════════════ -->
+<div id="setup-panel">
+
+  <!-- File Upload -->
+  <div class="card">
+    <div class="sec-hd">
+      <div class="sec-num">1</div>
+      <h2>上传报表文件</h2>
+      <div class="sec-hint" id="files-status">0 / 2 就绪</div>
+    </div>
+    <div class="file-grid">
+      <div class="drop-zone" id="dz-ap" onclick="document.getElementById('fi-ap').click()" ondragover="dzOver(event,'dz-ap')" ondragleave="dzLeave('dz-ap')" ondrop="dzDrop(event,'ap')">
+        <div class="dz-icon">📄</div>
+        <div class="dz-label" id="dz-ap-label">Advertised Product Report</div>
+        <div class="dz-sub">拖拽或点击上传 .xlsx</div>
+        <input type="file" id="fi-ap" accept=".xlsx,.xls" onchange="loadFile(this,'ap')">
+      </div>
+      <div class="drop-zone" id="dz-tar" onclick="document.getElementById('fi-tar').click()" ondragover="dzOver(event,'dz-tar')" ondragleave="dzLeave('dz-tar')" ondrop="dzDrop(event,'tar')">
+        <div class="dz-icon">📄</div>
+        <div class="dz-label" id="dz-tar-label">Targeting Report（每日）</div>
+        <div class="dz-sub">拖拽或点击上传 .xlsx</div>
+        <input type="file" id="fi-tar" accept=".xlsx,.xls" onchange="loadFile(this,'tar')">
+      </div>
+    </div>
+  </div>
+
+  <!-- ASINs -->
+  <div class="card">
+    <div class="sec-hd">
+      <div class="sec-num">2</div>
+      <h2>ASIN 列表</h2>
+      <div class="sec-hint" id="asin-cnt">0 个</div>
+    </div>
+    <textarea id="asin-input" placeholder="每行一个 ASIN，或空格/逗号分隔&#10;例：B0BMQLMKG1&#10;B0BMQLT5LW&#10;B0BMQKFDQ7"></textarea>
+  </div>
+
+  <!-- Parameters -->
+  <div class="card">
+    <div class="sec-hd">
+      <div class="sec-num">3</div>
+      <h2>分析参数</h2>
+    </div>
+    <div class="param-group full">
+      <label>目标 ACoS</label>
+      <div class="acos-row">
+        <input type="range" id="acos-slider" min="5" max="60" step="1" value="35" oninput="document.getElementById('acos-val').textContent=this.value+'%'">
+        <div class="acos-val" id="acos-val">35%</div>
+      </div>
+    </div>
+    <div class="param-grid">
+      <div class="param-group">
+        <label>Avg Clicks / Order <span class="lh">平均出单点击</span></label>
+        <input type="number" id="clicks" value="8.5" min="1" max="100" step="0.5">
+      </div>
+      <div class="param-group">
+        <label>Analysis Days <span class="lh">分析窗口天数</span></label>
+        <input type="number" id="days" value="14" min="7" max="60" step="1">
+      </div>
+      <div class="param-group">
+        <label>Core Sales Share <span class="lh">核心流量阈值</span></label>
+        <input type="number" id="core-share" value="0.20" min="0.05" max="0.5" step="0.01">
+      </div>
+      <div class="param-group full">
+        <label>Product Target <span class="lh">产品标识符，用于文件命名</span></label>
+        <input type="text" id="product-target" value="DL_ASIN" placeholder="如 DL_ASIN、SL_KW、BRAND_KW">
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-msg" id="prog-msg"></div>
+  <div class="progress-bar" id="prog-bar"><div class="progress-fill" id="prog-fill"></div></div>
+
+  <!-- Run -->
+  <button class="run-btn" id="run-btn" onclick="runAnalysis()">
+    🚀 开始分析
+  </button>
+
+</div><!-- /setup-panel -->
+
+<!-- ═══════════════ RESULTS ═══════════════ -->
+<div id="results">
+
+  <!-- Header -->
+  <div class="result-header" id="r-header">
+    <div class="rh-title" id="r-title">Targeting 结构分析报告</div>
+    <div class="rh-meta" id="r-meta"></div>
+  </div>
+
+  <!-- Download bar -->
+  <div class="dl-bar">
+    <button class="dl-btn dl-csv" onclick="downloadCSV()">⬇ 下载 CSV（标签 + 调价）</button>
+    <button class="dl-btn dl-md" onclick="downloadMD()">⬇ 下载 Markdown 报告</button>
+    <button class="dl-btn" style="background:var(--gray-100);color:var(--gray-700);border:1px solid var(--gray-200)" onclick="resetForm()">← 重新分析</button>
+  </div>
+
+  <!-- Section 1: Account Health -->
+  <div class="sec-div">一、账户健康度</div>
+  <div class="metric-grid" id="r-health"></div>
+
+  <!-- Section 2: Traffic Concentration -->
+  <div class="sec-div">二、流量集中度</div>
+  <div id="r-conc"></div>
+
+  <!-- Section 3: Layer Summary -->
+  <div class="sec-div">三、投放结构分层</div>
+  <div class="layer-strip" id="r-layer-strip"></div>
+  <div class="card" style="padding:0">
+    <div class="tbl-wrap"><table id="r-layer-tbl"></table></div>
+  </div>
+
+  <!-- Section 4: Core Protection -->
+  <div class="sec-div">四、核心流量保护名单（出单前10）</div>
+  <div class="card" style="padding:0">
+    <div class="tbl-wrap"><table id="r-protect-tbl"></table></div>
+  </div>
+
+  <!-- Section 5: Summary -->
+  <div class="sec-div">五、优化建议摘要</div>
+  <div class="card" id="r-summary"></div>
+
+  <!-- Section 6: High ACoS Top 10 -->
+  <div class="sec-div">高 ACoS 出单 Top 10（非保护）</div>
+  <div class="card" style="padding:0">
+    <div class="tbl-wrap"><table id="r-highacos-tbl"></table></div>
+  </div>
+
+  <!-- Section 7: Label Distribution -->
+  <div class="sec-div">标签分布</div>
+  <div class="metric-grid" id="r-labels"></div>
+
+</div><!-- /results -->
+</div><!-- /wrap -->
+
+<script>
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+let apRows = null, tarRows = null, lastResult = null;
+
+// ═══════════════════════════════════════════
+//  FILE LOADING
+// ═══════════════════════════════════════════
+function loadFile(input, type) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: null });
+      // Strip column name whitespace
+      const cleaned = rows.map(r => {
+        const o = {};
+        for (const k in r) o[k.trim()] = r[k];
+        return o;
+      });
+      if (type === 'ap') {
+        apRows = cleaned;
+        setDZ('dz-ap', 'dz-ap-label', file.name, true);
+      } else {
+        tarRows = cleaned;
+        setDZ('dz-tar', 'dz-tar-label', file.name, true);
+      }
+      updateFilesStatus();
+    } catch(err) {
+      showErr('文件解析失败：' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function setDZ(dzId, lblId, name, ok) {
+  const dz = document.getElementById(dzId);
+  dz.classList.toggle('loaded', ok);
+  document.getElementById(lblId).textContent = ok ? '✓ ' + name : (dzId === 'dz-ap' ? 'Advertised Product Report' : 'Targeting Report（每日）');
+}
+
+function updateFilesStatus() {
+  const n = (apRows ? 1 : 0) + (tarRows ? 1 : 0);
+  document.getElementById('files-status').textContent = n + ' / 2 就绪';
+}
+
+// Drag-drop helpers
+function dzOver(e, id) { e.preventDefault(); document.getElementById(id).classList.add('over'); }
+function dzLeave(id) { document.getElementById(id).classList.remove('over'); }
+function dzDrop(e, type) {
+  e.preventDefault();
+  const id = type === 'ap' ? 'dz-ap' : 'dz-tar';
+  dzLeave(id);
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const input = document.getElementById(type === 'ap' ? 'fi-ap' : 'fi-tar');
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  input.files = dt.files;
+  loadFile(input, type);
+}
+
+// ASIN counter
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('asin-input').addEventListener('input', updateAsinCount);
+});
+function parseAsins() {
+  const raw = document.getElementById('asin-input').value;
+  const tokens = raw.split(/[\n,\s]+/).map(s => s.trim()).filter(s => /^B[A-Z0-9]{9}$/i.test(s));
+  return [...new Set(tokens.map(a => a.toUpperCase()))];
+}
+function updateAsinCount() {
+  document.getElementById('asin-cnt').textContent = parseAsins().length + ' 个';
+}
+
+// ═══════════════════════════════════════════
+//  DATE UTILS
+// ═══════════════════════════════════════════
+function toDateObj(val) {
+  if (!val && val !== 0) return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  if (typeof val === 'number') {
+    // Excel serial
+    const ms = Math.round((val - 25569) * 86400000);
+    return new Date(ms);
+  }
+  if (typeof val === 'string') {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+function dateKey(d) {
+  if (!d) return '';
+  return d.toISOString().slice(0, 10);
+}
+function addDays(d, n) {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  return d.toISOString().slice(0, 10);
+}
+
+// ═══════════════════════════════════════════
+//  LABEL & ACTION (mirrors v1 Python)
+// ═══════════════════════════════════════════
+function getLabel(orders, clicks, acos, targetAcos, avgClicksPerOrder) {
+  if (orders === 0) {
+    if (clicks >= avgClicksPerOrder) return '🔴 高点击不出单';
+    if (clicks > 0) return '⚪ 低点击不出单';
+    return '— 无点击';
+  }
+  if (acos !== null && acos > targetAcos) return '⚠️ 高ACoS出单';
+  return '✅ 低ACoS出单';
+}
+
+function getAction(row, targetAcos, coreSalesShare, coreKeys) {
+  const label = row.label;
+  const key = [row['Campaign Name'], row['Ad Group Name'], row['Targeting'], row['Match Type']].join('|');
+  const isCore = coreKeys.has(key) || row.sales_share >= coreSalesShare;
+
+  if (label.includes('无点击')) return ['观察', '0%', '$0.00', '无流量，检查出价是否过低'];
+
+  if (label.includes('低ACoS出单')) {
+    if (isCore) return ['🔒 保护', '0%', '$0.00', '核心流量，维持出价'];
+    return ['↗ 维持/提价', '+0~5%', '$0.00', '表现良好，可小幅提价测试'];
+  }
+
+  if (label.includes('高ACoS出单')) {
+    if (isCore) return ['🔒 保护', '0%', '$0.00', '核心流量，谨慎调整'];
+    const ratio = row.acos !== null ? row.acos / targetAcos : 1;
+    let pct, reason;
+    if (ratio <= 1.2) { pct = -5; reason = `ACoS超出目标${((ratio-1)*100).toFixed(0)}%，小幅降价`; }
+    else if (ratio <= 1.5) { pct = -10; reason = `ACoS超出目标${((ratio-1)*100).toFixed(0)}%，中幅降价`; }
+    else { pct = -15; reason = `ACoS严重偏高（${((ratio-1)*100).toFixed(0)}%），大幅降价`; }
+    const cpc = row.cpc || 0;
+    const adjDollar = Math.max(Math.abs(cpc * pct / 100), 0.01);
+    return ['↘ 降价', `${pct}%`, `$${adjDollar.toFixed(2)}`, reason];
+  }
+
+  if (label.includes('高点击不出单')) {
+    const cpc = row.cpc || 0;
+    const adj = Math.max(cpc * 0.20, 0.01);
+    return ['⛔ 大幅降价/暂停', '-20%', `$${adj.toFixed(2)}`, `已积累${row.clicks}次点击仍无出单，转化严重不足`];
+  }
+
+  if (label.includes('低点击不出单')) {
+    const cpc = row.cpc || 0;
+    const adj = Math.max(cpc * 0.10, 0.01);
+    return ['↘ 降价', '-10%', `$${adj.toFixed(2)}`, '无出单，降低无效花费'];
+  }
+
+  return ['观察', '0%', '$0.00', ''];
+}
+
+// ═══════════════════════════════════════════
+//  MAIN ANALYSIS  (mirrors v1 Python main())
+// ═══════════════════════════════════════════
+function runAnalysis() {
+  hideErr();
+  if (!apRows) { showErr('请先上传 Advertised Product Report'); return; }
+  if (!tarRows) { showErr('请先上传 Targeting Report'); return; }
+  const asinList = parseAsins();
+  if (asinList.length === 0) { showErr('请输入至少一个有效 ASIN'); return; }
+
+  const targetAcos = parseInt(document.getElementById('acos-slider').value) / 100;
+  const avgClicks = parseFloat(document.getElementById('clicks').value);
+  const analysisDays = parseInt(document.getElementById('days').value);
+  const coreSalesShare = parseFloat(document.getElementById('core-share').value);
+  const productTarget = document.getElementById('product-target').value.trim() || 'DL_ASIN';
+
+  setProgress(10, '过滤 Advertised Product Report…');
+
+  setTimeout(() => {
+    try {
+      const result = analyze({
+        apRows, tarRows, asinList, targetAcos, avgClicks,
+        analysisDays, coreSalesShare, productTarget
+      });
+      lastResult = result;
+      setProgress(90, '渲染结果…');
+      setTimeout(() => {
+        renderResults(result);
+        setProgress(100, '完成');
+        setTimeout(() => { hideProgress(); showResults(); }, 300);
+      }, 50);
+    } catch(err) {
+      hideProgress();
+      showErr('分析失败：' + err.message);
+      console.error(err);
+    }
+  }, 50);
+}
+
+function analyze({ apRows, tarRows, asinList, targetAcos, avgClicks, analysisDays, coreSalesShare, productTarget }) {
+  const asinSet = new Set(asinList);
+
+  // 1. Filter AP by ASIN → get campaign/ad group pairs
+  const apFiltered = apRows.filter(r => asinSet.has(String(r['Advertised ASIN'] || '').trim().toUpperCase()));
+  if (apFiltered.length === 0) throw new Error('在 Advertised Product Report 中未找到任何匹配的 ASIN');
+
+  const cagSet = new Set(apFiltered.map(r => `${r['Campaign Name']}|||${r['Ad Group Name']}`));
+  setProgress(25, '合并 Targeting 数据…');
+
+  // 2. Parse targeting rows, convert dates
+  const tarParsed = tarRows.map(r => ({ ...r, _date: toDateObj(r['Date']) })).filter(r => r._date);
+
+  // report_start / report_end from full targeting report
+  const allDates = tarParsed.map(r => r._date).filter(Boolean);
+  const reportStart = new Date(Math.min(...allDates));
+  const reportEnd = new Date(Math.max(...allDates));
+
+  // 3. Filter by campaign/ad group
+  const tarFiltered = tarParsed.filter(r =>
+    cagSet.has(`${r['Campaign Name']}|||${r['Ad Group Name']}`)
+  );
+  if (tarFiltered.length === 0) throw new Error('在 Targeting Report 中未找到与所选 ASIN 对应的 Campaign/Ad Group 数据');
+
+  // 4. Date window
+  const filteredDates = tarFiltered.map(r => r._date);
+  const dataEnd = new Date(Math.max(...filteredDates));
+  const dataStart = addDays(dataEnd, -(analysisDays - 1));
+  dataStart.setHours(0, 0, 0, 0);
+
+  const tarWindow = tarFiltered.filter(r => r._date >= dataStart);
+  if (tarWindow.length === 0) throw new Error(`分析窗口内（${fmtDate(dataStart)} → ${fmtDate(dataEnd)}）没有数据`);
+
+  setProgress(45, '聚合 Targeting 数据…');
+
+  // 5. Aggregate by TARGETING_KEY
+  const aggMap = new Map();
+  for (const r of tarWindow) {
+    const key = [r['Campaign Name'], r['Ad Group Name'], r['Targeting'], r['Match Type']].join('|||');
+    if (!aggMap.has(key)) {
+      aggMap.set(key, {
+        'Campaign Name': r['Campaign Name'],
+        'Ad Group Name': r['Ad Group Name'],
+        'Targeting': r['Targeting'],
+        'Match Type': r['Match Type'],
+        impressions: 0, clicks: 0, orders: 0, spend: 0, sales: 0
+      });
+    }
+    const a = aggMap.get(key);
+    a.impressions += Number(r['Impressions'] || 0);
+    a.clicks += Number(r['Clicks'] || 0);
+    a.orders += Number(r['7 Day Total Orders (#)'] || 0);
+    a.spend += Number(r['Spend'] || 0);
+    a.sales += Number(r['7 Day Total Sales'] || 0);
+  }
+  const agg = [...aggMap.values()];
+
+  // 6. Compute derived metrics
+  const totalSpend = agg.reduce((s, r) => s + r.spend, 0);
+  const totalSales = agg.reduce((s, r) => s + r.sales, 0);
+  const totalOrders = agg.reduce((s, r) => s + r.orders, 0);
+  const totalClicks = agg.reduce((s, r) => s + r.clicks, 0);
+  if (totalSales <= 0) throw new Error('分析窗口内总销售额为 0，请检查 ASIN 与报告是否匹配');
+
+  const avgCvr = totalClicks > 0 ? totalOrders / totalClicks : 0;
+
+  for (const r of agg) {
+    r.acos = r.sales > 0 ? r.spend / r.sales : null;
+    r.cvr = r.clicks > 0 ? r.orders / r.clicks : null;
+    r.cpc = r.clicks > 0 ? r.spend / r.clicks : null;
+    r.sales_share = r.sales / totalSales;
+    r.spend_share = totalSpend > 0 ? r.spend / totalSpend : 0;
+  }
+
+  setProgress(60, '计算日订单波动…');
+
+  // 7. Daily orders for CV
+  const dayMap = new Map();
+  for (let d = new Date(dataStart); d <= dataEnd; d = addDays(d, 1)) {
+    dayMap.set(dateKey(d), 0);
+  }
+  for (const r of tarWindow) {
+    const dk = dateKey(r._date);
+    if (dayMap.has(dk)) dayMap.set(dk, dayMap.get(dk) + Number(r['7 Day Total Orders (#)'] || 0));
+  }
+  const dailyOrders = [...dayMap.values()];
+  const avgDailyOrders = dailyOrders.reduce((a, b) => a + b, 0) / dailyOrders.length;
+  const variance = dailyOrders.reduce((s, v) => s + (v - avgDailyOrders) ** 2, 0) / dailyOrders.length;
+  const stdDailyOrders = Math.sqrt(variance);
+  const cv = avgDailyOrders > 0 ? stdDailyOrders / avgDailyOrders : 0;
+
+  const overallAcos = totalSpend / totalSales;
+  const acosGap = overallAcos - targetAcos;
+
+  // 8. Sort by sales desc for concentration
+  const aggSorted = [...agg].sort((a, b) => b.sales - a.sales);
+  const topN = n => aggSorted.slice(0, n).reduce((s, r) => s + r.sales, 0) / totalSales;
+
+  // 9. Core keys (top 10 by orders)
+  const ordersRanked = [...agg].sort((a, b) => b.orders - a.orders);
+  const coreKeys = new Set(ordersRanked.slice(0, 10).map(r =>
+    [r['Campaign Name'], r['Ad Group Name'], r['Targeting'], r['Match Type']].join('|')
+  ));
+
+  setProgress(75, '打标签 + 计算调价建议…');
+
+  // 10. Label + action
+  for (const r of agg) {
+    r.label = getLabel(r.orders, r.clicks, r.acos, targetAcos, avgClicks);
+    const [action, adjPct, adjDollar, reason] = getAction(r, targetAcos, coreSalesShare, coreKeys);
+    r.action = action; r.adj_pct = adjPct; r.adj_dollar = adjDollar; r.reason = reason;
+  }
+
+  // 11. Layer summaries
+  const layerSummary = kw => {
+    const sub = agg.filter(r => r.label.includes(kw));
+    return { count: sub.length, spend: sub.reduce((s,r)=>s+r.spend,0), sales: sub.reduce((s,r)=>s+r.sales,0), orders: sub.reduce((s,r)=>s+r.orders,0) };
+  };
+  const lLow  = layerSummary('低ACoS出单');
+  const lHigh = layerSummary('高ACoS出单');
+  const lHcno = layerSummary('高点击不出单');
+  const lLcno = layerSummary('低点击不出单');
+  const lNoclk= layerSummary('无点击');
+
+  const zeroOrderSpend = lHcno.spend + lLcno.spend + lNoclk.spend;
+  const zeroOrderPct = totalSpend > 0 ? zeroOrderSpend / totalSpend : 0;
+  const nEffective = agg.filter(r => r.orders > 0).length;
+
+  // 12. Protection list
+  const protectionList = ordersRanked.slice(0, 10).map((r, i) => ({
+    ...r, rank: i + 1,
+    sales_share_pct: (r.sales_share * 100).toFixed(1)
+  }));
+  let cumSales = 0;
+  for (const r of protectionList) {
+    cumSales += r.sales;
+    r.cum_sales_share = (cumSales / totalSales * 100).toFixed(1);
+  }
+
+  // 13. High ACoS top 10 (non-protected)
+  const highAcosAdj = agg
+    .filter(r => r.label.includes('高ACoS出单') && r.action !== '🔒 保护')
+    .sort((a, b) => b.spend - a.spend)
+    .slice(0, 10);
+
+  // Label counts
+  const labelCounts = {};
+  for (const r of agg) labelCounts[r.label] = (labelCounts[r.label] || 0) + 1;
+
+  return {
+    productTarget, analysisDays,
+    reportStart, reportEnd, dataStart, dataEnd,
+    targetAcos, overallAcos, acosGap,
+    avgDailyOrders, stdDailyOrders, cv,
+    totalSpend, totalSales, totalOrders, totalClicks, avgCvr,
+    nEffective, nTotal: agg.length,
+    zeroOrderSpend, zeroOrderPct,
+    top3: topN(3), top5: topN(5), top10: topN(10), top20: topN(20),
+    aggSorted, lLow, lHigh, lHcno, lLcno, lNoclk,
+    protectionList, highAcosAdj, labelCounts,
+    agg
+  };
+}
+
+// ═══════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════
+function renderResults(r) {
+  const { analysisDays, dataStart, dataEnd, reportStart, reportEnd, targetAcos,
+    overallAcos, acosGap, avgDailyOrders, stdDailyOrders, cv,
+    totalSpend, totalSales, totalOrders, totalClicks, avgCvr,
+    nEffective, nTotal, zeroOrderSpend, zeroOrderPct,
+    top3, top5, top10, top20, aggSorted,
+    lLow, lHigh, lHcno, lLcno, lNoclk,
+    protectionList, highAcosAdj, labelCounts, productTarget } = r;
+
+  const pct = v => (v * 100).toFixed(1) + '%';
+  const usd = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const usd2 = v => '$' + v.toFixed(2);
+  const acosSt = overallAcos > targetAcos ? 'bad' : 'ok';
+  const cvSt = cv < 0.3 ? 'ok' : cv < 0.5 ? 'warn' : 'bad';
+  const z0St = zeroOrderPct < 0.10 ? 'ok' : zeroOrderPct < 0.15 ? 'warn' : 'bad';
+
+  // Header
+  document.getElementById('r-title').textContent = `Targeting 结构分析报告 · ${productTarget}`;
+  document.getElementById('r-meta').innerHTML = `
+    <span>📅 ${analysisDays}天窗口 ${fmtDate(dataStart)} → ${fmtDate(dataEnd)}</span>
+    <span>🎯 目标ACoS ${pct(targetAcos)}</span>
+    <span>📦 报告区间 ${fmtDate(reportStart)} → ${fmtDate(reportEnd)}</span>
+    <span>🕐 生成 ${new Date().toLocaleString('zh-CN')}</span>
+  `;
+
+  // Health metrics
+  document.getElementById('r-health').innerHTML = [
+    { label: `${analysisDays}天整体 ACoS`, val: pct(overallAcos), sub: `缺口 ${acosGap >= 0 ? '+' : ''}${pct(acosGap)}`, cls: acosSt },
+    { label: '日均订单', val: avgDailyOrders.toFixed(1) + ' 单', sub: `σ=${stdDailyOrders.toFixed(1)}`, cls: 'orange' },
+    { label: '变异系数 CV', val: cv.toFixed(2), sub: cv < 0.3 ? '✅ 稳定' : cv < 0.5 ? '⚠️ 一般' : '🔴 波动大', cls: cvSt },
+    { label: '有效投放', val: `${nEffective}/${nTotal}`, sub: pct(nEffective/nTotal) + ' 出单率', cls: 'orange' },
+    { label: '不出单花费占比', val: pct(zeroOrderPct), sub: `${usd2(zeroOrderSpend)}`, cls: z0St },
+    { label: '总点击', val: totalClicks.toLocaleString(), sub: `CVR ${pct(avgCvr)}`, cls: '' },
+    { label: '总订单', val: totalOrders.toLocaleString() + ' 单', sub: '', cls: '' },
+    { label: '总花费', val: usd(totalSpend), sub: '', cls: '' },
+    { label: '总销售额', val: usd(totalSales), sub: '', cls: '' },
+  ].map(m => `<div class="metric ${m.cls}">
+    <div class="ml">${m.label}</div>
+    <div class="mv">${m.val}</div>
+    ${m.sub ? `<div class="ms">${m.sub}</div>` : ''}
+  </div>`).join('');
+
+  // Concentration
+  document.getElementById('r-conc').innerHTML = [
+    { label: 'Top 3', share: top3 },
+    { label: 'Top 5', share: top5 },
+    { label: 'Top 10', share: top10 },
+    { label: 'Top 20', share: top20 },
+  ].map(c => `<div class="conc-row">
+    <div class="conc-label">${c.label}</div>
+    <div class="conc-bar-wrap"><div class="conc-fill" style="width:${(c.share*100).toFixed(1)}%"></div></div>
+    <div class="conc-pct">${pct(c.share)}</div>
+    <div class="conc-amt">${usd(aggSorted.slice(0, parseInt(c.label.replace('Top ',''))).reduce((s,r)=>s+r.sales,0))}</div>
+  </div>`).join('');
+
+  // Layer strip
+  document.getElementById('r-layer-strip').innerHTML = [
+    { cls:'lb-low', icon:'✅', label:'低ACoS出单', d:lLow },
+    { cls:'lb-high', icon:'⚠️', label:'高ACoS出单', d:lHigh },
+    { cls:'lb-hcno', icon:'🔴', label:'高点击不出单', d:lHcno },
+    { cls:'lb-lcno', icon:'⚪', label:'低点击不出单', d:lLcno },
+    { cls:'lb-noclk', icon:'—', label:'无点击', d:lNoclk },
+  ].map(l => `<div class="layer-box ${l.cls}">
+    <div class="lb-label">${l.icon} ${l.label}</div>
+    <div class="lb-cnt">${l.d.count}</div>
+    <div class="lb-spend">${usd(l.d.spend)}</div>
+  </div>`).join('');
+
+  // Layer table
+  const totalSp = totalSpend || 1;
+  document.getElementById('r-layer-tbl').innerHTML = `
+    <tr><th>层级</th><th>投放数</th><th>花费</th><th>花费%</th><th>销售</th><th>销售%</th><th>订单</th></tr>
+    ${[
+      ['✅ 低ACoS出单', lLow, 'tag-green'],
+      ['⚠️ 高ACoS出单', lHigh, 'tag-yellow'],
+      ['🔴 高点击不出单', lHcno, 'tag-red'],
+      ['⚪ 低点击不出单', lLcno, 'tag-gray'],
+      ['— 无点击', lNoclk, 'tag-gray'],
+    ].map(([lbl, d, tagCls]) => `<tr>
+      <td><span class="tag ${tagCls}">${lbl}</span></td>
+      <td>${d.count}</td>
+      <td class="mono">${usd(d.spend)}</td>
+      <td class="mono">${pct(d.spend/totalSp)}</td>
+      <td class="mono">${d.sales > 0 ? usd(d.sales) : '—'}</td>
+      <td class="mono">${d.sales > 0 ? pct(d.sales/totalSales) : '—'}</td>
+      <td>${d.orders}</td>
+    </tr>`).join('')}
+  `;
+
+  // Protection list
+  document.getElementById('r-protect-tbl').innerHTML = `
+    <tr><th>#</th><th>Targeting</th><th>Match</th><th>订单</th><th>销售</th><th>销售%</th><th>累计%</th><th>建议</th></tr>
+    ${protectionList.map(r => `<tr>
+      <td>${r.rank}</td>
+      <td class="mono" title="${r['Targeting']}">${truncate(String(r['Targeting']),32)}</td>
+      <td><span class="tag tag-gray">${r['Match Type'] || '—'}</span></td>
+      <td>${r.orders}</td>
+      <td class="mono">${usd(r.sales)}</td>
+      <td class="mono">${r.sales_share_pct}%</td>
+      <td class="mono">${r.cum_sales_share}%</td>
+      <td><span class="prot-badge">🔒 PROTECT</span></td>
+    </tr>`).join('')}
+  `;
+
+  // Summary
+  const nZero = lHcno.count + lLcno.count;
+  document.getElementById('r-summary').innerHTML = `
+    <p style="margin-bottom:10px;font-size:14px;font-weight:700;color:var(--gray-900)">优先行动（按影响程度排序）</p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="background:var(--red-bg);color:var(--red);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">1</span>
+        <div><strong>清理不出单花费</strong> — 共 ${nZero} 个投放，花费 ${usd2(zeroOrderSpend)}，建议降价 10–20%</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="background:var(--yellow-bg);color:var(--yellow);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">2</span>
+        <div><strong>压缩高ACoS出单</strong> — 共 ${lHigh.count} 个投放（已排除核心流量），花费 ${usd2(lHigh.spend)}，按超出幅度降价 5–15%</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span style="background:var(--green-bg);color:var(--green);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">3</span>
+        <div><strong>保护核心流量</strong> — 前10 出单投放贡献 ${pct(top10)} 销售额，谨慎动价</div>
+      </div>
+    </div>
+  `;
+
+  // High ACoS Top 10
+  document.getElementById('r-highacos-tbl').innerHTML = highAcosAdj.length === 0
+    ? '<tr><td colspan="6" style="text-align:center;color:var(--gray-400);padding:20px">暂无非保护的高ACoS出单</td></tr>'
+    : `<tr><th>Targeting</th><th>Match</th><th>ACoS</th><th>销售%</th><th>建议</th><th>调价</th></tr>
+       ${highAcosAdj.map(r => `<tr>
+         <td class="mono" title="${r['Targeting']}">${truncate(String(r['Targeting']),30)}</td>
+         <td><span class="tag tag-gray">${r['Match Type'] || '—'}</span></td>
+         <td class="mono" style="color:var(--red);font-weight:600">${r.acos !== null ? pct(r.acos) : '—'}</td>
+         <td class="mono">${pct(r.sales_share)}</td>
+         <td><span class="tag ${r.action.includes('降价') ? 'tag-red' : 'tag-gray'}">${r.action}</span></td>
+         <td class="mono">${r.adj_pct} (${r.adj_dollar})</td>
+       </tr>`).join('')}`;
+
+  // Label distribution
+  const labelOrder = ['✅ 低ACoS出单','⚠️ 高ACoS出单','🔴 高点击不出单','⚪ 低点击不出单','— 无点击'];
+  const labelColors = { '✅ 低ACoS出单':'ok', '⚠️ 高ACoS出单':'warn', '🔴 高点击不出单':'bad', '⚪ 低点击不出单':'', '— 无点击':'' };
+  document.getElementById('r-labels').innerHTML = labelOrder.map(lbl => `
+    <div class="metric ${labelColors[lbl]}">
+      <div class="ml">${lbl}</div>
+      <div class="mv">${labelCounts[lbl] || 0}</div>
+      <div class="ms">${pct((labelCounts[lbl]||0)/r.nTotal)} 占比</div>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════
+//  DOWNLOAD CSV  (matches v1 output)
+// ═══════════════════════════════════════════
+function downloadCSV() {
+  if (!lastResult) return;
+  const { agg, reportStart, reportEnd, productTarget } = lastResult;
+
+  const cols = ['Campaign Name','Ad Group Name','Targeting','Match Type',
+    'impressions','clicks','orders','spend','sales',
+    'ACoS(%)','CVR(%)','CPC($)','销售占比(%)','花费占比(%)',
+    'label','action','adj_pct','adj_dollar','reason'];
+
+  const sorted = [...agg].sort((a, b) => b.orders - a.orders);
+
+  let csv = cols.join(',') + '\n';
+  for (const r of sorted) {
+    const row = [
+      q(r['Campaign Name']), q(r['Ad Group Name']), q(r['Targeting']), q(r['Match Type']),
+      r.impressions, r.clicks, r.orders,
+      r.spend.toFixed(2), r.sales.toFixed(2),
+      r.acos !== null ? (r.acos*100).toFixed(1) : '',
+      r.cvr !== null ? (r.cvr*100).toFixed(2) : '',
+      r.cpc !== null ? r.cpc.toFixed(2) : '',
+      (r.sales_share*100).toFixed(2),
+      (r.spend_share*100).toFixed(2),
+      q(r.label), q(r.action), q(r.adj_pct), q(r.adj_dollar), q(r.reason)
+    ];
+    csv += row.join(',') + '\n';
+  }
+
+  const fname = `targeting_labels_${productTarget}_${fmtDate(reportStart)}_${fmtDate(reportEnd)}.csv`;
+  dlFile('﻿' + csv, fname, 'text/csv;charset=utf-8');
+}
+
+function q(v) {
+  if (v === null || v === undefined) return '';
+  const s = String(v);
+  return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g,'""')}"` : s;
+}
+
+// ═══════════════════════════════════════════
+//  DOWNLOAD MD  (matches v1 format)
+// ═══════════════════════════════════════════
+function downloadMD() {
+  if (!lastResult) return;
+  const r = lastResult;
+  const pct = v => (v * 100).toFixed(1) + '%';
+  const usd = v => '$' + v.toLocaleString('en-US', {minimumFractionDigits:0,maximumFractionDigits:0});
+  const { analysisDays, dataStart, dataEnd, reportStart, reportEnd, productTarget,
+    targetAcos, overallAcos, acosGap, avgDailyOrders, stdDailyOrders, cv,
+    totalSpend, totalSales, totalOrders, totalClicks, avgCvr,
+    nEffective, nTotal, zeroOrderSpend, zeroOrderPct,
+    top3, top5, top10, top20, aggSorted, lLow, lHigh, lHcno, lLcno, lNoclk,
+    protectionList, highAcosAdj } = r;
+
+  const acosSt = overallAcos > targetAcos ? '🔴 偏高' : '✅ 达标';
+  const cvSt = cv < 0.3 ? '✅ 稳定' : cv < 0.5 ? '⚠️ 一般' : '🔴 波动大';
+  const z0St = zeroOrderPct < 0.10 ? '✅ 正常' : zeroOrderPct < 0.15 ? '⚠️ 偏高' : '🔴 超标';
+  const today = new Date().toISOString().slice(0,10);
+
+  let md = `# 广告结构分析报告\n\n`;
+  md += `**ASIN**: \`${productTarget}\` | **分析周期**: ${analysisDays}天（${fmtDate(dataStart)} → ${fmtDate(dataEnd)}）`;
+  md += ` | **目标ACoS**: ${pct(targetAcos)} | **生成时间**: ${today}\n\n---\n\n`;
+
+  md += `## 一、账户健康度\n\n| 指标 | 数值 | 状态 |\n|---|---|---|\n`;
+  md += `| ${analysisDays}天整体 ACoS | ${pct(overallAcos)} | ${acosSt} |\n`;
+  md += `| ACoS 缺口 | ${acosGap >= 0 ? '+' : ''}${pct(acosGap)} | — |\n`;
+  md += `| 日均订单量 | ${avgDailyOrders.toFixed(1)} 单 | — |\n`;
+  md += `| 日订单标准差 | ${stdDailyOrders.toFixed(1)} 单 | — |\n`;
+  md += `| 变异系数 CV | ${cv.toFixed(2)} | ${cvSt} |\n`;
+  md += `| 有效投放数 | ${nEffective} / ${nTotal} | — |\n`;
+  md += `| 总点击 | ${totalClicks} 次 | — |\n`;
+  md += `| 总订单 | ${totalOrders} 单 | CVR=${pct(avgCvr)} |\n`;
+  md += `| 总花费 | $${totalSpend.toFixed(2)} | — |\n`;
+  md += `| 总销售额 | $${totalSales.toFixed(2)} | — |\n\n---\n\n`;
+
+  md += `## 二、流量集中度\n\n| 排名区间 | 销售额 | 占比 |\n|---|---|---|\n`;
+  md += `| Top 3  | ${usd(aggSorted.slice(0,3).reduce((s,r)=>s+r.sales,0))} | ${pct(top3)} |\n`;
+  md += `| Top 5  | ${usd(aggSorted.slice(0,5).reduce((s,r)=>s+r.sales,0))} | ${pct(top5)} |\n`;
+  md += `| Top 10 | ${usd(aggSorted.slice(0,10).reduce((s,r)=>s+r.sales,0))} | ${pct(top10)} |\n`;
+  md += `| Top 20 | ${usd(aggSorted.slice(0,20).reduce((s,r)=>s+r.sales,0))} | ${pct(top20)} |\n`;
+  md += `| 全部 ${nTotal} 个 | ${usd(totalSales)} | 100% |\n\n---\n\n`;
+
+  md += `## 三、投放结构分层\n\n| 层级 | 投放数 | 花费 | 花费占比 | 销售 | 销售占比 | 天订单 |\n|---|---|---|---|---|---|---|\n`;
+  const sp = totalSpend || 1;
+  md += `| ✅ 低ACoS出单 | ${lLow.count} | $${lLow.spend.toFixed(0)} | ${pct(lLow.spend/sp)} | $${lLow.sales.toFixed(0)} | ${pct(lLow.sales/totalSales)} | ${lLow.orders} |\n`;
+  md += `| ⚠️ 高ACoS出单 | ${lHigh.count} | $${lHigh.spend.toFixed(0)} | ${pct(lHigh.spend/sp)} | $${lHigh.sales.toFixed(0)} | ${pct(lHigh.sales/totalSales)} | ${lHigh.orders} |\n`;
+  md += `| 🔴 高点击不出单 | ${lHcno.count} | $${lHcno.spend.toFixed(0)} | ${pct(lHcno.spend/sp)} | $0 | 0% | 0 |\n`;
+  md += `| ⚪ 低点击不出单 | ${lLcno.count} | $${lLcno.spend.toFixed(0)} | ${pct(lLcno.spend/sp)} | $0 | 0% | 0 |\n`;
+  md += `| — 无点击 | ${lNoclk.count} | $0 | 0% | $0 | 0% | 0 |\n\n`;
+  md += `> **不出单总花费**: $${zeroOrderSpend.toFixed(2)}（占比 ${pct(zeroOrderPct)}，目标 < 15%） ${z0St}\n\n---\n\n`;
+
+  md += `## 四、核心流量保护名单（出单前10）\n\n| 排名 | Targeting | Match Type | 订单 | 销售 | 销售占比 | 累计占比 | 建议 |\n|---|---|---|---|---|---|---|---|\n`;
+  for (const row of protectionList) {
+    md += `| ${row.rank} | ${String(row['Targeting']).slice(0,30)} | ${row['Match Type']} | ${row.orders} | $${row.sales.toFixed(0)} | ${row.sales_share_pct}% | ${row.cum_sales_share}% | 🔒 PROTECT |\n`;
+  }
+
+  md += `\n---\n\n## 五、优化建议摘要\n\n### 优先行动（按影响程度排序）\n\n`;
+  md += `1. **清理不出单花费** — 共 ${lHcno.count + lLcno.count} 个投放，花费 $${zeroOrderSpend.toFixed(2)}，建议降价 10-20%\n`;
+  md += `2. **压缩高ACoS出单** — 共 ${lHigh.count} 个投放（已排除核心流量），花费 $${lHigh.spend.toFixed(2)}，按超出幅度降价 5-15%\n`;
+  md += `3. **保护核心流量** — 前10出单投放贡献 ${pct(top10)} 销售额，不做调整\n\n`;
+  md += `### 高ACoS出单 Top 10（需处理，已排除核心保护）\n\n| Targeting | Match | ACoS | 销售占比 | 建议 | 调价幅度 |\n|---|---|---|---|---|---|\n`;
+  for (const row of highAcosAdj) {
+    md += `| ${String(row['Targeting']).slice(0,28)} | ${row['Match Type']} | ${row.acos !== null ? pct(row.acos) : '—'} | ${pct(row.sales_share)} | ${row.action} | ${row.adj_pct} (${row.adj_dollar}) |\n`;
+  }
+
+  const fname = `report_${productTarget}_${fmtDate(reportStart)}_${fmtDate(reportEnd)}.md`;
+  dlFile(md, fname, 'text/markdown;charset=utf-8');
+}
+
+// ═══════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════
+function truncate(s, n) { return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+function dlFile(content, name, mime) {
+  const blob = new Blob([content], { type: mime });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function setProgress(pct, msg) {
+  document.getElementById('prog-bar').classList.add('show');
+  document.getElementById('prog-msg').classList.add('show');
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-msg').textContent = msg;
+}
+function hideProgress() {
+  document.getElementById('prog-bar').classList.remove('show');
+  document.getElementById('prog-msg').classList.remove('show');
+}
+function showResults() {
+  document.getElementById('setup-panel').style.display = 'none';
+  document.getElementById('results').classList.add('show');
+}
+function resetForm() {
+  document.getElementById('setup-panel').style.display = '';
+  document.getElementById('results').classList.remove('show');
+}
+function showErr(msg) {
+  const el = document.getElementById('alert-err');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function hideErr() { document.getElementById('alert-err').classList.remove('show'); }
+</script>
+</body>
+</html>
