@@ -41,11 +41,17 @@ def _build_html(data: dict, title: str, acos_targets: dict,
     tmpl = tmpl.replace('const RAW = __RAW_JSON__;',
                         f'const RAW = {raw_json};', 1)
 
-    # 2. 注入 WEEKS / WK_DATES
+    # 2. 注入 WEEKS / WK_DATES / WK_ISO_DATES
     tmpl = re.sub(r"const WEEKS\s*=\s*\[.*?\];",
                   f"const WEEKS = {weeks_js};", tmpl, count=1)
     tmpl = re.sub(r"const WK_DATES\s*=\s*\{.*?\};",
                   f"const WK_DATES = {wk_dates_js};", tmpl, count=1)
+    wk_iso_dates_js = json.dumps(data.get('wk_iso_dates', {}), ensure_ascii=False)
+    tmpl = re.sub(
+        r"const WK_ISO_DATES\s*=\s*\{.*?\};",
+        f"const WK_ISO_DATES = {wk_iso_dates_js};",
+        tmpl, count=1,
+    )
 
     # 3. 注入 ACoS 目标值（替换默认值 + 移除 localStorage 读取）
     tmpl = re.sub(

@@ -540,6 +540,179 @@ def get_targeting_history(product_target: str, country: str) -> dict:
         return {}
 
 
+def get_campaign_stats_by_date_range(
+    country: str,
+    date_from: str,
+    date_to: str,
+) -> dict[str, dict]:
+    """
+    查询 raw_tar，按 Campaign Name 聚合指定日期范围内的指标。
+    返回 {campaign_name: {sp, sl, cl, im, or_, ac, ro, cp, ct, cv}}
+    ac/ro/cp/ct/cv 在 SQL 端计算，None 表示分母为 0。
+    DB 异常时返回 {}，不中断调用方。
+    """
+    try:
+        with get_engine().connect() as conn:
+            result = conn.execute(
+                text(
+                    'SELECT `Campaign Name`,'
+                    '  SUM(`Spend`) AS sp,'
+                    '  SUM(`7 Day Total Sales`) AS sl,'
+                    '  SUM(`Clicks`) AS cl,'
+                    '  SUM(`Impressions`) AS im,'
+                    '  SUM(`7 Day Total Orders (#)`) AS or_,'
+                    '  SUM(`Spend`) / NULLIF(SUM(`7 Day Total Sales`), 0) * 100 AS ac,'
+                    '  SUM(`7 Day Total Sales`) / NULLIF(SUM(`Spend`), 0) AS ro,'
+                    '  SUM(`Spend`) / NULLIF(SUM(`Clicks`), 0) AS cp,'
+                    '  SUM(`Clicks`) / NULLIF(SUM(`Impressions`), 0) * 100 AS ct,'
+                    '  SUM(`7 Day Total Orders (#)`) / NULLIF(SUM(`Clicks`), 0) * 100 AS cv'
+                    ' FROM `raw_tar`'
+                    ' WHERE `Country` = :country'
+                    '   AND `Date` >= :date_from'
+                    '   AND `Date` <= :date_to'
+                    ' GROUP BY `Campaign Name`'
+                ),
+                {'country': country, 'date_from': date_from, 'date_to': date_to},
+            )
+            out: dict = {}
+            for row in result.mappings():
+                name = str(row['Campaign Name'])
+                out[name] = {
+                    'sp':  float(row['sp']  or 0),
+                    'sl':  float(row['sl']  or 0),
+                    'cl':  int(row['cl']    or 0),
+                    'im':  int(row['im']    or 0),
+                    'or_': int(row['or_']   or 0),
+                    'ac':  float(row['ac'])  if row['ac']  is not None else None,
+                    'ro':  float(row['ro'])  if row['ro']  is not None else None,
+                    'cp':  float(row['cp'])  if row['cp']  is not None else None,
+                    'ct':  float(row['ct'])  if row['ct']  is not None else None,
+                    'cv':  float(row['cv'])  if row['cv']  is not None else None,
+                }
+            return out
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        return {}
+
+
+def get_campaign_trend(
+    campaign: str,
+    country: str,
+    date_from: str,
+    date_to: str,
+) -> dict:
+    """
+    返回指定广告活动在日期范围内的周趋势、日趋势和调价事件。
+    weekly: 在 Python 端按 ISO week 聚合日数据。
+    查询失败返回 {'weekly': [], 'daily': [], 'bid_events': []}。
+    """
+    empty = {'weekly': [], 'daily': [], 'bid_events': []}
+    try:
+        with get_engine().connect() as conn:
+            # 1. 日趋势
+            daily_rows = conn.execute(
+                text(
+                    'SELECT `Date` AS date,'
+                    '  SUM(`Spend`) AS sp,'
+                    '  SUM(`7 Day Total Sales`) AS sl,'
+                    '  SUM(`Clicks`) AS cl,'
+                    '  SUM(`Impressions`) AS im,'
+                    '  SUM(`7 Day Total Orders (#)`) AS or_'
+                    ' FROM `raw_tar`'
+                    ' WHERE `Campaign Name` = :campaign'
+                    '   AND `Country` = :country'
+                    '   AND `Date` BETWEEN :date_from AND :date_to'
+                    ' GROUP BY `Date`'
+                    ' ORDER BY `Date`'
+                ),
+                {'campaign': campaign, 'country': country,
+                 'date_from': date_from, 'date_to': date_to},
+            ).mappings().all()
+
+            # 2. 调价事件
+            bid_rows = conn.execute(
+                text(
+                    'SELECT DATE(l.confirmed_at) AS event_date,'
+                    '  COUNT(DISTINCT d.targeting) AS tgt_count,'
+                    '  SUM(CASE WHEN d.new_bid > d.old_bid THEN 1 ELSE 0 END) AS up_count,'
+                    '  SUM(CASE WHEN d.new_bid < d.old_bid THEN 1 ELSE 0 END) AS dn_count,'
+                    '  ROUND(AVG(CASE WHEN d.new_bid > d.old_bid THEN d.adj_pct END), 1) AS avg_up_pct,'
+                    '  ROUND(AVG(CASE WHEN d.new_bid < d.old_bid THEN d.adj_pct END), 1) AS avg_dn_pct'
+                    ' FROM bid_update_detail d'
+                    ' JOIN bid_update_log l ON d.log_id = l.id'
+                    ' WHERE d.campaign = :campaign'
+                    '   AND l.country  = :country'
+                    ' GROUP BY DATE(l.confirmed_at)'
+                    ' ORDER BY event_date'
+                ),
+                {'campaign': campaign, 'country': country},
+            ).mappings().all()
+
+        # 3. 构建 daily 列表
+        daily = []
+        for r in daily_rows:
+            sp  = float(r['sp']  or 0)
+            sl  = float(r['sl']  or 0)
+            cl  = int(r['cl']    or 0)
+            im  = int(r['im']    or 0)
+            or_ = int(r['or_']   or 0)
+            daily.append({
+                'date': str(r['date']),
+                'sp': sp, 'sl': sl, 'cl': cl, 'im': im, 'or_': or_,
+                'ac': round(sp / sl * 100, 2) if sl > 0 else None,
+                'ro': round(sl / sp, 3)        if sp > 0 else None,
+                'cp': round(sp / cl, 3)        if cl > 0 else None,
+                'ct': round(cl / im * 100, 4)  if im > 0 else None,
+                'cv': round(or_ / cl * 100, 4) if cl > 0 else None,
+            })
+
+        # 4. Python 端按 ISO week 聚合为周数据
+        from datetime import datetime as dt_type
+        wk_buckets: dict = {}
+        for d in daily:
+            date_obj = dt_type.strptime(d['date'], '%Y-%m-%d').date()
+            wk = f'W{date_obj.isocalendar().week}'
+            if wk not in wk_buckets:
+                wk_buckets[wk] = {'sp': 0, 'sl': 0, 'cl': 0, 'im': 0, 'or_': 0}
+            b = wk_buckets[wk]
+            b['sp']  += d['sp'];  b['sl']  += d['sl']
+            b['cl']  += d['cl'];  b['im']  += d['im']
+            b['or_'] += d['or_']
+
+        weekly = []
+        for wk, b in sorted(wk_buckets.items(), key=lambda x: x[0]):
+            sp, sl, cl, im, or_ = b['sp'], b['sl'], b['cl'], b['im'], b['or_']
+            weekly.append({
+                'wk': wk, 'sp': sp, 'sl': sl, 'cl': cl, 'im': im, 'or_': or_,
+                'ac': round(sp / sl * 100, 2) if sl > 0 else None,
+                'ro': round(sl / sp, 3)        if sp > 0 else None,
+                'cp': round(sp / cl, 3)        if cl > 0 else None,
+                'ct': round(cl / im * 100, 4)  if im > 0 else None,
+                'cv': round(or_ / cl * 100, 4) if cl > 0 else None,
+            })
+
+        # 5. 调价事件列表
+        bid_events = []
+        for r in bid_rows:
+            ev_date = r['event_date']
+            bid_events.append({
+                'date':        str(ev_date) if ev_date else '',
+                'tgt_count':   int(r['tgt_count'] or 0),
+                'up_count':    int(r['up_count']  or 0),
+                'dn_count':    int(r['dn_count']  or 0),
+                'avg_up_pct':  float(r['avg_up_pct']) if r['avg_up_pct'] is not None else None,
+                'avg_dn_pct':  float(r['avg_dn_pct']) if r['avg_dn_pct'] is not None else None,
+            })
+
+        return {'weekly': weekly, 'daily': daily, 'bid_events': bid_events}
+
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        return empty
+
+
 # ── 分析原始数据（raw_tar / raw_ap）──────────────────────────────────────────
 
 _KEYS_TAR = ['Date', 'Campaign Name', 'Ad Group Name', 'Targeting', 'Match Type']

@@ -131,11 +131,13 @@ def process(df_c: pd.DataFrame, df_p: pd.DataFrame) -> dict:
 
     # 周次日期范围 {W15: '4/6-4/12', ...}
     wk_dates = {}
+    wk_iso_dates = {}   # {W15: ['2026-04-06', '2026-04-12'], ...}
     for w in WEEKS:
         sub = df_c[df_c['week'] == w]['日期']
         if sub.empty: continue
         d0, d1 = sub.min(), sub.max()
         wk_dates[w] = f'{d0.month}/{d0.day}-{d1.month}/{d1.day}'
+        wk_iso_dates[w] = [d0.strftime('%Y-%m-%d'), d1.strftime('%Y-%m-%d')]
 
     # ── 商品/类别分类 ────────────────────────────────────────────────────────
     df_c['prod'], df_c['cat'] = zip(*df_c['广告组合'].apply(classify_port))
@@ -223,6 +225,7 @@ def process(df_c: pd.DataFrame, df_p: pd.DataFrame) -> dict:
     return dict(
         wk=WEEKS,
         wk_dates=wk_dates,
+        wk_iso_dates=wk_iso_dates,   # ← new
         ov=ov,
         cats=cats,
         prods=prods,

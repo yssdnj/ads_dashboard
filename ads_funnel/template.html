@@ -1064,6 +1064,9 @@ body.dark .drs-lbl{color:#64748b}
         </button>
         <span id="tgt6-export-status" style="font-size:12px;color:var(--g6)"></span>
       </div>
+      <div style="font-size:11px;color:var(--g5);margin-top:6px;line-height:1.6">
+        🕐 <b>历史调价保护</b>：距上次确认调价 ≤ 21 天的 targeting 将自动跳过（降价和提价均不执行）；CSV 中 <code style="font-size:10px;background:var(--g1);padding:1px 4px;border-radius:3px">history</code> 列可查每条 targeting 的最近调价时间和保护状态。
+      </div>
 
       <!-- Bulk xlsx 下载卡片 -->
       <div id="tgt6-bulk-dl" style="display:none;margin-top:12px;padding:10px 14px;background:var(--gnbg);border:1px solid var(--gn);border-radius:8px;align-items:center;gap:10px">
@@ -1347,6 +1350,9 @@ body.dark .drs-lbl{color:#64748b}
           ⬇ 生成更新文件
         </button>
         <span id="tgt-bulk-status" style="font-size:12px;color:var(--g6)"></span>
+      </div>
+      <div style="font-size:11px;color:var(--g5);margin-top:6px;line-height:1.6">
+        🕐 <b>历史调价保护</b>：距上次确认调价 ≤ 21 天的 targeting 将自动跳过（降价和提价均不执行）；CSV 中 <code style="font-size:10px;background:var(--g1);padding:1px 4px;border-radius:3px">history</code> 列可查每条 targeting 的最近调价时间和保护状态。
       </div>
 
       <!-- Bulk xlsx 下载卡片 -->
@@ -1663,6 +1669,7 @@ const RAW = __RAW_JSON__;</script>
 <script>
 const WEEKS = ['W15','W16','W17','W18','W19'];
 const WK_DATES = {W15:'4/6-4/12',W16:'4/13-4/19',W17:'4/20-4/26',W18:'4/27-5/3',W19:'5/4-5/10'};
+const WK_ISO_DATES = {};
 const CAT_ORDER = ['3_SP_KW精准','4_SP_KW拓展','5_SP_ASIN精准','6_SP_ASIN拓展','1_SB','2_SD'];
 const CAT_SHORT = {'1_SB':'SB','2_SD':'SD','3_SP_KW精准':'KW精准','4_SP_KW拓展':'KW拓展','5_SP_ASIN精准':'ASIN精准','6_SP_ASIN拓展':'ASIN拓展','7_Other':'Other'};
 const CAT_COLOR = {'1_SB':'#8b5cf6','2_SD':'#f59e0b','3_SP_KW精准':'#3b82f6','4_SP_KW拓展':'#06b6d4','5_SP_ASIN精准':'#10b981','6_SP_ASIN拓展':'#f97316','7_Other':'#94a3b8'};
