@@ -695,6 +695,11 @@ body.dark .drs-lbl{color:#64748b}
     <button class="filter-pill" id="l3st-cno" onclick="setL3St('click_no_order')">🔶 点击无单</button>
     <button class="filter-pill" id="l3st-imp" onclick="setL3St('imp_only')">⬜ 仅曝光</button>
     <button class="filter-pill" id="l3st-no" onclick="setL3St('no_imp')">🚫 无曝光</button>
+    <div class="filter-sep"></div>
+    <span class="filter-label">周次</span>
+    <select id="l3WkFrom" onchange="setL3WkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
+    <span style="font-size:11px;color:#94a3b8;padding:0 2px">—</span>
+    <select id="l3WkTo" onchange="setL3WkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
   </div>
 
   <div class="tbl-wrap">
@@ -1699,6 +1704,11 @@ let l1WkFrom=WEEKS[0], l1WkTo=WEEKS[WEEKS.length-1];
 let l2Prod='all', l2Cat='all', l2WkMode='spend', l2DayMode='spend', l2Page=0, l2PerPage=20, l2Search='';
 let l2WkFrom=WEEKS[0], l2WkTo=WEEKS[WEEKS.length-1];
 let l3Prod='all', l3Cat='all', l3St='all', l3Page=0, l3PerPage=50, l3Search='', l3PortSearch='', l3AcosFlt='all';
+let l3WkFrom=WEEKS[0], l3WkTo=WEEKS[WEEKS.length-1];
+let l3WkData=null;   // null=全范围使用RAW.camps; object=DB查询结果
+let l3OpenCamp=null; // 当前展开的广告活动名，防止快速切换时数据错位
+const l3TrendCache={};  // {campName: trendData}，切换图表模式时复用
+const l3TrendModes={};  // {campName: {wk:'spend', day:'spend'}}
 let anaProd='all';
 let anaWkFrom=WEEKS[0], anaWkTo=WEEKS[WEEKS.length-1];
 let anaView='funnel';
@@ -2720,13 +2730,47 @@ function jumpToL2Prod(prod,cat){
 }
 
 
+async function setL3WkRange(){
+  const from=document.getElementById('l3WkFrom').value;
+  const to=document.getElementById('l3WkTo').value;
+  if(WEEKS.indexOf(from)>WEEKS.indexOf(to)){
+    document.getElementById('l3WkTo').value=from;
+    l3WkTo=l3WkFrom=from;
+  } else {
+    l3WkFrom=from; l3WkTo=to;
+  }
+  l3Page=0;
+  // 全范围不查 DB
+  if(l3WkFrom===WEEKS[0]&&l3WkTo===WEEKS[WEEKS.length-1]){
+    l3WkData=null; renderL3(); return;
+  }
+  const isoFrom=(WK_ISO_DATES[l3WkFrom]||[])[0];
+  const isoTo=(WK_ISO_DATES[l3WkTo]||[])[1];
+  if(!isoFrom||!isoTo){renderL3();return;}
+  document.getElementById('l3-count').textContent='加载中…';
+  try{
+    const resp=await fetch(
+      `api/analysis/mode1/campaign-weekly-stats?country=${encodeURIComponent(REPORT_COUNTRY)}&date_from=${isoFrom}&date_to=${isoTo}`
+    );
+    const json=await resp.json();
+    l3WkData=json.data||{};
+  }catch(e){l3WkData={};}
+  renderL3();
+}
+
 function renderL3(){
+  const getRenderCamp=(c)=>{
+    if(!l3WkData)return c;
+    const d=l3WkData[c.n];
+    if(!d)return{...c,sp:0,sl:0,cl:0,im:0,or_:0,or:0,ac:null,ro:null,cp:null,ct:null,cv:null};
+    return{...c,...d};
+  };
   const camps=RAW.camps
     .filter(c=>(l3Prod==='all'||c.p===l3Prod)&&(l3Cat==='all'||c.c===l3Cat)&&(l3St==='all'||c.st===l3St)
       &&(!l3Search||c.n.toLowerCase().includes(l3Search.toLowerCase()))&&(!l3PortSearch||(c.po||'').toLowerCase().includes(l3PortSearch.toLowerCase()))
-      &&(l3AcosFlt==='all'||acosClass(c.ac,c.p)==='acos-'+l3AcosFlt))
+      &&(l3AcosFlt==='all'||acosClass(getRenderCamp(c).ac,c.p)==='acos-'+l3AcosFlt))
     .sort((a,b)=>{
-      const gv=c=>l3SortCol==='or'?(c.or||c.or_||0):(c[l3SortCol]??-Infinity);
+      const gv=c=>{const r=getRenderCamp(c);return l3SortCol==='or'?(r.or||r.or_||0):(r[l3SortCol]??-Infinity);};
       return l3SortDir*(gv(a)-gv(b));
     });
   const total=camps.length,pages=Math.max(1,Math.ceil(total/l3PerPage));
@@ -2740,9 +2784,10 @@ function renderL3(){
     ${_l3th('im','曝光')}${_l3th('cl','点击')}${_l3th('or','订单')}
     ${_l3th('sp','花费($)')}${_l3th('sl','销售额($)')}${_l3th('cp','CPC($)')}${_l3th('ct','CTR%')}${_l3th('cv','CVR%')}${_l3th('ac','ACoS%')}<th>目标</th>${_l3th('ro','ROAS')}<th style="text-align:center">趋势</th>
   </tr></thead><tbody>`;
-  {const _s={im:0,cl:0,or:0,sp:0,sl:0};camps.forEach(c=>{_s.im+=c.im||0;_s.cl+=c.cl||0;_s.or+=(c.or||c.or_||0);_s.sp+=c.sp||0;_s.sl+=c.sl||0;});html+=_mkSumRow(_s,'<td style="color:#475569;font-weight:700">汇总</td><td></td><td></td><td></td><td></td>','<td></td>');}
+  {const _s={im:0,cl:0,or:0,sp:0,sl:0};camps.forEach(c=>{const r=getRenderCamp(c);_s.im+=r.im||0;_s.cl+=r.cl||0;_s.or+=(r.or||r.or_||0);_s.sp+=r.sp||0;_s.sl+=r.sl||0;});html+=_mkSumRow(_s,'<td style="color:#475569;font-weight:700">汇总</td><td></td><td></td><td></td><td></td>','<td></td>');}
   for(const c of slice){
-    const acCls=acosClass(c.ac,c.p);
+    const r=getRenderCamp(c);
+    const acCls=acosClass(r.ac,c.p);
     const esc=c.n.replace(/'/g,"\'").replace(/"/g,'&quot;');
     html+=`<tr class="clickable" onclick="toggleL3Row('${esc}',this)">
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${c.n.replace(/"/g,'&quot;')}"><span class="exp-toggle">▶</span>${c.n}</td>
@@ -2750,10 +2795,10 @@ function renderL3(){
       <td><small style="color:#3b82f6">${c.p}</small></td>
       <td><small style="color:${CAT_COLOR[c.c]}">${CAT_SHORT[c.c]}</small></td>
       <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c.po||''}"><small style="color:#8b5cf6">${c.po||''}</small></td>
-      <td>${fmt(c.im,'int')}</td><td>${fmt(c.cl,'int')}</td><td>${fmt(c.or||c.or_,'int')}</td>
-      <td>${fmt(c.sp,'$')}</td><td>${fmt(c.sl,'$')}</td><td>${fmt(c.cp,'$')}</td><td>${fmt(c.ct,'pct2')}</td><td>${fmt(c.cv,'pct2')}</td>
-      <td class="${acCls}">${fmt(c.ac,'pct')}</td><td style="color:#718096;font-size:11px">${getTarget(c.p)}%</td><td>${fmt(c.ro,'x')}</td>
-      <td><div style="display:flex;justify-content:center">${trendDots(c.wa,c.p)}</div></td>
+      <td>${fmt(r.im,'int')}</td><td>${fmt(r.cl,'int')}</td><td>${fmt(r.or_||r.or,'int')}</td>
+      <td>${fmt(r.sp,'$')}</td><td>${fmt(r.sl,'$')}</td><td>${fmt(r.cp,'$')}</td><td>${fmt(r.ct,'pct2')}</td><td>${fmt(r.cv,'pct2')}</td>
+      <td class="${acCls}">${fmt(r.ac,'pct')}</td><td style="color:#718096;font-size:11px">${getTarget(c.p)}%</td><td>${fmt(r.ro,'x')}</td>
+      <td><div style="display:flex;justify-content:center">${trendDots(sliceWa(c.wa,l3WkFrom,l3WkTo),c.p)}</div></td>
     </tr>`;
   }
   html+='</tbody></table>';
@@ -4987,6 +5032,7 @@ function initWeekRangeSelects(){
     {fromId:'l1WkFrom', toId:'l1WkTo'},
     {fromId:'l2WkFrom', toId:'l2WkTo'},
     {fromId:'anaWkFrom', toId:'anaWkTo'},
+    {fromId:'l3WkFrom',  toId:'l3WkTo'},
   ];
   pairs.forEach(({fromId,toId})=>{
     const selFrom=document.getElementById(fromId);
