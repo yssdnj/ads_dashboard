@@ -128,7 +128,7 @@ def init_db():
 def list_reports():
     with get_engine().connect() as conn:
         result = conn.execute(text(
-            'SELECT id, title, weeks, wk_dates, camp_file, port_file, created_at '
+            'SELECT id, title, country, weeks, wk_dates, camp_file, port_file, created_at '
             'FROM reports ORDER BY created_at DESC'
         ))
         rows = result.mappings().all()

@@ -37,14 +37,15 @@ ads_funnel/
 ├── start.py          # 一键启动
 ├── template.html     # 报告渲染模板（完整 JS+CSS，每次请求从磁盘读取并注入数据）
 ├── api/
-│   ├── main.py       # FastAPI 路由，服务端缓存 _mode1_cache / _mode1_6r_cache
+│   ├── main.py       # FastAPI 路由
 │   ├── db.py         # MySQL 操作层（SQLAlchemy）
 │   ├── gen_data.py   # Excel DataFrame → ads_compact dict
 │   ├── export.py     # ads_compact → HTML / CSV
 │   ├── targeting_analysis.py  # 投放结构分析 + 多轮竞价建议
 │   └── bulk_update.py         # 将分析结果写回 Amazon Bulk xlsx
-└── frontend/
-    └── index.html    # 无数据时的空状态页（上传入口）
+├── frontend/
+│   └── index.html    # 无数据时的空状态页（上传入口）
+└── tests/            # 本地测试脚本（.gitignore 排除，不入库）
 ```
 
 `legacy/` 目录为 v1.0 冻结存档，请勿修改。
@@ -74,26 +75,40 @@ POST /api/analysis/mode1/export-bulk      将分析结果 + 竞价建议写回 A
 POST /api/analysis/mode1/confirm-update   记录已上传到亚马逊，入 bid_update_log
 GET  /api/analysis/mode1/data-stats       查看已导入数据的周次覆盖情况
 GET  /api/analysis/mode1/update-logs      竞价更新历史记录列表
+GET  /api/analysis/mode1/update-logs/{id}/details  某次更新的逐条明细（含 old_bid / new_bid / adj_pct）
 ```
 
 **bid-optimize-6r 返回两组 consensus：**
 - `consensus`（降价）：标签含「高ACoS出单」或「高点击不出单」，≥ 3/6 轮命中，指标取 R6；排除仅命中 R4~R6 的向好趋势
 - `consensus_up`（提价）：标签为「低ACoS出单」，≥ 3/6 轮命中且 R3 必须命中，订单 ≥ `up_orders_threshold`（默认 2），指标取 R3
 
-分析结果临时缓存在 `_mode1_cache` / `_mode1_6r_cache`（内存 dict，进程重启后失效）。
+**分析结果不在服务器缓存**：前端将 `rows` 回传给 `export-bulk` 端点（`rows_json` 字段），服务端不持久化中间结果。
+
+### L3 广告活动 Tab — 周次筛选 & 趋势面板
+
+```
+GET /api/analysis/mode1/campaign-weekly-stats  按日期范围从 raw_camp_lx 聚合各活动指标
+GET /api/analysis/mode1/campaign-trend         单活动的周趋势 + 日趋势 + 调价事件列表
+```
+
+- **周次筛选**：选择 W1-W21 范围后，实时查 `raw_camp_lx`（领星广告活动每日明细表）得到各活动在该范围内的聚合指标，覆盖 RAW.camps 中的静态汇总数据
+- **trend API** 返回 `{weekly, daily, bid_events}`，其中 `bid_events[].records` 包含每条调价的 targeting / old_bid / new_bid / adj_pct
+- **日趋势标注**：调价日期在 x 轴显示橙色虚线（`chartjs-plugin-annotation@3`），悬停时通过 `chart.onHover` 展开每条原价→新价幅度详情
+- **注意**：`raw_camp_lx` 的国家列值为 `'UK'`/`'US'`/`'DE'`（非 `'United Kingdom'` 等全称）；`reports` 表的 `title` 首词即国家代码
 
 ## 数据结构（ads_compact dict）
 
 ```
-wk          ["W15","W16",...]
-wk_dates    {"W15":"4/6-4/12",...}
-ov          {t:{sp,sl,cl,im,or_,ac,ro,ct,cv,cp}, w:[...周列表...]}
-prods       {"SL":{t,w},...}
-cats        {"1_SB":{t,w},...}
-prod_cats   {"SL":{"1_SB":{t,w},...},...}
-ports       [{n,p,c,t,wa},...]          wa=每周ACoS列表
-camps       [{n,po,p,c,ty,st,...,wa},...] 按花费降序
-daily_*     按日期键的每日汇总
+wk            ["W15","W16",...]
+wk_dates      {"W15":"4/6-4/12",...}
+wk_iso_dates  {"W15":["2026-04-06","2026-04-12"],...}  ← L3 周次筛选使用
+ov            {t:{sp,sl,cl,im,or_,ac,ro,ct,cv,cp}, w:[...周列表...]}
+prods         {"SL":{t,w},...}
+cats          {"1_SB":{t,w},...}
+prod_cats     {"SL":{"1_SB":{t,w},...},...}
+ports         [{n,p,c,t,wa},...]          wa=每周ACoS列表
+camps         [{n,po,p,c,ty,st,...,wa},...] 按花费降序
+daily_*       按日期键的每日汇总
 ```
 
 指标字段：`sp`=花费, `sl`=销售额, `cl`=点击, `im`=曝光, `or_`=订单, `ac`=ACoS%, `ro`=ROAS, `ct`=CTR%, `cv`=CVR%, `cp`=CPC
@@ -102,17 +117,33 @@ daily_*     按日期键的每日汇总
 
 产品列表在 `gen_data.py` 顶部的 `PRODS` 配置。分类规则基于广告组合名称关键词匹配：
 - `_SB` / `SB`开头 → `1_SB`；`_SD` / `SD`开头 → `2_SD`
-- `KW精准`/`KW防守` → `3_SP_KW精准`；`KW拓展` → `4_SP_KW拓展`
+- `KW精准`/`KW防守` → `3_SP_KW精准`；**`KW拓展`/`KW扩展`** → `4_SP_KW拓展`
 - `ASIN精准`/`ASIN进攻`/`ASIN防守` → `5_SP_ASIN精准`；`ASIN拓展` → `6_SP_ASIN拓展`
+
+匹配前 ASCII 字母转大写（解决 Asin/ASIN 大小写混用），中文字符保持原样。
 
 ## 模板修改规则
 
 `template.html` 包含完整 JS+CSS，每次 HTTP 请求由 `export.py:_build_html()` 读取并用正则注入以下变量：
 - `const RAW = __RAW_JSON__;` → 实际数据
-- `const WEEKS` / `const WK_DATES` → 周次信息
+- `const WEEKS` / `const WK_DATES` / `const WK_ISO_DATES` → 周次信息（WK_ISO_DATES 供 L3 日期范围计算）
 - `let acosTargets = {...}` → ACoS 目标值
+- `const REPORT_COUNTRY = '__REPORT_COUNTRY__'` → 当前国家代码（如 `'UK'`）
 
 修改模板后，`--reload` 模式下刷新页面即可看到效果（无需重启）。
+
+## 服务启停（Windows）
+
+```powershell
+# 停止（杀掉所有 python 进程）
+Get-Process -Name python -ErrorAction SilentlyContinue | Stop-Process -Force
+
+# 启动（从项目根目录执行）
+Set-Location "C:\Users\admin\Desktop\python\ads_dashboard"
+Start-Process python -ArgumentList "-m uvicorn ads_funnel.api.main:app --host 0.0.0.0 --port 5001" -RedirectStandardError "nohup_err.out" -NoNewWindow
+```
+
+> **注意**：不要用 bash 的 `kill` 命令停进程，Windows PID 与 bash PID 不对应，必须用 PowerShell `Stop-Process`。
 
 ## 协作规则
 

@@ -115,7 +115,13 @@ def index_page(id: int = None):
         return (FRONTEND / 'index.html').read_text(encoding='utf-8')
 
     # 确定要展示的报告
-    report_id = id if id else reports[0]['id']
+    if id:
+        report_id = id
+    else:
+        # 优先按 default_country 配置选择，默认 US
+        default_country = db.get_config('default_country', 'US')
+        preferred = next((r for r in reports if r.get('country') == default_country), None)
+        report_id = preferred['id'] if preferred else reports[0]['id']
     r = db.get_report(report_id)
     if not r:
         r = db.get_report(reports[0]['id'])

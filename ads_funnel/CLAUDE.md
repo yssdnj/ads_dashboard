@@ -71,7 +71,9 @@ uvicorn api.main:app --reload --host 0.0.0.0 --port 5001
 | POST | `/api/analysis/mode1/export-bulk` | 将分析结果写回 Bulk 文件 |
 | POST | `/api/analysis/mode1/confirm-update` | 确认更新，写入 bid_update_log |
 | GET | `/api/analysis/mode1/update-logs` | 查询竞价更新历史 |
-| GET | `/api/analysis/mode1/update-logs/{id}/details` | 查询某次更新明细 |
+| GET | `/api/analysis/mode1/update-logs/{id}/details` | 查询某次更新明细（含 old_bid / new_bid / adj_pct） |
+| GET | `/api/analysis/mode1/campaign-weekly-stats` | 按日期范围从 raw_camp_lx 聚合各活动指标（L3 周次筛选） |
+| GET | `/api/analysis/mode1/campaign-trend` | 单活动周趋势 + 日趋势 + 调价事件（L3 趋势面板） |
 
 **工具**
 
@@ -84,14 +86,15 @@ uvicorn api.main:app --reload --host 0.0.0.0 --port 5001
 ## 数据库结构（MySQL）
 
 ```sql
-reports          (id, title, country, weeks, wk_dates, data LONGTEXT, camp_file, port_file, created_at)
-config           (key, value LONGTEXT, updated_at)
-raw_camp_lx      -- 领星广告活动每日原始数据（upsert）
-raw_port_lx      -- 领星广告组合每日原始数据（upsert）
-raw_tar          -- 投放报告每日原始数据（Mode 1 分析用）
-raw_ap           -- 推广商品报告每日原始数据（Mode 1 分析用）
-bid_update_log   -- 竞价更新记录
-bid_update_detail -- 竞价更新明细行
+reports           (id, title, country, weeks, wk_dates, data LONGTEXT, camp_file, port_file, created_at)
+                  -- data 字段包含完整 ads_compact JSON，含 wk_iso_dates
+config            (key, value LONGTEXT, updated_at)
+raw_camp_lx       -- 领星广告活动每日明细（国家列值为 'UK'/'US'/'DE'，非全称）
+raw_port_lx       -- 领星广告组合每日明细
+raw_tar           -- 投放报告每日原始数据（Mode 1 分析用）
+raw_ap            -- 推广商品报告每日原始数据（Mode 1 分析用）
+bid_update_log    -- 竞价更新记录（country 字段同 raw_camp_lx 格式）
+bid_update_detail -- 竞价更新明细行（campaign / ad_group / targeting / old_bid / new_bid / adj_pct）
 ```
 
 - `data` 列存储完整的 `ads_compact` JSON（LONGTEXT）
@@ -150,9 +153,11 @@ PRODS = ['SL','DL','DSL2','Toy','ToyDH','MFL','SFM','ShortL','WB']
 | `_SB` / `SB` 开头 | 1_SB |
 | `_SD` / `SD` 开头 | 2_SD |
 | `KW精准` / `KW防守` | 3_SP_KW精准 |
-| `KW拓展` | 4_SP_KW拓展 |
+| `KW拓展` / `KW扩展` | 4_SP_KW拓展 |
 | `ASIN精准` / `ASIN进攻` / `ASIN防守` | 5_SP_ASIN精准 |
 | `ASIN拓展` | 6_SP_ASIN拓展 |
+
+> 匹配前 ASCII 字母转大写（解决 Asin/ASIN 大小写混用），中文字符保持原样。
 
 ## 修改模板
 
@@ -187,10 +192,25 @@ PRODS = ['SL','DL','DSL2','Toy','ToyDH','MFL','SFM','ShortL','WB']
 |------|------|------|--------|
 | `_catalog_df` | `targeting_analysis.py` | `product_catalog.xlsx` | 1 小时 TTL，超时重新读盘 |
 
-> **注意**：`_mode1_cache` / `_mode1_6r_cache`（分析结果缓存）已于 2026-05-26 删除，改为前端回传方案，避免服务器内存持续增长。
+> **注意**：`_mode1_cache` / `_mode1_6r_cache` 已删除。分析结果不在服务器持久化，改为前端将 `rows` 回传给 `export-bulk`（`rows_json` 字段）。
+
+## 前端关键变量（template.html）
+
+| 变量 | 来源 | 说明 |
+|------|------|------|
+| `RAW` | reports.data | 完整 ads_compact dict（含 camps / ports / wk / wk_iso_dates 等） |
+| `WEEKS` | reports.data.wk | 周次数组，如 `["W1","W2",...]` |
+| `WK_DATES` | reports.data.wk_dates | 周次 → 显示字符串，如 `{"W1":"12/29-1/4"}` |
+| `WK_ISO_DATES` | reports.data.wk_iso_dates | 周次 → ISO 日期范围，如 `{"W1":["2025-12-29","2026-01-04"]}` |
+| `REPORT_COUNTRY` | reports.title 首词 | 国家代码，如 `'UK'`、`'US'`、`'DE'` |
+| `REPORT_ID` | reports.id | 当前报告 ID（Web App 模式） |
+| `_charts` | 前端全局 | Chart.js 实例 dict，key = canvas id，用 `destroyChart(id)` 销毁 |
+| `l3TrendCache` | 前端全局 | L3 趋势数据缓存，key = 活动名，切换周次时清除 |
 
 ## 协作规则
 
 1. **后端改动**：涉及 `api/` 目录下任何 Python 文件的修改，必须先与用户明确需求、确认方案，再执行代码修改。
 2. **前端改动**：涉及 `template.html` / `frontend/` 的修改，可根据改动量自行判断是否需要提前确认，改动较大时建议先出方案。
 3. **禁止自动提交**：代码修改完成后，不得自动 push 到 GitHub。只有收到明确指令（如"提交代码到 github"或类似描述）时，才执行 commit + push。
+4. **测试文件**：统一放在 `tests/` 目录（已加入 `.gitignore`），不入库。
+5. **服务重启（Windows）**：用 PowerShell `Stop-Process -Name python -Force` 杀进程，bash 的 `kill` 命令 PID 与 Windows 不一致，不可靠。
