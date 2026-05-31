@@ -3844,6 +3844,7 @@ async function exportBulk6r(){
   document.getElementById('tgt6-label-dl').style.display      = 'none';
   document.getElementById('tgt6-confirm-section').style.display = 'none';
 
+  const _t0_6r = Date.now();
   try{
     const fd = new FormData();
     fd.append('bulk_file',           bulkFileEl.files[0]);
@@ -3866,12 +3867,13 @@ async function exportBulk6r(){
     const data = await resp.json();
 
     // 显示日志
+    const _elapsed6r = ((Date.now() - _t0_6r) / 1000).toFixed(1);
     if(data.log && data.log.length){
       logEl.textContent = data.log.join('\n');
       logEl.style.display = '';
-      statusEl.textContent = '✅ ' + (data.log[0] || '完成');
+      statusEl.textContent = '✅ ' + (data.log[0] || '完成') + `（耗时 ${_elapsed6r}s）`;
     } else {
-      statusEl.textContent = '✅ 完成';
+      statusEl.textContent = `✅ 完成（耗时 ${_elapsed6r}s）`;
     }
     statusEl.style.color = 'var(--gn)';
 
@@ -3918,8 +3920,9 @@ async function exportBulk6r(){
     confirmSt.style.color  = 'var(--g6)';
 
   }catch(e){
+    const _elapsed6r = ((Date.now() - _t0_6r) / 1000).toFixed(1);
     statusEl.style.color = 'var(--rd)';
-    statusEl.textContent = '❌ ' + e.message;
+    statusEl.textContent = `❌ ${e.message}（耗时 ${_elapsed6r}s）`;
   }finally{
     btn.disabled = false;
   }
@@ -4839,6 +4842,7 @@ async function exportBulkFile(){
   const status = document.getElementById('tgt-bulk-status');
   const logEl  = document.getElementById('tgt-bulk-log');
   status.textContent = '⏳ 处理中...';
+  const _t0_3r = Date.now();
   logEl.style.display = 'none';
   document.getElementById('tgt-bulk-dl').style.display      = 'none';
   document.getElementById('tgt-label-dl').style.display     = 'none';
@@ -4867,12 +4871,13 @@ async function exportBulkFile(){
     const data = await resp.json();
 
     // 显示日志
+    const _elapsed3r = ((Date.now() - _t0_3r) / 1000).toFixed(1);
     if(data.log && data.log.length){
       logEl.textContent = data.log.join('\n');
       logEl.style.display = '';
-      status.textContent = '✅ ' + (data.log[0] || '完成');
+      status.textContent = '✅ ' + (data.log[0] || '完成') + `（耗时 ${_elapsed3r}s）`;
     } else {
-      status.textContent = '✅ 完成';
+      status.textContent = `✅ 完成（耗时 ${_elapsed3r}s）`;
     }
 
     // Bulk xlsx 下载卡片（自动触发下载）
@@ -4918,7 +4923,8 @@ async function exportBulkFile(){
     confirmSt.style.color  = 'var(--g6)';
 
   }catch(e){
-    status.textContent = '❌ ' + e.message;
+    const _elapsed3r = ((Date.now() - _t0_3r) / 1000).toFixed(1);
+    status.textContent = `❌ ${e.message}（耗时 ${_elapsed3r}s）`;
   }finally{
     document.getElementById('tgt-bulk-btn').disabled = false;
   }

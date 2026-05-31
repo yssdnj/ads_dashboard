@@ -459,20 +459,20 @@ def apply_mode1_to_bulk(
         empty_csv = save_label_updated(df_full)
         return bulk_bytes, empty_csv, log, []
 
-    # ── 3. 读取 Bulk（dtype=str 模式）────────────────────────────────────────
-    df_bulk = pd.read_excel(
-        io.BytesIO(bulk_bytes),
-        sheet_name='Sponsored Products Campaigns',
-        dtype=str,
-    )
-    df_bulk.columns = df_bulk.columns.str.strip()
-    # ★ 仅保留必要列（约 10 列 vs 原始 30+ 列），减少 pandas 内存占用约 60-70%
-    _keep = [c for c in df_bulk.columns if c in _BULK_NEEDED_COLS]
-    df_bulk = df_bulk[_keep].copy()
-
-    # ★ 预先加载 openpyxl Workbook，随后立即释放 bulk_bytes 原始字节
+    # ── 3. 读取 Bulk（单次加载：openpyxl → DataFrame，峰值约 2x 文件大小）────
+    # ★★ 只调用一次 load_workbook，避免 pd.read_excel 内部再次加载同一文件
     _wb_preloaded = load_workbook(io.BytesIO(bulk_bytes))
     del bulk_bytes
+    gc.collect()
+
+    _ws = _wb_preloaded['Sponsored Products Campaigns']
+    _rows = list(_ws.values)
+    _headers = [str(h).strip() if h is not None else '' for h in _rows[0]]
+    df_bulk = pd.DataFrame(_rows[1:], columns=_headers)
+    del _rows
+    # ★ 仅保留必要列（约 10 列 vs 原始 30+ 列），减少 pandas 内存占用约 60-70%
+    _keep = [c for c in df_bulk.columns if c in _BULK_NEEDED_COLS]
+    df_bulk = df_bulk[_keep].fillna('').astype(str)
     gc.collect()
 
     # ── 4. 建立索引（KW + ASIN）──────────────────────────────────────────────
