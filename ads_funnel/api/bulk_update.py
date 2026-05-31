@@ -14,6 +14,7 @@ build_bulk_index、process_updates、save_bulk_updated、save_label_updated）�
 
 from __future__ import annotations
 
+import gc
 import io
 import re
 import warnings
@@ -24,6 +25,21 @@ import pandas as pd
 warnings.filterwarnings('ignore', category=UserWarning, module='openpyxl')
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
+
+# process_updates / build_bulk_index 实际用到的 Bulk 列（约 10 列）
+# 过滤掉其余 20+ 列，大幅减少 pandas DataFrame 内存占用
+_BULK_NEEDED_COLS: frozenset[str] = frozenset({
+    'Entity',
+    'Campaign Name (Informational only)',
+    'Ad Group Name (Informational only)',
+    'Product Targeting Expression',
+    'Keyword Text',
+    'Bidding Strategy',
+    'Placement',
+    'Percentage',
+    'Bid',
+    'Operation',
+})
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -208,12 +224,15 @@ def process_updates(df_label_filtered, df_label_full, df_bulk, index_map, label_
     return df_label_full, df_bulk, updated_bulk_rows, details
 
 
-def save_bulk_updated(bulk_bytes: bytes, df_bulk: pd.DataFrame, updated_rows: list) -> bytes:
+def save_bulk_updated(bulk_bytes_or_wb, df_bulk: pd.DataFrame, updated_rows: list) -> bytes:
     """
     原版：复制原文件，用 openpyxl 只写改动行的 Bid/Operation，黄色高亮，删除 RAS 表。
-    适配：输入/输出均为 bytes（原版使用文件路径 + shutil.copy）。
+    适配：bulk_bytes_or_wb 可以是 bytes（向后兼容）或已加载的 Workbook（节省内存）。
     """
-    wb = load_workbook(io.BytesIO(bulk_bytes))
+    if isinstance(bulk_bytes_or_wb, bytes):
+        wb = load_workbook(io.BytesIO(bulk_bytes_or_wb))
+    else:
+        wb = bulk_bytes_or_wb  # 直接使用已加载的 Workbook，无需重复读取
     ws = wb['Sponsored Products Campaigns']
 
     # 找 Bid 和 Operation 列（1-based）
@@ -447,6 +466,14 @@ def apply_mode1_to_bulk(
         dtype=str,
     )
     df_bulk.columns = df_bulk.columns.str.strip()
+    # ★ 仅保留必要列（约 10 列 vs 原始 30+ 列），减少 pandas 内存占用约 60-70%
+    _keep = [c for c in df_bulk.columns if c in _BULK_NEEDED_COLS]
+    df_bulk = df_bulk[_keep].copy()
+
+    # ★ 预先加载 openpyxl Workbook，随后立即释放 bulk_bytes 原始字节
+    _wb_preloaded = load_workbook(io.BytesIO(bulk_bytes))
+    del bulk_bytes
+    gc.collect()
 
     # ── 4. 建立索引（KW + ASIN）──────────────────────────────────────────────
     index_map = build_bulk_index(df_bulk, 'BOTH')
@@ -473,8 +500,10 @@ def apply_mode1_to_bulk(
         all_updated_rows.extend(up_updated_rows)
         all_details.extend(up_details)
 
-    # ── 6. 保存 Bulk ──────────────────────────────────────────────────────────
-    bulk_out_bytes = save_bulk_updated(bulk_bytes, df_bulk, all_updated_rows)
+    # ── 6. 保存 Bulk（传入预加载的 Workbook，避免重复读取文件）────────────────
+    bulk_out_bytes = save_bulk_updated(_wb_preloaded, df_bulk, all_updated_rows)
+    del _wb_preloaded
+    gc.collect()
 
     # ── 7. 保存 targeting_labels ──────────────────────────────────────────────
     label_csv_bytes = save_label_updated(df_full)
