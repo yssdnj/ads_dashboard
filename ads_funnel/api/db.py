@@ -234,6 +234,33 @@ def _camp_comp_key(df: pd.DataFrame, sep: str) -> pd.Series:
     )
 
 
+def _tar_comp_key(df: pd.DataFrame, sep: str) -> pd.Series:
+    """raw_tar 专用复合键：Date + 归一化活动名 + Ad Group Name + Targeting + Match Type"""
+    norm = _normalize_camp_name(df['Campaign Name'].astype(str))
+    return (
+        df['Date'].astype(str) + sep +
+        norm + sep +
+        df['Ad Group Name'].astype(str) + sep +
+        df['Targeting'].astype(str) + sep +
+        df['Match Type'].astype(str)
+    )
+
+
+def _ap_comp_key(df: pd.DataFrame, sep: str) -> pd.Series:
+    """raw_ap 专用复合键：日期 + 归一化活动名 + Ad Group Name + Advertised ASIN
+    列名兼容：Date 已由 _prep_ap_daily 重命名为 日期；ASIN 列中英文兼容。
+    """
+    camp_col = 'Campaign Name' if 'Campaign Name' in df.columns else '广告活动名称'
+    asin_col = 'Advertised ASIN' if 'Advertised ASIN' in df.columns else '广告ASIN'
+    norm = _normalize_camp_name(df[camp_col].astype(str))
+    return (
+        df['日期'].astype(str) + sep +
+        norm + sep +
+        df['Ad Group Name'].astype(str) + sep +
+        df[asin_col].astype(str)
+    )
+
+
 def _prep_raw(df: pd.DataFrame) -> pd.DataFrame:
     """日期列统一转为 YYYY-MM-DD 字符串，非数值占位符替换为 None，去掉旧 report_id 列"""
     d = df.copy()
@@ -812,9 +839,11 @@ def _prep_ap_daily(df: pd.DataFrame) -> pd.DataFrame:
     return d
 
 
-def _upsert_df(engine, tbl: str, df_new: pd.DataFrame, keys: list, date_col: str):
+def _upsert_df(engine, tbl: str, df_new: pd.DataFrame, keys: list, date_col: str,
+               comp_key_fn=None):
     """通用 upsert：按唯一键合并新旧数据，新行覆盖旧行。
     优化：优先走无重叠路径（直接 append），仅在日期窗口有重叠时才读取旧数据。
+    comp_key_fn: 可选，签名 (df, sep) -> Series，用于自定义复合键（如归一化活动名）。
     """
     insp = sa_inspect(engine)
     tables = set(insp.get_table_names())
@@ -846,12 +875,17 @@ def _upsert_df(engine, tbl: str, df_new: pd.DataFrame, keys: list, date_col: str
                 text(f'SELECT * FROM `{tbl}` WHERE `{date_col}` BETWEEN :a AND :b'),
                 engine, params={'a': new_min, 'b': new_max}
             )
-            avail_keys = [k for k in keys if k in df_old.columns and k in df_new.columns]
-            if avail_keys:
-                sep = '\x00'
-                old_comp = df_old[avail_keys].astype(str).agg(sep.join, axis=1)
-                new_comp = df_new[avail_keys].astype(str).agg(sep.join, axis=1)
+            sep = '\x00'
+            if comp_key_fn is not None:
+                old_comp = comp_key_fn(df_old, sep)
+                new_comp = comp_key_fn(df_new, sep)
                 df_old = df_old[~old_comp.isin(set(new_comp))]
+            else:
+                avail_keys = [k for k in keys if k in df_old.columns and k in df_new.columns]
+                if avail_keys:
+                    old_comp = df_old[avail_keys].astype(str).agg(sep.join, axis=1)
+                    new_comp = df_new[avail_keys].astype(str).agg(sep.join, axis=1)
+                    df_old = df_old[~old_comp.isin(set(new_comp))]
             with engine.begin() as conn:
                 conn.execute(
                     text(f'DELETE FROM `{tbl}` WHERE `{date_col}` BETWEEN :a AND :b'),
@@ -883,8 +917,8 @@ def upsert_tar_ap(tar_df: pd.DataFrame, ap_df: pd.DataFrame) -> dict:
     ap_keys = _KEYS_AP if '广告活动名称' in ap.columns else [
         '日期', 'Campaign Name', 'Ad Group Name', 'Advertised ASIN'
     ]
-    _upsert_df(engine, 'raw_tar', tar, _KEYS_TAR, 'Date')
-    _upsert_df(engine, 'raw_ap',  ap,  ap_keys,   '日期')
+    _upsert_df(engine, 'raw_tar', tar, _KEYS_TAR, 'Date', comp_key_fn=_tar_comp_key)
+    _upsert_df(engine, 'raw_ap',  ap,  ap_keys,   '日期', comp_key_fn=_ap_comp_key)
 
     return {
         'tar_rows': len(tar),
