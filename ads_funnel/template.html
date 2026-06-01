@@ -540,6 +540,9 @@ body.dark .drs-lbl{color:#64748b}
     <select id="l1WkTo" onchange="setL1WkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
   </div>
 
+  <!-- Metric cards -->
+  <div id="l1-cards" class="metric-grid" style="margin-top:10px"></div>
+
   <!-- Weekly trend (filtered by prod+cat) -->
   <div class="section-title" style="margin-top:12px">周趋势</div>
   <div class="chart-wrap">
@@ -632,6 +635,9 @@ body.dark .drs-lbl{color:#64748b}
     <span style="font-size:11px;color:#94a3b8;padding:0 2px">—</span>
     <select id="l2WkTo" onchange="setL2WkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
   </div>
+  <!-- Metric cards -->
+  <div id="l2-cards" class="metric-grid" style="margin-top:10px"></div>
+
   <div class="chart-wrap">
     <div class="chart-title">
       <span>📈 周趋势</span>
@@ -2210,13 +2216,33 @@ function setL1WkRange(){
   if(WEEKS.indexOf(l1WkFrom)>WEEKS.indexOf(l1WkTo)){l1WkTo=l1WkFrom;document.getElementById('l1WkTo').value=l1WkTo;}
   const lbl=l1WkFrom===l1WkTo?l1WkFrom:l1WkFrom+'–'+l1WkTo;
   document.getElementById('l1-day-label').textContent=lbl;
-  renderL1Charts();drawL1WkChart();drawL1DayChart();renderL1ProdTable();
+  renderL1Cards();renderL1Charts();drawL1WkChart();drawL1DayChart();renderL1ProdTable();
 }
 function setL1WkMode(m){l1WkMode=m;document.getElementById('l1WkM1').classList.toggle('active',m==='spend');document.getElementById('l1WkM2').classList.toggle('active',m==='click');drawL1WkChart();}
 function setL1DayMode(m){l1DayMode=m;document.getElementById('l1DayM1').classList.toggle('active',m==='spend');document.getElementById('l1DayM2').classList.toggle('active',m==='click');drawL1DayChart();}
 function toggleL1WoW(){l1ShowWoW=!l1ShowWoW;document.getElementById('l1WowToggle').classList.toggle('on',l1ShowWoW);renderL1ProdTable();}
 
-function renderL1(){renderL1Charts();drawL1WkChart();drawL1DayChart();renderL1ProdTable();}
+function renderL1Cards(){
+  const cat=l1Cat==='all'?null:l1Cat;
+  const t=getRangeMetrics(l1Prod,cat,l1WkFrom,l1WkTo);
+  const el=document.getElementById('l1-cards');
+  if(!t){el.innerHTML='';return;}
+  const prod=l1Prod==='all'?'Other':l1Prod;
+  const cards=[
+    {l:'总花费',v:fmt(t.sp,'$')},
+    {l:'总销售额',v:fmt(t.sl,'$')},
+    {l:'总曝光',v:fmt(t.im,'int')},
+    {l:'总点击',v:fmt(t.cl,'int')},
+    {l:'总订单',v:fmt(t.or||t.or_,'int')},
+    {l:'ACoS',v:fmt(t.ac,'pct'),cls:acosClass(t.ac,prod)},
+    {l:'ROAS',v:fmt(t.ro,'x')},
+    {l:'CTR',v:fmt(t.ct,'pct2')},
+    {l:'CVR',v:fmt(t.cv,'pct2')},
+    {l:'CPC',v:fmt(t.cp,'$')},
+  ];
+  el.innerHTML=cards.map(c=>`<div class="metric-card"><div class="m-label">${c.l}</div><div class="m-val ${c.cls||''}">${c.v}</div></div>`).join('');
+}
+function renderL1(){renderL1Cards();renderL1Charts();drawL1WkChart();drawL1DayChart();renderL1ProdTable();}
 
 // 3 comparison charts — always show all 6 categories, filtered by prod+week
 function renderL1Charts(){
@@ -2513,12 +2539,42 @@ function setL2WkRange(){
   if(WEEKS.indexOf(l2WkFrom)>WEEKS.indexOf(l2WkTo)){l2WkTo=l2WkFrom;document.getElementById('l2WkTo').value=l2WkTo;}
   const lbl=l2WkFrom===l2WkTo?l2WkFrom:l2WkFrom+'–'+l2WkTo;
   const el=document.getElementById('l2-day-wk-label');if(el)el.textContent=lbl;
-  drawL2Charts();
+  renderL2Cards();drawL2Charts();
 }
 
 function getL2Ports(){return RAW.ports.filter(p=>(l2Prod==='all'||p.p===l2Prod)&&(l2Cat==='all'||p.c===l2Cat));}
 
-function renderL2(){drawL2Charts();renderL2Table();}
+function renderL2Cards(){
+  const ports=getL2Ports();
+  const days=rangeDays(l2WkFrom,l2WkTo);
+  let sp=0,sl=0,cl=0,im=0,or_=0;
+  ports.forEach(pt=>{
+    const pd=RAW.daily_port[pt.n];if(!pd)return;
+    days.forEach(d=>{const dd=pd[d];if(!dd)return;sp+=dd.sp||0;sl+=dd.sl||0;cl+=dd.cl||0;im+=dd.im||0;or_+=(dd.or_||dd.or||0);});
+  });
+  const t={sp,sl,cl,im,or_,
+    ac:sl>0?+(sp/sl*100).toFixed(2):null,
+    ro:sp>0?+(sl/sp).toFixed(2):null,
+    ct:im>0?+(cl/im*100).toFixed(4):null,
+    cv:cl>0?+(or_/cl*100).toFixed(4):null,
+    cp:cl>0?+(sp/cl).toFixed(4):null,
+  };
+  const prod=l2Prod==='all'?'Other':l2Prod;
+  const cards=[
+    {l:'总花费',v:fmt(t.sp,'$')},
+    {l:'总销售额',v:fmt(t.sl,'$')},
+    {l:'总曝光',v:fmt(t.im,'int')},
+    {l:'总点击',v:fmt(t.cl,'int')},
+    {l:'总订单',v:fmt(t.or_,'int')},
+    {l:'ACoS',v:fmt(t.ac,'pct'),cls:acosClass(t.ac,prod)},
+    {l:'ROAS',v:fmt(t.ro,'x')},
+    {l:'CTR',v:fmt(t.ct,'pct2')},
+    {l:'CVR',v:fmt(t.cv,'pct2')},
+    {l:'CPC',v:fmt(t.cp,'$')},
+  ];
+  document.getElementById('l2-cards').innerHTML=cards.map(c=>`<div class="metric-card"><div class="m-label">${c.l}</div><div class="m-val ${c.cls||''}">${c.v}</div></div>`).join('');
+}
+function renderL2(){renderL2Cards();drawL2Charts();renderL2Table();}
 
 function drawL2Charts(){
   const ports=getL2Ports();
