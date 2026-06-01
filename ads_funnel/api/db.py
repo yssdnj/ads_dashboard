@@ -4,6 +4,7 @@ db.py — MySQL 数据库操作层
 """
 
 import json
+import re
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
@@ -177,10 +178,60 @@ def save_report(title: str, weeks: list, wk_dates: dict, data: dict,
 
 # ── 增量原始数据（领星导出：raw_camp_lx / raw_port_lx）───────────────────────
 
-# raw_camp_lx 唯一主键列：国家 + 广告组合 + 广告活动 + 日期 + 类型
-_KEYS_C = ['国家', '广告组合', '广告活动', '日期', '类型']
+# raw_camp_lx 唯一主键列：国家 + 广告活动（归一化名称）+ 日期 + 类型
+# 去掉广告组合：活动可能在组合间移动，名称是更稳定的标识
+_KEYS_C = ['国家', '广告活动', '日期', '类型']
 # raw_port_lx 唯一主键列：国家 + 广告组合 + 日期
 _KEYS_P = ['国家', '广告组合', '日期']
+
+# ASIN 格式：B0 开头共 10 个字符（B0 + 8位字母数字）
+_ASIN_RE = re.compile(r'^B0[A-Z0-9]{8}$')
+
+
+def _normalize_camp_name(names: pd.Series) -> pd.Series:
+    """
+    按活动名称结构归一化，忽略末尾版本后缀，用于 upsert 去重。
+
+    归一化规则（取前 N 段）：
+      SL_1/2/3/4_XXX          → 前 3 段   SL_1_dog leash
+      SL_0_XXX（非合集）       → 前 3 段   SL_0_slip leash
+      SL_0_合集_XXX            → 完整名称（不归一化）
+      SL_B0XXXXXXXXXX_XXX     → 前 2 段   SL_B0DF6M88FM
+      其他                    → 完整名称
+    """
+    parts   = names.str.split('_')
+    part1   = parts.apply(lambda p: p[1] if isinstance(p, list) and len(p) > 1 else '')
+    part2   = parts.apply(lambda p: p[2] if isinstance(p, list) and len(p) > 2 else '')
+    norm    = names.copy()
+
+    # ASIN 格式：SL_B0XXXXXXXXXX_...  → 前 2 段
+    mask_asin = part1.str.match(_ASIN_RE, na=False)
+    if mask_asin.any():
+        norm[mask_asin] = parts[mask_asin].apply(
+            lambda p: '_'.join(p[:2]) if len(p) >= 2 else '_'.join(p)
+        )
+
+    # 数字编号：SL_0/1/2/3/4_...  → 前 3 段（SL_0_合集 排除）
+    mask_num   = part1.isin({'0', '1', '2', '3', '4'})
+    mask_heji  = (part1 == '0') & part2.str.startswith('合集', na=False)
+    mask_norm3 = mask_num & ~mask_heji & ~mask_asin
+    if mask_norm3.any():
+        norm[mask_norm3] = parts[mask_norm3].apply(
+            lambda p: '_'.join(p[:3]) if len(p) >= 3 else '_'.join(p)
+        )
+
+    return norm
+
+
+def _camp_comp_key(df: pd.DataFrame, sep: str) -> pd.Series:
+    """raw_camp_lx 专用复合键：国家 + 归一化活动名 + 日期 + 类型"""
+    norm = _normalize_camp_name(df['广告活动'].astype(str))
+    return (
+        df['国家'].astype(str) + sep +
+        norm + sep +
+        df['日期'].astype(str) + sep +
+        df['类型'].astype(str)
+    )
 
 
 def _prep_raw(df: pd.DataFrame) -> pd.DataFrame:
@@ -199,9 +250,10 @@ def _prep_raw(df: pd.DataFrame) -> pd.DataFrame:
     return d
 
 
-def _upsert_lx(tbl: str, df_new: pd.DataFrame, keys: list):
+def _upsert_lx(tbl: str, df_new: pd.DataFrame, keys: list, comp_key_fn=None):
     """通用 upsert（领星表）：按唯一键合并新旧数据，新行覆盖旧行。
     优化：优先走无重叠路径（直接 append），仅在日期窗口有重叠时才读取旧数据。
+    comp_key_fn: 可选，签名 (df, sep) -> Series，用于自定义复合键（如归一化活动名）。
     """
     engine = get_engine()
     insp = sa_inspect(engine)
@@ -236,12 +288,17 @@ def _upsert_lx(tbl: str, df_new: pd.DataFrame, keys: list):
                 engine, params={'a': new_min, 'b': new_max}
             )
             df_old = df_old.drop(columns=['report_id'], errors='ignore')
-            avail_keys = [k for k in keys if k in df_old.columns and k in df_new.columns]
-            if avail_keys:
-                sep = '\x00'
-                old_comp = df_old[avail_keys].astype(str).agg(sep.join, axis=1)
-                new_comp = df_new[avail_keys].astype(str).agg(sep.join, axis=1)
+            sep = '\x00'
+            if comp_key_fn is not None:
+                old_comp = comp_key_fn(df_old, sep)
+                new_comp = comp_key_fn(df_new, sep)
                 df_old = df_old[~old_comp.isin(set(new_comp))]
+            else:
+                avail_keys = [k for k in keys if k in df_old.columns and k in df_new.columns]
+                if avail_keys:
+                    old_comp = df_old[avail_keys].astype(str).agg(sep.join, axis=1)
+                    new_comp = df_new[avail_keys].astype(str).agg(sep.join, axis=1)
+                    df_old = df_old[~old_comp.isin(set(new_comp))]
             with engine.begin() as conn:
                 conn.execute(
                     text(f'DELETE FROM `{tbl}` WHERE `{date_col}` BETWEEN :a AND :b'),
@@ -264,7 +321,7 @@ def upsert_raw(df_c: pd.DataFrame, df_p: pd.DataFrame):
     """增量写入 raw_camp_lx / raw_port_lx"""
     dc = _prep_raw(df_c)
     dp = _prep_raw(df_p)
-    _upsert_lx('raw_camp_lx', dc, _KEYS_C)
+    _upsert_lx('raw_camp_lx', dc, _KEYS_C, comp_key_fn=_camp_comp_key)
     _upsert_lx('raw_port_lx', dp, _KEYS_P)
 
 

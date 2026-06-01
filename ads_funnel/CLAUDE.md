@@ -212,5 +212,9 @@ PRODS = ['SL','DL','DSL2','Toy','ToyDH','MFL','SFM','ShortL','WB']
 1. **后端改动**：涉及 `api/` 目录下任何 Python 文件的修改，必须先与用户明确需求、确认方案，再执行代码修改。
 2. **前端改动**：涉及 `template.html` / `frontend/` 的修改，可根据改动量自行判断是否需要提前确认，改动较大时建议先出方案。
 3. **禁止自动提交**：代码修改完成后，不得自动 push 到 GitHub。只有收到明确指令（如"提交代码到 github"或类似描述）时，才执行 commit + push。
-4. **测试文件**：统一放在 `tests/` 目录（已加入 `.gitignore`），不入库。
+4. **测试规范**：
+   - 后端（`api/` 下任何 `.py`）每次改动后，必须补充或运行单元测试 + 边界测试，验证通过后才算完成
+   - 测试文件统一放在 `ads_funnel/tests/` 目录，命名 `_test_<模块名>.py`
+   - 运行方式：`python ads_funnel/tests/_test_xxx.py`（工作目录为项目根目录）
+   - `tests/` 已加入 `.gitignore`，不推送到 GitHub
 5. **服务重启（Windows）**：用 PowerShell `Stop-Process -Name python -Force` 杀进程，bash 的 `kill` 命令 PID 与 Windows 不一致，不可靠。

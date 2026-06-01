@@ -3,7 +3,7 @@ main.py — FastAPI 后端
 启动: uvicorn api.main:app --reload  （从 ads_funnel/ 目录执行）
 """
 
-import base64, io, json, traceback
+import asyncio, base64, gc, io, json, traceback
 from datetime import datetime
 from pathlib import Path
 
@@ -172,15 +172,30 @@ async def api_import(
     camp_bytes = await camp_file.read()
     port_bytes = await port_file.read()
 
-    try:
-        df_c = pd.read_excel(io.BytesIO(camp_bytes))
-        df_p = pd.read_excel(io.BytesIO(port_bytes))
-    except Exception as e:
-        raise HTTPException(400, f'Excel 读取失败: {e}')
+    # P0: 重型同步操作放入线程池，释放事件循环，避免 nginx 502
+    # P1: 读完 DataFrame 后立即释放原始字节，降低内存峰值
+    loop = asyncio.get_event_loop()
+
+    def _do_import():
+        nonlocal camp_bytes, port_bytes
+        try:
+            df_c = pd.read_excel(io.BytesIO(camp_bytes))
+            df_p = pd.read_excel(io.BytesIO(port_bytes))
+        except Exception as e:
+            raise ValueError(f'Excel 读取失败: {e}')
+        finally:
+            del camp_bytes, port_bytes
+            gc.collect()
+
+        db.upsert_raw(df_c, df_p)
+        del df_c, df_p
+        gc.collect()
+        return db.rebuild_from_raw()
 
     try:
-        db.upsert_raw(df_c, df_p)
-        report_ids = db.rebuild_from_raw()
+        report_ids = await loop.run_in_executor(None, _do_import)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
     except Exception as e:
         raise HTTPException(500, f'数据处理失败: {e}')
 
@@ -277,17 +292,32 @@ async def api_mode1_import_data(
     将每周的推广商品报告 + 投放报告增量写入数据库（raw_ap / raw_tar）。
     不做分析，仅入库。每周上传一次上周数据即可。
     """
-    try:
-        ap_df  = pd.read_excel(io.BytesIO(await ap_file.read()))
-        tar_df = pd.read_excel(io.BytesIO(await tar_file.read()))
-    except Exception as e:
-        raise HTTPException(400, f'文件读取失败: {e}')
+    ap_bytes  = await ap_file.read()
+    tar_bytes = await tar_file.read()
 
-    _check_file_country(ap_df,  report_country, 'AP 文件')
-    _check_file_country(tar_df, report_country, 'TAR 文件')
+    # P0: 重型同步操作放入线程池，释放事件循环，避免 nginx 502
+    # P1: 读完 DataFrame 后立即释放原始字节，降低内存峰值
+    loop = asyncio.get_event_loop()
+
+    def _do_import():
+        nonlocal ap_bytes, tar_bytes
+        try:
+            ap_df  = pd.read_excel(io.BytesIO(ap_bytes))
+            tar_df = pd.read_excel(io.BytesIO(tar_bytes))
+        except Exception as e:
+            raise ValueError(f'文件读取失败: {e}')
+        finally:
+            del ap_bytes, tar_bytes
+            gc.collect()
+
+        _check_file_country(ap_df,  report_country, 'AP 文件')
+        _check_file_country(tar_df, report_country, 'TAR 文件')
+        return db.upsert_tar_ap(tar_df, ap_df)
 
     try:
-        stats = db.upsert_tar_ap(tar_df, ap_df)
+        stats = await loop.run_in_executor(None, _do_import)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
     except Exception as e:
         raise HTTPException(500, f'入库失败: {e}')
 
