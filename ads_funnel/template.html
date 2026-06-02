@@ -745,7 +745,16 @@ body.dark .drs-lbl{color:#64748b}
     <button class="filter-pill" onclick="setAnaProd('ToyDH')">双手柄玩具(ToyDH)</button>
     <button class="filter-pill" onclick="setAnaProd('MFL')">多功能牵引(MFL)</button>
     <button class="filter-pill" onclick="setAnaProd('SFM')">丰容碗(SFM)</button>
-    <span class="filter-sep"></span>
+    <div class="filter-sep"></div>
+    <span class="filter-label">类别</span>
+    <button class="filter-pill active" id="anca-all" onclick="setAnaCat('all')">全部</button>
+    <button class="filter-pill" id="anca-3_SP_KW精准" onclick="setAnaCat('3_SP_KW精准')">KW精准</button>
+    <button class="filter-pill" id="anca-4_SP_KW拓展" onclick="setAnaCat('4_SP_KW拓展')">KW拓展</button>
+    <button class="filter-pill" id="anca-5_SP_ASIN精准" onclick="setAnaCat('5_SP_ASIN精准')">ASIN精准</button>
+    <button class="filter-pill" id="anca-6_SP_ASIN拓展" onclick="setAnaCat('6_SP_ASIN拓展')">ASIN拓展</button>
+    <button class="filter-pill" id="anca-1_SB" onclick="setAnaCat('1_SB')">SB</button>
+    <button class="filter-pill" id="anca-2_SD" onclick="setAnaCat('2_SD')">SD</button>
+    <div class="filter-sep"></div>
     <span class="filter-label">周次</span>
     <select id="anaWkFrom" onchange="setAnaWkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
     <span style="font-size:11px;color:#94a3b8;padding:0 2px">—</span>
@@ -1717,7 +1726,7 @@ let l3WkNoData=false; // true=查询返回空，已降级回总计
 let l3OpenCamp=null; // 当前展开的广告活动名，防止快速切换时数据错位
 const l3TrendCache={};  // {campName: trendData}，切换图表模式时复用
 const l3TrendModes={};  // {campName: {wk:'spend', day:'spend'}}
-let anaProd='all';
+let anaProd='all', anaCat='all';
 let anaWkFrom=WEEKS[0], anaWkTo=WEEKS[WEEKS.length-1];
 let anaView='funnel';
 let _charts={};
@@ -3149,9 +3158,17 @@ function setL3TrendMode(name,chart,mode){
 function setAnaProd(p){
   anaProd=p;
   document.querySelectorAll('#tab-ana .filter-bar .filter-pill').forEach(b=>{
-    const t=b.textContent;b.classList.toggle('active',p==='all'?t.includes('全部'):t.includes('('+p+')'));
+    if(b.id.startsWith('anca-'))return;  // 跳过类别 pills，不影响其 active 状态
+    const t=b.textContent;
+    b.classList.toggle('active',p==='all'?t.includes('全部'):t.includes('('+p+')'));
   });
   renderAna();renderAnaFunnel();
+}
+function setAnaCat(c){
+  anaCat=c;
+  document.querySelectorAll('[id^="anca-"]').forEach(b=>b.classList.remove('active'));
+  document.getElementById('anca-'+(c==='all'?'all':c))?.classList.add('active');
+  renderAnaFunnel();  // 建议清单不按类别过滤，只刷漏斗分析
 }
 function setAnaWkRange(){
   anaWkFrom=document.getElementById('anaWkFrom').value;
@@ -3446,6 +3463,7 @@ function buildFunnelCard(p,desc,tgt,status,agg,last,prev,catRows,portRows,campRo
   const SICON={urgent:'🔴',warning:'🟡',opportunity:'🟢',normal:'🔵',neutral:'⚪'};
   const SCOLOR={urgent:'#ef4444',warning:'#f59e0b',opportunity:'#10b981',normal:'#3b82f6',neutral:'#94a3b8'};
   const prevWkLabel=WEEKS[WEEKS.indexOf(anaWkTo)-1]||'';
+  const _wowInfo=`<span class="acos-info" onclick="event.stopPropagation()">&#9432;<span class="acos-tip" style="right:0;left:auto"><div style="font-weight:700;margin-bottom:7px;font-size:11px">WoW ACoS 说明</div><div style="margin-bottom:6px">${prevWkLabel||'前一周'} → ${anaWkTo} 的 ACoS 变化量</div><div class="acos-tip-row"><span class="acos-tip-dot" style="background:#ef4444"></span>▲ 升高（变差）</div><div class="acos-tip-row"><span class="acos-tip-dot" style="background:#10b981"></span>▼ 下降（变好）</div><div style="margin-top:6px;padding-top:6px;border-top:1px solid #334155;font-size:10px;color:#94a3b8">单位：pp（百分点）</div></span></span>`;
   function wow(v2,v1,higherIsBad){
     if(v2==null||v1==null||v1===0)return'';
     const d=v2-v1,pct=Math.abs(d/v1*100).toFixed(1),arrow=d>0?'▲':'▼';
@@ -3462,7 +3480,7 @@ function buildFunnelCard(p,desc,tgt,status,agg,last,prev,catRows,portRows,campRo
   ].join('');
 
   const catHTML=catRows.length?`<div class="funnel-section-title">广告类型分布</div>
-    <table class="funnel-cat-table"><tr><th>类型</th><th>花费</th><th>ACoS</th><th>ROAS</th><th>订单</th><th>WoW ACoS</th></tr>
+    <table class="funnel-cat-table"><tr><th>类型</th><th>花费</th><th>ACoS</th><th>ROAS</th><th>订单</th><th>WoW ACoS${_wowInfo}</th></tr>
     ${catRows.map(r=>{
       const s=!r.agg.ac?'neutral':r.agg.ac>tgt*1.3?'urgent':r.agg.ac>tgt*1.1?'warning':r.agg.ac<tgt*0.8?'opportunity':'normal';
       const wowAc=r.last?.ac!=null&&r.prev?.ac!=null?r.last.ac-r.prev.ac:null;
@@ -3470,8 +3488,8 @@ function buildFunnelCard(p,desc,tgt,status,agg,last,prev,catRows,portRows,campRo
       return`<tr><td><span class="funnel-badge" style="background:${SCOLOR[s]}"></span>${r.cat}</td><td>$${r.agg.sp.toFixed(0)}</td><td style="font-weight:600;color:${SCOLOR[s]}">${r.agg.ac!=null?r.agg.ac.toFixed(1)+'%':'--'}</td><td>${r.agg.ro!=null?r.agg.ro.toFixed(2)+'x':'--'}</td><td>${r.agg.or_>0?r.agg.or_:0}</td><td>${wStr}</td></tr>`;
     }).join('')}</table>`:'';
 
-  const portHTML=portRows.length?`<details class="funnel-detail"><summary>广告组合 Top ${portRows.length}</summary>
-    <table class="funnel-cat-table" style="margin-top:6px"><tr><th>组合名称</th><th>花费(全期)</th><th>ACoS(全期)</th><th>末周ACoS</th><th>WoW</th></tr>
+  const portHTML=portRows.length?`<details class="funnel-detail" open><summary>广告组合 Top ${portRows.length}</summary>
+    <table class="funnel-cat-table" style="margin-top:6px"><tr><th>组合名称</th><th>花费</th><th>ACoS</th><th>末周ACoS</th><th>WoW${_wowInfo}</th></tr>
     ${portRows.map(pt=>{
       const wowAc=pt.lastAc!=null&&pt.prevAc!=null?pt.lastAc-pt.prevAc:null;
       const wStr=wowAc!=null?`<span style="color:${wowAc>0?'#ef4444':'#10b981'}">${wowAc>0?'▲':'▼'}${Math.abs(wowAc).toFixed(1)}pp</span>`:'--';
@@ -3480,15 +3498,16 @@ function buildFunnelCard(p,desc,tgt,status,agg,last,prev,catRows,portRows,campRo
     }).join('')}</table></details>`:'';
 
   const toIdx=WEEKS.indexOf(anaWkTo),prevIdx=toIdx>0?toIdx-1:null;
-  const campHTML=campRows.length?`<details class="funnel-detail"><summary>问题广告活动（${campRows.length} 个）</summary>
-    <table class="funnel-cat-table" style="margin-top:6px"><tr><th>活动名称</th><th>花费</th><th>ACoS</th><th>状态</th><th>WoW ACoS</th></tr>
+  const campHTML=campRows.length?`<details class="funnel-detail" open><summary>问题广告活动（${campRows.length} 个）</summary>
+    <table class="funnel-cat-table" style="margin-top:6px"><tr><th>活动名称</th><th>花费</th><th>ACoS(均)</th><th>状态</th><th>WoW ACoS${_wowInfo}</th></tr>
     ${campRows.map(c=>{
       const wowAc=c.wa&&c.wa[toIdx]!=null&&prevIdx!=null&&c.wa[prevIdx]!=null?c.wa[toIdx]-c.wa[prevIdx]:null;
       const wStr=wowAc!=null?`<span style="color:${wowAc>0?'#ef4444':'#10b981'}">${wowAc>0?'▲':'▼'}${Math.abs(wowAc).toFixed(1)}pp</span>`:'--';
       const stLbl={converting:'转化中',click_no_order:'点击无转化',imp_only:'仅曝光',no_imp:'无曝光'}[c.st]||c.st;
       const nm=c.n.length>32?c.n.substring(0,32)+'…':c.n;
-      const acColor=(c.ac||0)>tgt*1.3?'#ef4444':(c.ac||0)>tgt*1.1?'#f59e0b':'#1e293b';
-      return`<tr><td title="${c.n}">${nm}</td><td>$${(c.sp||0).toFixed(0)}</td><td style="font-weight:600;color:${acColor}">${c.ac!=null?c.ac.toFixed(1)+'%':'--'}</td><td style="font-size:10px;color:#718096">${stLbl}</td><td>${wStr}</td></tr>`;
+      const rAc=c._rangeAc;
+      const acColor=(rAc||0)>tgt*1.3?'#ef4444':(rAc||0)>tgt*1.1?'#f59e0b':'#1e293b';
+      return`<tr><td title="${c.n}">${nm}</td><td>$${(c.sp||0).toFixed(0)}</td><td style="font-weight:600;color:${acColor}">${rAc!=null?rAc.toFixed(1)+'%':'--'}</td><td style="font-size:10px;color:#718096">${stLbl}</td><td>${wStr}</td></tr>`;
     }).join('')}</table></details>`:'';
 
   const diagHTML=diag.diagText?`<div class="funnel-diag"><div class="funnel-diag-title">诊断</div>${diag.diagText}${diag.suggestion?`<div class="funnel-suggest">💡 建议：${diag.suggestion}</div>`:''}${diag.expected?`<div class="funnel-expect">📈 预期：${diag.expected}</div>`:''}</div>`:'';
@@ -5214,13 +5233,43 @@ function renderAnaFunnel(){
   prods.forEach(p=>{
     const pd=RAW.prods[p];if(!pd)return;
     const tgt=getTarget(p),desc=PROD_DESC[p]||p;
-    const agg=aggWkRange(pd.w,fromIdx,toIdx);
+    // 按类别筛选：选中具体类别时，agg/last/prev 使用该类别数据
+    let agg, last, prev;
+    if(anaCat==='all'){
+      agg=aggWkRange(pd.w,fromIdx,toIdx);
+      last=pd.w?.[toIdx]; prev=prevIdx!=null?pd.w?.[prevIdx]:null;
+    } else {
+      const cd=RAW.prod_cats?.[p]?.[anaCat];
+      if(!cd){return;}
+      agg=aggWkRange(cd.w,fromIdx,toIdx);
+      last=cd.w?.[toIdx]; prev=prevIdx!=null?cd.w?.[prevIdx]:null;
+    }
     if(agg.sp===0)return;
-    const last=pd.w?.[toIdx],prev=prevIdx!=null?pd.w?.[prevIdx]:null;
     const status=!agg.ac?'neutral':agg.ac>tgt*1.3?'urgent':agg.ac>tgt*1.1?'warning':agg.ac<tgt*0.8?'opportunity':'normal';
-    const catRows=Object.entries(RAW.prod_cats?.[p]||{}).map(([cat,cd])=>({cat,agg:aggWkRange(cd.w,fromIdx,toIdx),last:cd.w?.[toIdx],prev:prevIdx!=null?cd.w?.[prevIdx]:null})).filter(r=>r.agg.sp>0).sort((a,b)=>b.agg.sp-a.agg.sp);
-    const portRows=(RAW.ports||[]).filter(pt=>pt.p===p&&(pt.t?.sp||0)>10).sort((a,b)=>(b.t?.sp||0)-(a.t?.sp||0)).slice(0,8).map(pt=>({name:pt.n,sp:pt.t?.sp,ac:pt.t?.ac,lastAc:pt.wa?.[toIdx],prevAc:prevIdx!=null?pt.wa?.[prevIdx]:null}));
-    const campRows=(RAW.camps||[]).filter(c=>c.p===p&&((c.ac!=null&&c.ac>tgt*1.3&&(c.sp||0)>30)||(c.st==='click_no_order'&&(c.cl||0)>20)||(prevIdx!=null&&c.wa?.[toIdx]!=null&&c.wa?.[prevIdx]!=null&&c.wa[toIdx]-c.wa[prevIdx]>8))).sort((a,b)=>(b.sp||0)-(a.sp||0)).slice(0,10);
+    const catRows=Object.entries(RAW.prod_cats?.[p]||{}).filter(([cat])=>anaCat==='all'||cat===anaCat).map(([cat,cd])=>({cat,agg:aggWkRange(cd.w,fromIdx,toIdx),last:cd.w?.[toIdx],prev:prevIdx!=null?cd.w?.[prevIdx]:null})).filter(r=>r.agg.sp>0).sort((a,b)=>b.agg.sp-a.agg.sp);
+    // portRows：用 daily_port 按所选周次聚合花费/ACoS，随周次筛选变化
+    const _portDays=rangeDays(anaWkFrom,anaWkTo);
+    const portRows=(RAW.ports||[]).filter(pt=>pt.p===p&&(anaCat==='all'||pt.c===anaCat)).map(pt=>{
+      const pd=RAW.daily_port[pt.n];
+      let sp=0,sl=0;
+      if(pd)_portDays.forEach(d=>{const dd=pd[d];if(!dd)return;sp+=dd.sp||0;sl+=dd.sl||0;});
+      const ac=sl>0?+(sp/sl*100).toFixed(2):null;
+      return{name:pt.n,sp,ac,lastAc:pt.wa?.[toIdx],prevAc:prevIdx!=null?pt.wa?.[prevIdx]:null};
+    }).filter(pt=>pt.sp>0).sort((a,b)=>b.sp-a.sp).slice(0,8);
+    // campRows：用 c.wa 计算所选周次内的平均 ACoS，过滤/排序均基于周次范围
+    function _campRangeAcos(c){
+      if(!c.wa)return c.ac;
+      const vals=[];for(let i=fromIdx;i<=toIdx;i++){if(c.wa[i]!=null)vals.push(c.wa[i]);}
+      return vals.length?+(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(2):c.ac;
+    }
+    const campRows=(RAW.camps||[]).filter(c=>{
+      if(c.p!==p||(anaCat!=='all'&&c.c!==anaCat))return false;
+      const rAc=_campRangeAcos(c);
+      return(rAc!=null&&rAc>tgt*1.3&&(c.sp||0)>30)||
+             (c.st==='click_no_order'&&(c.cl||0)>20)||
+             (prevIdx!=null&&c.wa?.[toIdx]!=null&&c.wa?.[prevIdx]!=null&&c.wa[toIdx]-c.wa[prevIdx]>8);
+    }).map(c=>({...c,_rangeAc:_campRangeAcos(c)}))
+      .sort((a,b)=>(b.sp||0)-(a.sp||0)).slice(0,10);
     const diag=buildDiagnosis(p,agg,tgt,catRows,portRows,last,prev);
     html+=buildFunnelCard(p,desc,tgt,status,agg,last,prev,catRows,portRows,campRows,diag);
   });
