@@ -3036,7 +3036,7 @@ async function toggleL3Row(name,tr){
   if(!trend){
     try{
       const resp=await fetch(
-        `/api/analysis/mode1/campaign-trend?campaign=${encodeURIComponent(name)}`+
+        `api/analysis/mode1/campaign-trend?campaign=${encodeURIComponent(name)}`+
         `&country=${encodeURIComponent(REPORT_COUNTRY)}&date_from=${isoFrom}&date_to=${isoTo}`
       );
       if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
