@@ -440,6 +440,30 @@ def run_analysis(
 _ADJ_LABELS = {'⚠️ 高ACoS出单', '🔴 高点击不出单'}
 
 
+def _hit_desc(hit_rounds_str: str) -> str:
+    """根据命中轮次字符串（如 'R1,R3,R5,R6'）生成可读的 reason 文案。"""
+    if not hit_rounds_str:
+        return ''
+    rounds = [r.strip() for r in hit_rounds_str.split(',') if r.strip()]
+    nums = sorted(int(r[1:]) for r in rounds if r.startswith('R') and r[1:].isdigit())
+    n = len(nums)
+    if n == 0:
+        return ''
+    has_r1   = 1 in nums
+    is_consec = all(nums[i] == nums[i - 1] + 1 for i in range(1, len(nums)))
+    if n >= 5:
+        desc = '长期持续异常，优先处理'
+    elif has_r1 and is_consec and n >= 3:
+        desc = '近期持续异常，建议尽快处理'
+    elif has_r1 and n >= 3:
+        desc = '近期复发，历史有前例'
+    elif has_r1:
+        desc = '近期出现，观察是否持续'
+    else:
+        desc = '早期问题，近期已有改善迹象'
+    return f'命中{n}轮 · {desc}'
+
+
 def _parse_adj_pct(s) -> float | None:
     """'-10%' → -0.10，'+5%' → +0.05，'+0~5%' / '+0%' / None → None"""
     if s is None:
@@ -588,7 +612,7 @@ def run_multi_round_analysis(
         row['label']       = (r1_row_map.get(key) or base).get('label', base.get('label', ''))
         row['adj_pct']     = f'{int(best_adj * 100)}%'
         row['action']      = '↘ 降价'
-        row['reason']      = f'多轮命中（{hit_rounds_str}），唱票取最多数降幅'
+        row['reason']      = _hit_desc(hit_rounds_str)
         row['hit_rounds']  = hit_rounds_str
         consensus_rows.append(row)
 
@@ -796,7 +820,7 @@ def run_multi_round_analysis_6r(
         row['label']          = (r1_row_map.get(key) or base).get('label', base.get('label', ''))
         row['adj_pct']        = best_adj_str
         row['action']         = best_action
-        row['reason']         = f'六轮分析命中（{hit_rounds_str}），唱票取最多数降幅'
+        row['reason']         = _hit_desc(hit_rounds_str)
         row['hit_rounds']     = hit_rounds_str
         row['hit_rounds_adj'] = hit_rounds_adj
         consensus_rows.append(row)
@@ -849,7 +873,7 @@ def run_multi_round_analysis_6r(
         row_out = dict(base)
         row_out['adj_pct']        = best_str
         row_out['action']         = '↗ 提价' if best_adj > 0 else '↗ 维持'
-        row_out['reason']         = f'六轮分析命中（{hit_rounds_str}），唱票取最多数提幅'
+        row_out['reason']         = _hit_desc(hit_rounds_str)
         row_out['hit_rounds']     = hit_rounds_str
         row_out['hit_rounds_adj'] = hit_rounds_adj
         consensus_up_rows.append(row_out)

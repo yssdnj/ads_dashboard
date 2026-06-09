@@ -283,6 +283,7 @@ def save_label_updated(df_label_full: pd.DataFrame) -> bytes:
         'impressions', 'clicks', 'orders', 'spend', 'sales',
         'ACoS(%)', 'CVR(%)', 'CPC($)', '销售占比(%)', '花费占比(%)',
         'label', 'action', 'adj_pct', 'adj_dollar', 'reason',
+        'hit_rounds', 'hit_rounds_adj',
         '原竞价', '新竞价', '操作日期', 'history',
     ]
     out_cols = [c for c in CSV_COLS if c in df_label_full.columns]
