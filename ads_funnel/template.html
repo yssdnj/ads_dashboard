@@ -1077,11 +1077,12 @@ body.dark .drs-lbl{color:#64748b}
         请确保已先完成模块一的分析（分析结果保存在服务端，刷新页面后需重新分析）。
       </div>
       <!-- 历史调价保护 -->
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:var(--g1);border-radius:8px;border:1px solid var(--g2);flex-wrap:wrap">
-        <span style="font-size:12px;color:var(--g6);white-space:nowrap">🕐 <b>历史调价保护</b>：距上次确认调价 ≤</span>
+      <div class="tgt-info-row" style="align-items:center;margin-bottom:10px">
+        <span class="ir-label">🕐 历史调价保护</span>
+        <span style="font-size:12px;color:var(--g6)">距上次确认调价 ≤ </span>
         <input type="number" id="tgt6-guard-days" value="14" min="1" max="365"
-               style="width:52px;padding:2px 6px;font-size:12px;border:1px solid var(--g3);border-radius:4px;text-align:center;background:var(--bg);color:var(--fg)">
-        <span style="font-size:12px;color:var(--g6)">天的 targeting 自动跳过（降价和提价均不执行）；<code style="font-size:10px;background:var(--g2);padding:1px 4px;border-radius:3px">history</code> 列可查保护状态</span>
+               style="width:52px;padding:4px 8px;font-size:13px;font-weight:700;border:1.5px solid #f59e0b;border-radius:6px;background:var(--ywbg);color:#d97706;text-align:center;outline:none">
+        <span style="font-size:12px;color:var(--g6)"> 天的 targeting 自动跳过；<code style="font-size:10px;background:var(--g1);padding:1px 4px;border-radius:3px">history</code> 列可查保护状态<span style="color:var(--g4);font-size:11px;margin-left:4px">（默认 14，可修改）</span></span>
       </div>
 
       <!-- Bulk 文件拖拽区 -->
@@ -1369,11 +1370,12 @@ body.dark .drs-lbl{color:#64748b}
         请确保已先完成模块一的分析（分析结果保存在服务端，刷新页面后需重新分析）。
       </div>
       <!-- 历史调价保护 -->
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:var(--g1);border-radius:8px;border:1px solid var(--g2);flex-wrap:wrap">
-        <span style="font-size:12px;color:var(--g6);white-space:nowrap">🕐 <b>历史调价保护</b>：距上次确认调价 ≤</span>
+      <div class="tgt-info-row" style="align-items:center;margin-bottom:10px">
+        <span class="ir-label">🕐 历史调价保护</span>
+        <span style="font-size:12px;color:var(--g6)">距上次确认调价 ≤ </span>
         <input type="number" id="tgt-guard-days" value="14" min="1" max="365"
-               style="width:52px;padding:2px 6px;font-size:12px;border:1px solid var(--g3);border-radius:4px;text-align:center;background:var(--bg);color:var(--fg)">
-        <span style="font-size:12px;color:var(--g6)">天的 targeting 自动跳过（降价和提价均不执行）；<code style="font-size:10px;background:var(--g2);padding:1px 4px;border-radius:3px">history</code> 列可查保护状态</span>
+               style="width:52px;padding:4px 8px;font-size:13px;font-weight:700;border:1.5px solid #f59e0b;border-radius:6px;background:var(--ywbg);color:#d97706;text-align:center;outline:none">
+        <span style="font-size:12px;color:var(--g6)"> 天的 targeting 自动跳过；<code style="font-size:10px;background:var(--g1);padding:1px 4px;border-radius:3px">history</code> 列可查保护状态<span style="color:var(--g4);font-size:11px;margin-left:4px">（默认 14，可修改）</span></span>
       </div>
 
       <!-- Bulk 文件拖拽区 -->
