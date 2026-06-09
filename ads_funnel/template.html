@@ -1693,6 +1693,7 @@ body.dark .drs-lbl{color:#64748b}
 
 <script>
 const REPORT_COUNTRY = '__REPORT_COUNTRY__';
+const REPORT_COUNTRY_CODE = '__REPORT_COUNTRY_CODE__';
 const RAW = __RAW_JSON__;</script>
 <script>
 const WEEKS = ['W15','W16','W17','W18','W19'];
@@ -4182,8 +4183,9 @@ function exportRoundCSV(roundKey){
   const csv    = '﻿' + header + '\n' + body;
 
   const pt      = data.product_target||'';
+  const cc      = REPORT_COUNTRY_CODE||'';
   const wl      = roundKey==='consensus' ? 'consensus' : (rdata.week_label||roundKey).replace(/\//g,'-');
-  const fname   = `targeting_labels_${pt}_${wl}.csv`;
+  const fname   = cc ? `targeting_labels_${cc}_${pt}_${wl}.csv` : `targeting_labels_${pt}_${wl}.csv`;
   const blob    = new Blob([csv],{type:'text/csv;charset=utf-8'});
   const url     = URL.createObjectURL(blob);
   const a       = document.createElement('a'); a.href=url; a.download=fname; a.click();
@@ -4257,8 +4259,9 @@ function exportRoundCSV6r(roundKey){
   const csv    = '﻿' + header + '\n' + body;
 
   const pt    = data.product_target||'';
+  const cc    = REPORT_COUNTRY_CODE||'';
   const wl    = roundKey==='consensus' ? 'consensus' : (rdata.week_label||roundKey).replace(/\//g,'-');
-  const fname = `targeting_labels_${pt}_${wl}.csv`;
+  const fname = cc ? `targeting_labels_${cc}_${pt}_${wl}.csv` : `targeting_labels_${pt}_${wl}.csv`;
   const blob  = new Blob([csv],{type:'text/csv;charset=utf-8'});
   const url   = URL.createObjectURL(blob);
   const a     = document.createElement('a'); a.href=url; a.download=fname; a.click();

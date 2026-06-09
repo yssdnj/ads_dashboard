@@ -44,22 +44,9 @@ for _cn, _vals in _COUNTRY_ALIASES.items():
     for _v in _vals:
         _COUNTRY_REVERSE[_v] = _vals
 
-# 任意别名 → ISO 两字母代码（用于文件名）
-_COUNTRY_CODE: dict[str, str] = {
-    '美国': 'US', 'United States': 'US', 'US': 'US',
-    '英国': 'UK', 'United Kingdom': 'UK', 'UK': 'UK',
-    '德国': 'DE', 'Germany': 'DE', 'DE': 'DE',
-    '法国': 'FR', 'France': 'FR', 'FR': 'FR',
-    '加拿大': 'CA', 'Canada': 'CA', 'CA': 'CA',
-    '日本': 'JP', 'Japan': 'JP', 'JP': 'JP',
-    '意大利': 'IT', 'Italy': 'IT', 'IT': 'IT',
-    '西班牙': 'ES', 'Spain': 'ES', 'ES': 'ES',
-}
-
-
 def _country_code(country: str) -> str:
-    """将任意国家表示转为两字母代码，未匹配返回空字符串。"""
-    return _COUNTRY_CODE.get(country.strip(), '') if country else ''
+    """将任意国家表示转为两字母代码。收口：实际逻辑在 export.country_code()。"""
+    return export.country_code(country)
 
 
 def _resolve_country(country: str) -> set[str] | None:
@@ -489,7 +476,7 @@ async def api_mode1_export_bulk(
     pt_part      = f'_{product_target}' if product_target else ''
 
     bulk_filename  = f'bulk{country_part}{pt_part}_{today}_updated.xlsx'
-    label_filename = f'targeting_labels{country_part}{pt_part}_{report_start}_{report_end}_updated.csv'
+    label_filename = f'targeting_labels{country_part}{pt_part}_{report_start}_{report_end}_{today}_updated.csv'
 
     return {
         'bulk_b64':       base64.b64encode(bulk_out_bytes).decode('ascii'),

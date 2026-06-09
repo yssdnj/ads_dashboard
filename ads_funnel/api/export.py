@@ -7,6 +7,23 @@ from pathlib import Path
 
 TEMPLATE_PATH = Path(__file__).parent.parent / 'template.html'
 
+# ── 国家代码映射（收口：前后端统一从此处取值）────────────────────────────────
+_COUNTRY_CODE_MAP: dict[str, str] = {
+    '美国': 'US', 'United States': 'US', 'US': 'US',
+    '英国': 'UK', 'United Kingdom': 'UK', 'UK': 'UK',
+    '德国': 'DE', 'Germany': 'DE', 'DE': 'DE',
+    '法国': 'FR', 'France': 'FR', 'FR': 'FR',
+    '加拿大': 'CA', 'Canada': 'CA', 'CA': 'CA',
+    '日本': 'JP', 'Japan': 'JP', 'JP': 'JP',
+    '意大利': 'IT', 'Italy': 'IT', 'IT': 'IT',
+    '西班牙': 'ES', 'Spain': 'ES', 'ES': 'ES',
+}
+
+
+def country_code(country: str) -> str:
+    """将任意国家表示（中文/英文/ISO码）转为两字母代码，未匹配返回空字符串。"""
+    return _COUNTRY_CODE_MAP.get(country.strip(), '') if country else ''
+
 # 默认 ACoS 目标值（与模板一致）
 DEFAULT_TARGETS = {
     'SL': 35, 'DL': 35, 'Toy': 35, 'ToyDH': 40,
@@ -33,9 +50,11 @@ def _build_html(data: dict, title: str, acos_targets: dict,
     weeks_js     = json.dumps(weeks,   ensure_ascii=False)
     wk_dates_js  = json.dumps(wk_dates, ensure_ascii=False)
 
-    # 0. 注入国家
-    country = title.split()[0] if title else ''
-    tmpl = tmpl.replace("'__REPORT_COUNTRY__'", json.dumps(country), 1)
+    # 0. 注入国家（中文名 + 两字母代码，收口于 export.country_code()）
+    _country      = title.split()[0] if title else ''
+    _country_code = country_code(_country)
+    tmpl = tmpl.replace("'__REPORT_COUNTRY__'",      json.dumps(_country),      1)
+    tmpl = tmpl.replace("'__REPORT_COUNTRY_CODE__'", json.dumps(_country_code), 1)
 
     # 1. 注入 RAW 数据
     tmpl = tmpl.replace('const RAW = __RAW_JSON__;',
