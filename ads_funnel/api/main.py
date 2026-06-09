@@ -520,6 +520,7 @@ async def api_mode1_confirm_update(body: dict):
             report_start         = body.get('report_start',  ''),
             report_end           = body.get('report_end',    ''),
             orders_threshold     = int(body.get('orders_threshold', 10)),
+            up_orders_threshold  = int(body.get('up_orders_threshold', 2)),
             updated_count        = int(body.get('updated_count', 0)),
             log_lines            = body.get('log_lines', []),
             target_acos          = float(ta) if ta is not None else None,

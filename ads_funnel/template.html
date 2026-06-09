@@ -4051,6 +4051,7 @@ async function exportBulk6r(){
       report_start:         lastMeta.report_start   || '',
       report_end:           lastMeta.report_end     || '',
       orders_threshold:     ordersThresh,
+      up_orders_threshold:  upOrdersThresh,
       updated_count:        updatedCount,
       log_lines:            data.log     || [],
       details:              data.details || [],
@@ -5142,7 +5143,7 @@ async function renderBidHistory(){
   const pct = v => v==null ? '—' : (v*100).toFixed(0)+'%';
   const usd = v => v==null ? '—' : '$'+Number(v).toFixed(4);
 
-  let html = '<div style="margin-top:12px"><div style="border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;font-size:12px"><div style="display:grid;grid-template-columns:2fr 1fr 1fr 2fr 1fr 1fr 1fr 1fr"><div class="tgt-gh">确认时间</div><div class="tgt-gh">产品</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">更新条数</div><div class="tgt-gh">报告区间</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">订单阈值</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">目标ACoS</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">出单点击数</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">明细</div>';
+  let html = '<div style="margin-top:12px"><div style="border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;font-size:12px"><div style="display:grid;grid-template-columns:2fr 1fr 1fr 2fr 1fr 1fr 1fr 1fr 1fr"><div class="tgt-gh">确认时间</div><div class="tgt-gh">产品</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">更新条数</div><div class="tgt-gh">报告区间</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">降价订单阈值</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">提价订单阈值</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">目标ACoS</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">出单点击数</div><div class="tgt-gh" style="justify-content:center;display:flex;align-items:center">明细</div>';
 
   logs.forEach((log, i) => {
     const range = log.report_start && log.report_end
@@ -5153,7 +5154,8 @@ async function renderBidHistory(){
           + `<div class="tgt-gd" style="font-weight:600">${log.product_target||'—'}</div>`
           + `<div class="tgt-gd" style="justify-content:center;display:flex;align-items:center">${log.updated_count}</div>`
           + `<div class="tgt-gd" style="font-size:11px;color:#6b7280">${range}</div>`
-          + `<div class="tgt-gd" style="justify-content:center;display:flex;align-items:center;color:#6b7280">${log.orders_threshold}</div>`
+          + `<div class="tgt-gd" style="justify-content:center;display:flex;align-items:center;color:#6b7280">${log.orders_threshold??'—'}</div>`
+          + `<div class="tgt-gd" style="justify-content:center;display:flex;align-items:center;color:#6b7280">${log.up_orders_threshold??'—'}</div>`
           + `<div class="tgt-gd" style="justify-content:center;display:flex;align-items:center;color:#1d4ed8">${tacos}</div>`
           + `<div class="tgt-gd" style="justify-content:center;display:flex;align-items:center;color:#6b7280">${aclk}</div>`
           + `<div class="tgt-gd" style="justify-content:center;display:flex;align-items:center"><button onclick="toggleBidDetail(${log.id})" style="padding:3px 10px;font-size:11px;border:1px solid #d1d5db;border-radius:5px;background:#fff;cursor:pointer;color:#374151" id="hist-btn-${log.id}">展开</button></div>`

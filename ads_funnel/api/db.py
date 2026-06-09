@@ -64,6 +64,7 @@ def init_db():
             report_start         VARCHAR(20)  DEFAULT '',
             report_end           VARCHAR(20)  DEFAULT '',
             orders_threshold     INT          DEFAULT 10,
+            up_orders_threshold  INT          DEFAULT 2,
             updated_count        INT          DEFAULT 0,
             log_lines            LONGTEXT,
             target_acos          DOUBLE,
@@ -121,6 +122,10 @@ def init_db():
         if 'country' not in log_cols:
             conn.execute(text(
                 "ALTER TABLE bid_update_log ADD COLUMN country VARCHAR(50) DEFAULT ''"
+            ))
+        if 'up_orders_threshold' not in log_cols:
+            conn.execute(text(
+                'ALTER TABLE bid_update_log ADD COLUMN up_orders_threshold INT DEFAULT 2'
             ))
 
 
@@ -492,6 +497,7 @@ def save_bid_update_log(
     target_acos:          float | None = None,
     avg_clicks_per_order: float | None = None,
     country:              str = '',
+    up_orders_threshold:  int = 2,
 ) -> int:
     """记录一次已确认上传到亚马逊的竞价更新操作，返回新记录 id。"""
     with get_engine().begin() as conn:
@@ -499,14 +505,15 @@ def save_bid_update_log(
             text(
                 'INSERT INTO bid_update_log '
                 '(product_target, bulk_filename, label_filename, '
-                ' report_start, report_end, orders_threshold, updated_count, log_lines, '
+                ' report_start, report_end, orders_threshold, up_orders_threshold, updated_count, log_lines, '
                 ' target_acos, avg_clicks_per_order, country) '
-                'VALUES (:pt, :bf, :lf, :rs, :re, :ot, :uc, :ll, :ta, :ac, :co)'
+                'VALUES (:pt, :bf, :lf, :rs, :re, :ot, :uot, :uc, :ll, :ta, :ac, :co)'
             ),
             {
                 'pt': product_target,  'bf': bulk_filename,
                 'lf': label_filename,  'rs': report_start,
                 're': report_end,      'ot': orders_threshold,
+                'uot': up_orders_threshold,
                 'uc': updated_count,   'll': json.dumps(log_lines, ensure_ascii=False),
                 'ta': target_acos,     'ac': avg_clicks_per_order,
                 'co': country,
@@ -557,7 +564,7 @@ def list_bid_update_logs(limit: int = 100, country: str = '') -> list:
             result = conn.execute(
                 text(
                     'SELECT id, confirmed_at, product_target, bulk_filename, '
-                    '       report_start, report_end, orders_threshold, updated_count, '
+                    '       report_start, report_end, orders_threshold, up_orders_threshold, updated_count, '
                     '       target_acos, avg_clicks_per_order, country '
                     'FROM bid_update_log WHERE country = :co ORDER BY id DESC LIMIT :lim'
                 ),
@@ -567,7 +574,7 @@ def list_bid_update_logs(limit: int = 100, country: str = '') -> list:
             result = conn.execute(
                 text(
                     'SELECT id, confirmed_at, product_target, bulk_filename, '
-                    '       report_start, report_end, orders_threshold, updated_count, '
+                    '       report_start, report_end, orders_threshold, up_orders_threshold, updated_count, '
                     '       target_acos, avg_clicks_per_order, country '
                     'FROM bid_update_log ORDER BY id DESC LIMIT :lim'
                 ),
