@@ -439,6 +439,7 @@ async def api_mode1_export_bulk(
     report_end:       str        = Form('',  description='报告结束日期，用于文件名'),
     orders_threshold:    int        = Form(10,  description='降价订单数筛选阈值，默认 10'),
     up_orders_threshold: int        = Form(2,   description='提价订单数筛选阈值，默认 2'),
+    history_guard_days:  int        = Form(14,  description='历史调价保护天数，默认 14'),
     report_country:      str        = Form('',  description='当前页面国家（中文，如 美国），用于文件名'),
 ):
     """
@@ -466,6 +467,7 @@ async def api_mode1_export_bulk(
             orders_threshold    = orders_threshold,
             up_orders_threshold = up_orders_threshold,
             history_map         = history_map,
+            history_guard_days  = history_guard_days,
         )
     except Exception as e:
         raise HTTPException(500, f'Bulk 更新失败: {e}')

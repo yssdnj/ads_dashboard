@@ -374,7 +374,7 @@ def apply_mode1_to_bulk(
     orders_threshold: int = 10,
     up_orders_threshold: int = 2,
     history_map: dict | None = None,
-    history_guard_days: int = 21,
+    history_guard_days: int = 14,
 ) -> tuple[bytes, bytes, list[str], list]:
     """
     将 Mode 1 分析结果写回 Amazon Bulk 文件，同时生成含 原竞价/新竞价/操作日期 的
