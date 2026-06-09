@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import time
 import warnings
+from collections import Counter
 from pathlib import Path
 
 import numpy as np
@@ -566,8 +567,13 @@ def run_multi_round_analysis(
         if len(hit_map) < 2:
             continue
 
-        # 最保守 adj_pct（绝对值最小）
-        best_adj = min(hit_map.values(), key=abs)
+        # 唱票：票数最多的值；平票取绝对值最小（最保守）
+        _vote_ctr = Counter(hit_map.values())
+        _max_votes = max(_vote_ctr.values())
+        best_adj = min(
+            (v for v, c in _vote_ctr.items() if c == _max_votes),
+            key=abs
+        )
         hit_rounds_str = ','.join(sorted(hit_map.keys()))
 
         # metrics 取 R3，label 取 R1（最新状态），fallback 取任意命中轮
@@ -582,7 +588,7 @@ def run_multi_round_analysis(
         row['label']       = (r1_row_map.get(key) or base).get('label', base.get('label', ''))
         row['adj_pct']     = f'{int(best_adj * 100)}%'
         row['action']      = '↘ 降价'
-        row['reason']      = f'多轮命中（{hit_rounds_str}），取最保守降幅'
+        row['reason']      = f'多轮命中（{hit_rounds_str}），唱票取最多数降幅'
         row['hit_rounds']  = hit_rounds_str
         consensus_rows.append(row)
 
@@ -750,7 +756,19 @@ def run_multi_round_analysis_6r(
             if dec is not None
         ]
         if valid_adjs:
-            best_rn, best_adj_dec, _, best_action = min(valid_adjs, key=lambda x: abs(x[1]))
+            # 唱票：按 adj_pct 整数值（避免浮点噪声）统计票数
+            _dec_ctr = Counter(round(dec * 100) for _, dec, _, _ in valid_adjs)
+            _max_v   = max(_dec_ctr.values())
+            # 票数最多的值（平票取绝对值最小）
+            best_dec_int = min(
+                (d for d, c in _dec_ctr.items() if c == _max_v),
+                key=abs
+            )
+            # 从 valid_adjs 中找对应轮次（取第一个匹配）
+            best_rn, best_adj_dec, _, best_action = next(
+                (x for x in valid_adjs if round(x[1] * 100) == best_dec_int),
+                valid_adjs[0]
+            )
             best_adj_str = f'{int(best_adj_dec * 100)}%'
         else:
             # 所有轮次 adj_pct 均为 0%：取任意命中轮的 action，保持 0%
@@ -778,7 +796,7 @@ def run_multi_round_analysis_6r(
         row['label']          = (r1_row_map.get(key) or base).get('label', base.get('label', ''))
         row['adj_pct']        = best_adj_str
         row['action']         = best_action
-        row['reason']         = f'六轮分析命中（{hit_rounds_str}），取最保守降幅'
+        row['reason']         = f'六轮分析命中（{hit_rounds_str}），唱票取最多数降幅'
         row['hit_rounds']     = hit_rounds_str
         row['hit_rounds_adj'] = hit_rounds_adj
         consensus_rows.append(row)
@@ -814,9 +832,14 @@ def run_multi_round_analysis_6r(
         # 门槛：≥3/6 且 R3 必须命中
         if len(hit_set) < 3 or 'R3' not in hit_set:
             continue
-        # 最保守提幅（最小值）
-        best_adj = min(hit_map.values(), key=lambda x: x[0])[0]
-        best_str = f'+{int(best_adj * 100)}%' if best_adj > 0 else '0%'
+        # 唱票：票数最多的值；平票取最小（最保守）
+        _up_ctr = Counter(round(v[0] * 100) for v in hit_map.values())
+        _up_max = max(_up_ctr.values())
+        best_adj_int = min(
+            (d for d, c in _up_ctr.items() if c == _up_max)
+        )
+        best_adj = best_adj_int / 100
+        best_str = f'+{best_adj_int}%' if best_adj > 0 else '0%'
         hit_rounds_str = ','.join(sorted(hit_map.keys()))
         hit_rounds_adj = ','.join(
             f'{r}:{hit_map[r][1]}' for r in sorted(hit_map.keys())
@@ -826,7 +849,7 @@ def run_multi_round_analysis_6r(
         row_out = dict(base)
         row_out['adj_pct']        = best_str
         row_out['action']         = '↗ 提价' if best_adj > 0 else '↗ 维持'
-        row_out['reason']         = f'六轮分析命中（{hit_rounds_str}），取最保守提幅'
+        row_out['reason']         = f'六轮分析命中（{hit_rounds_str}），唱票取最多数提幅'
         row_out['hit_rounds']     = hit_rounds_str
         row_out['hit_rounds_adj'] = hit_rounds_adj
         consensus_up_rows.append(row_out)

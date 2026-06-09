@@ -118,6 +118,13 @@ tbody td.bad{color:#ef4444}
 .acos-item label{display:block;font-size:11px;font-weight:600;color:#718096;margin-bottom:6px}
 .acos-item input{width:100%;padding:6px 10px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:16px;font-weight:700;text-align:center}
 .exp-toggle{font-size:10px;color:#3b82f6;cursor:pointer;margin-right:4px;display:inline-block;width:14px;text-align:center;font-weight:700;flex-shrink:0}
+.col-resizer{position:absolute;top:0;right:0;width:5px;height:100%;cursor:col-resize;z-index:2}
+.col-resizer::after{content:'';position:absolute;top:20%;right:1px;width:2px;height:60%;border-radius:1px;background:transparent;transition:background .15s}
+.col-resizer:hover::after,.col-resizer:active::after{background:rgba(59,130,246,.7)}
+.copy-icon{display:inline-flex;align-items:center;cursor:pointer;margin-left:4px;opacity:0;transition:opacity .15s;vertical-align:middle;flex-shrink:0}
+td:hover .copy-icon{opacity:1}
+.copy-icon svg{width:13px;height:13px;color:#94a3b8}
+.copy-icon:hover svg{color:#3b82f6}
 .row-indent1 td:first-child{padding-left:22px!important}
 #l1-prod-table td:nth-child(2){text-align:left;font-weight:400}
 .row-indent2 td:first-child{padding-left:40px!important}
@@ -2410,6 +2417,7 @@ function renderL1ProdTable(){
   }
   html+='</tbody></table>';
   document.getElementById('l1-prod-table').innerHTML=html;
+  _initL1ColResize();
 }
 
 function toggleL1ProdRow(prod,tr){
@@ -2670,6 +2678,7 @@ function renderL2Table(){
   }
   html+='</tbody></table>';
   document.getElementById('l2-table').innerHTML=html;
+  _initL2ColResize();
   let pg=`<select class="per-page-select" onchange="setL2PerPage(+this.value)">${[20,50,100,200].map(n=>`<option value="${n}"${n===l2PerPage?' selected':''}>${n}</option>`).join('')}</select>`;
   pg+=`<span class="page-info" style="margin-left:8px">${total} 条 · 第 ${l2Page+1}/${pages} 页</span>`;
   if(pages>1){
@@ -2874,6 +2883,48 @@ async function setL3WkRange(){
   }
 }
 
+// ── 通用列宽拖动（L1 / L2 / L3 共用）────────────────────────────────────────
+const _l1ColWidths = {}, _l2ColWidths = {}, _l3ColWidths = {};
+
+function _initColResize(tableSelector, store) {
+  const table = document.querySelector(tableSelector + ' table');
+  if (!table) return;
+  const ths = Array.from(table.querySelectorAll('thead th'));
+  // 1. 读取自然宽度，优先用记忆值
+  ths.forEach((th, i) => {
+    const w = store[i] || th.offsetWidth;
+    th.style.width = w + 'px';
+    th.style.minWidth = '36px';
+    store[i] = w;
+  });
+  // 2. 锁定布局
+  table.style.tableLayout = 'fixed';
+  // 3. 加拖拽手柄
+  ths.forEach((th, i) => {
+    if (th.querySelector('.col-resizer')) return;
+    th.style.position = 'relative';
+    th.style.overflow = 'hidden';
+    const rz = document.createElement('div');
+    rz.className = 'col-resizer';
+    rz.addEventListener('mousedown', e => {
+      e.preventDefault(); e.stopPropagation();
+      const startX = e.clientX, startW = th.offsetWidth;
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      const onMove = ev => { const w = Math.max(36, startW + ev.clientX - startX); th.style.width = w + 'px'; store[i] = w; };
+      const onUp = () => { document.body.style.cursor = ''; document.body.style.userSelect = ''; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+    th.appendChild(rz);
+  });
+}
+function _initL1ColResize(){ _initColResize('#l1-prod-table', _l1ColWidths); }
+function _initL2ColResize(){ _initColResize('#l2-table',      _l2ColWidths); }
+function _initL3ColResize(){ _initColResize('#l3-table',      _l3ColWidths); }
+
+const _copyIconSVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:13px;height:13px;display:block"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+
 function renderL3(){
   const getRenderCamp=(c)=>{
     if(!l3WkData)return c;
@@ -2906,7 +2957,7 @@ function renderL3(){
     const acCls=acosClass(r.ac,c.p);
     const esc=c.n.replace(/'/g,"\'").replace(/"/g,'&quot;');
     html+=`<tr class="clickable" onclick="toggleL3Row('${esc}',this)">
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis" title="${c.n.replace(/"/g,'&quot;')}"><span class="exp-toggle">▶</span>${c.n}</td>
+      <td style="max-width:180px" title="${c.n.replace(/"/g,'&quot;')}"><div style="display:flex;align-items:center;gap:4px;min-width:0"><span class="exp-toggle">▶</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${c.n}</span><span class="copy-icon" onclick="event.stopPropagation();navigator.clipboard.writeText('${esc}').then(()=>{this.innerHTML='<svg viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;#16a34a&quot; stroke-width=&quot;2.5&quot;><polyline points=&quot;20 6 9 17 4 12&quot;/></svg>';setTimeout(()=>{this.innerHTML=_copyIconSVG},1200)})" title="复制活动名称">${_copyIconSVG}</span></div></td>
       <td>${ST[c.st]||''}</td>
       <td><small style="color:#3b82f6">${c.p}</small></td>
       <td><small style="color:${CAT_COLOR[c.c]}">${CAT_SHORT[c.c]}</small></td>
@@ -2919,6 +2970,7 @@ function renderL3(){
   }
   html+='</tbody></table>';
   document.getElementById('l3-table').innerHTML=html;
+  _initL3ColResize();
 
   let pg=`<select class="per-page-select" onchange="setL3PerPage(+this.value)">${[50,100,200,1000].map(n=>`<option value="${n}"${n===l3PerPage?' selected':''}>${n}</option>`).join('')}</select>`;
   pg+=`<span class="page-info" style="margin-left:8px">${total} 条 · 第 ${l3Page+1}/${pages} 页</span>`;
@@ -2966,17 +3018,24 @@ async function toggleL3Row(name,tr){
   const isoFrom=fromDays[0]||'2020-01-01';
   const isoTo=toDays[toDays.length-1]||'2099-12-31';
 
-  // Fetch trend data (use cache if available)
+  // Fetch trend data (use cache if available; never cache empty results)
   let trend=l3TrendCache[name];
   if(!trend){
     try{
       const resp=await fetch(
-        `api/analysis/mode1/campaign-trend?campaign=${encodeURIComponent(name)}`+
+        `/api/analysis/mode1/campaign-trend?campaign=${encodeURIComponent(name)}`+
         `&country=${encodeURIComponent(REPORT_COUNTRY)}&date_from=${isoFrom}&date_to=${isoTo}`
       );
-      trend=await resp.json();
-    }catch(e){trend={weekly:[],daily:[],bid_events:[]};}
-    l3TrendCache[name]=trend;
+      if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const json=await resp.json();
+      if(!json.weekly||!json.daily) throw new Error('response missing weekly/daily');
+      trend=json;
+    }catch(e){
+      console.error('[L3 trend] fetch failed:', e, 'name=', name, 'country=', REPORT_COUNTRY, 'from=', isoFrom, 'to=', isoTo);
+      trend={weekly:[],daily:[],bid_events:[],_error:String(e)};
+    }
+    // 只缓存有数据的结果；有数据或有错误原因都缓存
+    if(trend.weekly.length>0||trend.daily.length>0||trend._error) l3TrendCache[name]=trend;
   }
 
   // Abort if user clicked away
@@ -2998,7 +3057,8 @@ function _buildL3TrendPanel(name,safeId,camp,trend){
     <button id="${safeId}-${chart}-click" onclick="setL3TrendMode('${esc}','${chart}','click')"
       style="padding:2px 8px;font-size:11px;border:1px solid #94a3b8;border-radius:4px;cursor:pointer;background:#f8fafc;color:#64748b">点击/订单/CTR/ACoS</button>`;
 
-  const noData='<div style="text-align:center;color:#94a3b8;padding:12px;font-size:12px">暂无数据</div>';
+  const errMsg=trend._error?`<div style="text-align:center;color:#ef4444;padding:4px;font-size:11px">加载失败: ${trend._error}</div>`:'';
+  const noData=`${errMsg}<div style="text-align:center;color:#94a3b8;padding:12px;font-size:12px">暂无数据</div>`;
 
   return `<div style="padding:10px 16px">
     <div style="margin-bottom:10px">
