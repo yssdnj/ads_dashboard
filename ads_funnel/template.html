@@ -4198,7 +4198,8 @@ function exportRoundCSV(roundKey){
 
   const pt      = data.product_target||'';
   const cc      = REPORT_COUNTRY_CODE||'';
-  const wl      = roundKey==='consensus' ? 'consensus' : (rdata.week_label||roundKey).replace(/\//g,'-');
+  const _today  = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const wl      = roundKey==='consensus' ? `${_today}_consensus` : (rdata.week_label||roundKey).replace(/\//g,'-');
   const fname   = cc ? `targeting_labels_${cc}_${pt}_${wl}.csv` : `targeting_labels_${pt}_${wl}.csv`;
   const blob    = new Blob([csv],{type:'text/csv;charset=utf-8'});
   const url     = URL.createObjectURL(blob);
@@ -4274,7 +4275,8 @@ function exportRoundCSV6r(roundKey){
 
   const pt    = data.product_target||'';
   const cc    = REPORT_COUNTRY_CODE||'';
-  const wl    = roundKey==='consensus' ? 'consensus' : (rdata.week_label||roundKey).replace(/\//g,'-');
+  const _today= new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const wl    = roundKey==='consensus' ? `${_today}_consensus` : (rdata.week_label||roundKey).replace(/\//g,'-');
   const fname = cc ? `targeting_labels_${cc}_${pt}_${wl}.csv` : `targeting_labels_${pt}_${wl}.csv`;
   const blob  = new Blob([csv],{type:'text/csv;charset=utf-8'});
   const url   = URL.createObjectURL(blob);
