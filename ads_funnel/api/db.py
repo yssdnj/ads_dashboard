@@ -90,6 +90,36 @@ def init_db():
             datetime     VARCHAR(30)  DEFAULT ''
         ) CHARACTER SET utf8mb4
         """,
+        """
+        CREATE TABLE IF NOT EXISTS campaign_placement_pct (
+            campaign_name     VARCHAR(300) NOT NULL,
+            campaign_id       VARCHAR(50)  DEFAULT '',
+            portfolio_id      VARCHAR(50)  DEFAULT '',
+            bidding_strategy  VARCHAR(20)  DEFAULT '',
+            top_pct           INT          DEFAULT 0,
+            rest_pct          INT          DEFAULT 0,
+            pp_pct            INT          DEFAULT 0,
+            country           VARCHAR(10)  NOT NULL,
+            updated_at        DATETIME     DEFAULT NOW(),
+            PRIMARY KEY (campaign_name, country)
+        ) CHARACTER SET utf8mb4
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS raw_placement (
+            date           DATE         NOT NULL,
+            campaign_name  VARCHAR(300) NOT NULL,
+            portfolio_name VARCHAR(300) DEFAULT '',
+            placement      VARCHAR(100) NOT NULL,
+            impressions    INT          DEFAULT 0,
+            clicks         INT          DEFAULT 0,
+            spend          DECIMAL(12,4) DEFAULT 0,
+            sales          DECIMAL(12,4) DEFAULT 0,
+            orders         INT          DEFAULT 0,
+            units          INT          DEFAULT 0,
+            country        VARCHAR(10)  NOT NULL,
+            PRIMARY KEY (date, campaign_name, placement, country)
+        ) CHARACTER SET utf8mb4
+        """,
     ]
     with get_engine().begin() as conn:
         for stmt in stmts:
@@ -127,6 +157,8 @@ def init_db():
             conn.execute(text(
                 'ALTER TABLE bid_update_log ADD COLUMN up_orders_threshold INT DEFAULT 2'
             ))
+        # 迁移：四张原始表补加 campaign_id / portfolio_id 列
+        _ensure_raw_id_cols(conn)
 
 
 # ── Reports ───────────────────────────────────────────────────────────────────
@@ -191,6 +223,142 @@ _KEYS_P = ['国家', '广告组合', '日期']
 
 # ASIN 格式：B0 开头共 10 个字符（B0 + 8位字母数字）
 _ASIN_RE = re.compile(r'^B0[A-Z0-9]{8}$')
+
+
+def _ensure_raw_id_cols(conn=None):
+    """确保四张原始表含 campaign_id / portfolio_id 列（表不存在则跳过）。
+    conn: 已开启的 SQLAlchemy connection（用于 _ensure_schema 内部复用）；
+          None 时自行获取连接。
+    """
+    _tables = {
+        'raw_tar':     ['campaign_id', 'portfolio_id'],
+        'raw_ap':      ['campaign_id', 'portfolio_id'],
+        'raw_camp_lx': ['campaign_id', 'portfolio_id'],
+        'raw_port_lx': ['portfolio_id'],
+    }
+    engine = get_engine()
+
+    def _do(c):
+        existing_tables = {r[0] for r in c.execute(text('SHOW TABLES')).fetchall()}
+        for tbl, need_cols in _tables.items():
+            if tbl not in existing_tables:
+                continue
+            have = {r[0] for r in c.execute(text(f'SHOW COLUMNS FROM `{tbl}`')).fetchall()}
+            for col in need_cols:
+                if col not in have:
+                    c.execute(text(
+                        f"ALTER TABLE `{tbl}` ADD COLUMN `{col}` VARCHAR(50) DEFAULT ''"
+                    ))
+                # 建索引（忽略已存在错误）
+                try:
+                    c.execute(text(
+                        f'CREATE INDEX idx_{tbl}_{col} ON `{tbl}`(`{col}`)'
+                    ))
+                except Exception:
+                    pass
+
+    if conn is not None:
+        _do(conn)
+    else:
+        with engine.begin() as c:
+            _do(c)
+
+
+# ── Placement PCT ─────────────────────────────────────────────────────────────
+
+def upsert_placement_pct(rows: list, country: str):
+    """将 Bulk 提取的 placement 配置写入 campaign_placement_pct（upsert）。
+    rows: list of dict，keys: campaign_name, campaign_id, portfolio_id,
+          bidding_strategy, top_pct, rest_pct, pp_pct
+    """
+    if not rows:
+        return
+    with get_engine().begin() as conn:
+        for r in rows:
+            conn.execute(text("""
+                INSERT INTO campaign_placement_pct
+                    (campaign_name, campaign_id, portfolio_id, bidding_strategy,
+                     top_pct, rest_pct, pp_pct, country, updated_at)
+                VALUES
+                    (:campaign_name, :campaign_id, :portfolio_id, :bidding_strategy,
+                     :top_pct, :rest_pct, :pp_pct, :country, NOW())
+                ON DUPLICATE KEY UPDATE
+                    campaign_id      = VALUES(campaign_id),
+                    portfolio_id     = VALUES(portfolio_id),
+                    bidding_strategy = VALUES(bidding_strategy),
+                    top_pct          = VALUES(top_pct),
+                    rest_pct         = VALUES(rest_pct),
+                    pp_pct           = VALUES(pp_pct),
+                    updated_at       = NOW()
+            """), {**r, 'country': country})
+
+
+def get_placement_pct(country: str) -> list:
+    """返回指定国家的 campaign_placement_pct 列表。"""
+    with get_engine().connect() as conn:
+        rows = conn.execute(text("""
+            SELECT campaign_name, campaign_id, portfolio_id,
+                   bidding_strategy, top_pct, rest_pct, pp_pct, updated_at
+            FROM campaign_placement_pct WHERE country = :country
+        """), {'country': country}).mappings().all()
+    return [dict(r) for r in rows]
+
+
+# ── Raw Placement ─────────────────────────────────────────────────────────────
+
+def upsert_raw_placement(df: 'pd.DataFrame', country: str):
+    """增量写入 Placement 天维度报告（按 date+campaign_name+placement+country 去重）。"""
+    if df is None or df.empty:
+        return 0
+
+    col_map = {
+        'Date': 'date',
+        'Campaign Name': 'campaign_name',
+        'Portfolio name': 'portfolio_name',
+        'Placement': 'placement',
+        'Impressions': 'impressions',
+        'Clicks': 'clicks',
+        'Spend': 'spend',
+        '7 Day Total Sales ': 'sales',
+        '7 Day Total Orders (#)': 'orders',
+        '7 Day Total Units (#)': 'units',
+    }
+    df = df.rename(columns={k: v for k, v in col_map.items() if k in df.columns})
+    needed = ['date', 'campaign_name', 'placement', 'impressions', 'clicks',
+              'spend', 'sales', 'orders', 'units']
+    for c in needed:
+        if c not in df.columns:
+            df[c] = 0
+    if 'portfolio_name' not in df.columns:
+        df['portfolio_name'] = ''
+
+    df['country'] = country
+    df['date'] = pd.to_datetime(df['date']).dt.date
+    for c in ['impressions', 'clicks', 'orders', 'units']:
+        df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0).astype(int)
+    for c in ['spend', 'sales']:
+        df[c] = pd.to_numeric(df[c], errors='coerce').fillna(0).round(4)
+    df['portfolio_name'] = df['portfolio_name'].fillna('').astype(str)
+
+    with get_engine().begin() as conn:
+        for _, row in df.iterrows():
+            conn.execute(text("""
+                INSERT INTO raw_placement
+                    (date, campaign_name, portfolio_name, placement,
+                     impressions, clicks, spend, sales, orders, units, country)
+                VALUES
+                    (:date, :campaign_name, :portfolio_name, :placement,
+                     :impressions, :clicks, :spend, :sales, :orders, :units, :country)
+                ON DUPLICATE KEY UPDATE
+                    portfolio_name = VALUES(portfolio_name),
+                    impressions    = VALUES(impressions),
+                    clicks         = VALUES(clicks),
+                    spend          = VALUES(spend),
+                    sales          = VALUES(sales),
+                    orders         = VALUES(orders),
+                    units          = VALUES(units)
+            """), row.to_dict())
+    return len(df)
 
 
 def _normalize_camp_name(names: pd.Series) -> pd.Series:
@@ -349,12 +517,54 @@ def _upsert_lx(tbl: str, df_new: pd.DataFrame, keys: list, comp_key_fn=None):
         pass  # 已存在则忽略
 
 
+def _sync_portfolio_from_import(df_new: pd.DataFrame):
+    """导入后同步广告组合：若某活动换了组合，把历史行也更新为最新组合。
+    逻辑：
+    1. 对新数据按（国家 + 归一化活动名）分组，取最新日期对应的广告组合
+    2. 收集该组内所有原始活动名（同一归一化名可能有细微变体）
+    3. UPDATE raw_camp_lx 里组合不一致的历史行
+    """
+    if '广告活动' not in df_new.columns or '广告组合' not in df_new.columns:
+        return
+
+    norm = _normalize_camp_name(df_new['广告活动'].astype(str))
+    df_new = df_new.copy()
+    df_new['_norm'] = norm
+    df_new['日期'] = df_new['日期'].astype(str)
+
+    engine = get_engine()
+    with engine.begin() as conn:
+        for (country, norm_name), grp in df_new.groupby(['国家', '_norm']):
+            # 最新日期对应的广告组合
+            latest_port = grp.sort_values('日期').iloc[-1]['广告组合']
+            if pd.isna(latest_port) or str(latest_port).strip() == '':
+                continue
+            latest_port = str(latest_port).strip()
+
+            # 该归一化名下所有原始活动名
+            raw_names = list(grp['广告活动'].dropna().unique())
+            if not raw_names:
+                continue
+
+            placeholders = ','.join([f':n{i}' for i in range(len(raw_names))])
+            params = {'country': str(country), 'port': latest_port}
+            params.update({f'n{i}': str(n) for i, n in enumerate(raw_names)})
+
+            conn.execute(text(
+                f'UPDATE raw_camp_lx SET `广告组合` = :port '
+                f'WHERE `国家` = :country '
+                f'AND `广告活动` IN ({placeholders}) '
+                f'AND `广告组合` != :port'
+            ), params)
+
+
 def upsert_raw(df_c: pd.DataFrame, df_p: pd.DataFrame):
     """增量写入 raw_camp_lx / raw_port_lx"""
     dc = _prep_raw(df_c)
     dp = _prep_raw(df_p)
     _upsert_lx('raw_camp_lx', dc, _KEYS_C, comp_key_fn=_camp_comp_key)
     _upsert_lx('raw_port_lx', dp, _KEYS_P)
+    _sync_portfolio_from_import(dc)
 
 
 def get_raw_dfs():
@@ -1050,3 +1260,131 @@ def get_bid_update_details(log_id: int) -> list:
             {'lid': log_id}
         )
         return [dict(r) for r in result.mappings().all()]
+
+
+# ── Bulk ID 同步 ───────────────────────────────────────────────────────────────
+
+def update_ids_from_bulk(
+    camp_map: dict,
+    port_map: dict,
+    camp_id_name_map: dict | None = None,
+    port_id_name_map: dict | None = None,
+) -> dict:
+    """
+    根据 bulk 映射更新四张原始表的 campaign_id / portfolio_id 列，
+    并反向同步：若 bulk 里同 ID 的名称与 DB 不同，则以 bulk 为准更新名称。
+    camp_map:         {normalized_name: (campaign_id, portfolio_id)}
+    port_map:         {portfolio_name: portfolio_id}
+    camp_id_name_map: {campaign_id: canonical_campaign_name}（反向同步用）
+    port_id_name_map: {portfolio_id: canonical_portfolio_name}（反向同步用）
+    """
+    engine = get_engine()
+    _ensure_raw_id_cols()
+    insp   = sa_inspect(engine)
+    tables = set(insp.get_table_names())
+    stats  = {}
+
+    def _update_camp_table(tbl: str, camp_col: str):
+        if tbl not in tables:
+            stats[tbl] = 0
+            return
+
+        # ① 名称 → ID 正向同步
+        with engine.connect() as conn:
+            rows = conn.execute(text(f'SELECT DISTINCT `{camp_col}` FROM `{tbl}`')).fetchall()
+        if not rows:
+            stats[tbl] = 0
+            return
+        names = pd.Series([r[0] for r in rows], dtype=str)
+        norm  = _normalize_camp_name(names)
+        fwd_updates = [
+            (camp_map[n][0], camp_map[n][1], orig)
+            for orig, n in zip(names, norm) if n in camp_map
+        ]
+        if fwd_updates:
+            with engine.begin() as conn:
+                for cid, pid, name in fwd_updates:
+                    conn.execute(
+                        text(f'UPDATE `{tbl}` SET campaign_id=:cid, portfolio_id=:pid'
+                             f' WHERE `{camp_col}`=:n'),
+                        {'cid': cid, 'pid': pid, 'n': name}
+                    )
+
+        # ② ID → 名称反向同步（bulk 为准）
+        rev_updates = 0
+        if camp_id_name_map:
+            with engine.connect() as conn:
+                id_rows = conn.execute(text(
+                    f"SELECT DISTINCT campaign_id, `{camp_col}` FROM `{tbl}`"
+                    f" WHERE campaign_id != '' AND campaign_id IS NOT NULL"
+                )).fetchall()
+            renames = [
+                (camp_id_name_map[cid], cid)
+                for cid, db_name in id_rows
+                if cid in camp_id_name_map and camp_id_name_map[cid] != db_name
+            ]
+            if renames:
+                with engine.begin() as conn:
+                    for new_name, cid in renames:
+                        conn.execute(
+                            text(f'UPDATE `{tbl}` SET `{camp_col}`=:n WHERE campaign_id=:cid'),
+                            {'n': new_name, 'cid': cid}
+                        )
+            rev_updates = len(renames)
+
+        stats[tbl] = len(fwd_updates)
+        stats[tbl + '_renamed'] = rev_updates
+
+    _update_camp_table('raw_tar', 'Campaign Name')
+
+    if 'raw_ap' in tables:
+        with engine.connect() as conn:
+            ap_cols = {r[0] for r in conn.execute(text('SHOW COLUMNS FROM raw_ap')).fetchall()}
+        camp_col = '广告活动名称' if '广告活动名称' in ap_cols else 'Campaign Name'
+        _update_camp_table('raw_ap', camp_col)
+    else:
+        stats['raw_ap'] = 0
+
+    _update_camp_table('raw_camp_lx', '广告活动')
+
+    # raw_port_lx：正向 + 反向
+    if 'raw_port_lx' in tables:
+        with engine.connect() as conn:
+            rows = conn.execute(text('SELECT DISTINCT `广告组合` FROM raw_port_lx')).fetchall()
+        fwd = [(port_map[r[0]], r[0]) for r in rows if r[0] in port_map]
+        if fwd:
+            with engine.begin() as conn:
+                for pid, name in fwd:
+                    conn.execute(
+                        text('UPDATE raw_port_lx SET portfolio_id=:pid WHERE `广告组合`=:n'),
+                        {'pid': pid, 'n': name}
+                    )
+
+        rev = 0
+        if port_id_name_map:
+            with engine.connect() as conn:
+                id_rows = conn.execute(text(
+                    "SELECT DISTINCT portfolio_id, `广告组合` FROM raw_port_lx"
+                    " WHERE portfolio_id != '' AND portfolio_id IS NOT NULL"
+                )).fetchall()
+            renames = [
+                (port_id_name_map[pid], pid)
+                for pid, db_name in id_rows
+                if pid in port_id_name_map and port_id_name_map[pid] != db_name
+            ]
+            if renames:
+                with engine.begin() as conn:
+                    for new_name, pid in renames:
+                        conn.execute(
+                            text('UPDATE raw_port_lx SET `广告组合`=:n WHERE portfolio_id=:pid'),
+                            {'n': new_name, 'pid': pid}
+                        )
+            rev = len(renames)
+
+        stats['raw_port_lx'] = len(fwd)
+        stats['raw_port_lx_renamed'] = rev
+    else:
+        stats['raw_port_lx'] = 0
+        stats['raw_port_lx_renamed'] = 0
+
+    return stats
