@@ -3187,9 +3187,9 @@ function _buildL3TrendPanel(name,safeId,camp,trend){
   const esc=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   const modeBtns=(chart)=>`
     <button id="${safeId}-${chart}-spend" onclick="setL3TrendMode('${esc}','${chart}','spend')"
-      style="padding:2px 8px;font-size:11px;border:1px solid #3b82f6;border-radius:4px;cursor:pointer;background:#eff6ff;color:#3b82f6;font-weight:600">花费/ACoS</button>
+      style="padding:2px 8px;font-size:11px;border:1px solid #94a3b8;border-radius:4px;cursor:pointer;background:#f8fafc;color:#64748b">花费/ACoS</button>
     <button id="${safeId}-${chart}-click" onclick="setL3TrendMode('${esc}','${chart}','click')"
-      style="padding:2px 8px;font-size:11px;border:1px solid #94a3b8;border-radius:4px;cursor:pointer;background:#f8fafc;color:#64748b">点击/订单/CTR/ACoS</button>`;
+      style="padding:2px 8px;font-size:11px;border:1px solid #3b82f6;border-radius:4px;cursor:pointer;background:#eff6ff;color:#3b82f6;font-weight:600">点击/订单/CVR/ACoS</button>`;
 
   const errMsg=trend._error?`<div style="text-align:center;color:#ef4444;padding:4px;font-size:11px">加载失败: ${trend._error}</div>`:'';
   const noData=`${errMsg}<div style="text-align:center;color:#94a3b8;padding:12px;font-size:12px">暂无数据</div>`;
@@ -3212,7 +3212,7 @@ function _buildL3TrendPanel(name,safeId,camp,trend){
 }
 
 function _drawL3Charts(name,safeId,trend){
-  if(!l3TrendModes[name])l3TrendModes[name]={wk:'spend',day:'spend'};
+  if(!l3TrendModes[name])l3TrendModes[name]={wk:'click',day:'click'};
   const modes=l3TrendModes[name];
   const dlBar=(fmt)=>({display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:fmt});
 
@@ -3236,8 +3236,8 @@ function _drawL3Charts(name,safeId,trend){
         {type:'bar',label:'曝光(百)',data:allWks.map(w=>+(get(w,'im')/100).toFixed(1)),backgroundColor:'rgba(148,163,184,0.5)',yAxisID:'y',hidden:true},
         {type:'bar',label:'点击',data:allWks.map(w=>get(w,'cl')),backgroundColor:'rgba(59,130,246,.7)',yAxisID:'y',datalabels:dlBar(v=>v>0?v:'')},
         {type:'bar',label:'订单',data:allWks.map(w=>get(w,'or_')),backgroundColor:'rgba(16,185,129,.7)',yAxisID:'y',datalabels:dlBar(v=>v>0?v:'')},
-        {type:'line',label:'CVR(%)',data:allWks.map(w=>getN(w,'cv')),borderColor:'#8b5cf6',yAxisID:'y2',tension:.3,pointRadius:4,fill:false,hidden:true},
-        {type:'line',label:'CTR(%)',data:allWks.map(w=>getN(w,'ct')),borderColor:'#f59e0b',yAxisID:'y2',tension:.3,pointRadius:4,fill:false},
+        {type:'line',label:'CVR(%)',data:allWks.map(w=>getN(w,'cv')),borderColor:'#8b5cf6',yAxisID:'y2',tension:.3,pointRadius:4,fill:false},
+        {type:'line',label:'CTR(%)',data:allWks.map(w=>getN(w,'ct')),borderColor:'#f59e0b',yAxisID:'y2',tension:.3,pointRadius:4,fill:false,hidden:true},
         {type:'line',label:'ACoS(%)',data:allWks.map(w=>getN(w,'ac')),borderColor:'#ef4444',yAxisID:'y2',tension:.3,pointRadius:4,fill:false},
       ];
       _charts[safeId+'-wk']=new Chart(wkEl,{type:'bar',data:{labels,datasets:ds},options:comboChartOpts('','%')});
@@ -3293,8 +3293,8 @@ function _drawL3Charts(name,safeId,trend){
         {type:'bar',label:'曝光(百)',data:allDays.map(d=>+(getD(d,'im')/100).toFixed(1)),backgroundColor:'rgba(148,163,184,0.5)',yAxisID:'y',hidden:true},
         {type:'bar',label:'点击',data:allDays.map(d=>getD(d,'cl')),backgroundColor:'rgba(59,130,246,.6)',yAxisID:'y',datalabels:dlBar(v=>v>0?v:'')},
         {type:'bar',label:'订单',data:allDays.map(d=>getD(d,'or_')),backgroundColor:'rgba(16,185,129,.6)',yAxisID:'y',datalabels:dlBar(v=>v>0?v:'')},
-        {type:'line',label:'CVR(%)',data:allDays.map(d=>getDN(d,'cv')),borderColor:'#8b5cf6',yAxisID:'y2',tension:.2,pointRadius:2,fill:false,hidden:true},
-        {type:'line',label:'CTR(%)',data:allDays.map(d=>getDN(d,'ct')),borderColor:'#f59e0b',yAxisID:'y2',tension:.2,pointRadius:2,fill:false},
+        {type:'line',label:'CVR(%)',data:allDays.map(d=>getDN(d,'cv')),borderColor:'#8b5cf6',yAxisID:'y2',tension:.2,pointRadius:2,fill:false},
+        {type:'line',label:'CTR(%)',data:allDays.map(d=>getDN(d,'ct')),borderColor:'#f59e0b',yAxisID:'y2',tension:.2,pointRadius:2,fill:false,hidden:true},
         {type:'line',label:'ACoS(%)',data:allDays.map(d=>getDN(d,'ac')),borderColor:'#ef4444',yAxisID:'y2',tension:.2,pointRadius:2,fill:false},
       ];
       const opts=dayChartOpts('','%');
@@ -3329,7 +3329,7 @@ function _drawL3Charts(name,safeId,trend){
 }
 
 function setL3TrendMode(name,chart,mode){
-  if(!l3TrendModes[name])l3TrendModes[name]={wk:'spend',day:'spend'};
+  if(!l3TrendModes[name])l3TrendModes[name]={wk:'click',day:'click'};
   l3TrendModes[name][chart]=mode;
   // Update button styles
   const safeId='l3exp-'+btoa(encodeURIComponent(name)).replace(/[^a-zA-Z0-9]/g,'_');
