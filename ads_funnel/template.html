@@ -5323,7 +5323,7 @@ async function ptRunAnalysis(){
 
   let data;
   try {
-    const res = await fetch(`/api/analysis/product-trend?product=${encodeURIComponent(product)}&country=${encodeURIComponent(country)}&date_from=${dateFrom}&date_to=${dateTo}`);
+    const res = await fetch(`api/analysis/product-trend?product=${encodeURIComponent(product)}&country=${encodeURIComponent(country)}&date_from=${dateFrom}&date_to=${dateTo}`);
     data = await res.json();
   } catch(e){ status.textContent = '请求失败: ' + e.message; return; }
 
