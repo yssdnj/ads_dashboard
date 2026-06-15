@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -828,6 +829,82 @@ def api_campaign_weekly_stats(country: str, date_from: str, date_to: str):
 def api_campaign_trend(campaign: str, country: str, date_from: str, date_to: str):
     """返回单一广告活动的周趋势、日趋势和调价事件，用于 L3 趋势面板。"""
     return db.get_campaign_trend(campaign, country, date_from, date_to)
+
+
+@app.get('/api/analysis/product-trend')
+def api_product_trend(product: str, country: str, date_from: str, date_to: str):
+    """返回单品日维度广告指标 + 广告类型分组，用于单品趋势分析面板。"""
+    engine = db.get_engine()
+    with engine.connect() as conn:
+        daily_rows = conn.execute(text("""
+            SELECT 日期,
+                   SUM(曝光量) AS im, SUM(点击) AS cl, SUM(广告订单) AS or_,
+                   SUM(花费) AS sp, SUM(广告销售额) AS sl
+            FROM raw_camp_lx
+            WHERE 广告活动 LIKE :prefix AND 国家 = :country
+              AND 日期 BETWEEN :date_from AND :date_to
+            GROUP BY 日期
+            ORDER BY 日期
+        """), {"prefix": f"{product}%", "country": country, "date_from": date_from, "date_to": date_to}).fetchall()
+
+        type_rows = conn.execute(text("""
+            SELECT 日期,
+                   CASE
+                     WHEN 广告活动 LIKE '%_SB%' OR 广告活动 LIKE 'SB%' THEN 'SB'
+                     WHEN 广告活动 LIKE '%_SD%' OR 广告活动 LIKE 'SD%' THEN 'SD'
+                     ELSE 'SP'
+                   END AS 类型,
+                   SUM(曝光量) AS im, SUM(点击) AS cl, SUM(广告订单) AS or_,
+                   SUM(花费) AS sp, SUM(广告销售额) AS sl
+            FROM raw_camp_lx
+            WHERE 广告活动 LIKE :prefix AND 国家 = :country
+              AND 日期 BETWEEN :date_from AND :date_to
+            GROUP BY 日期,
+                   CASE
+                     WHEN 广告活动 LIKE '%_SB%' OR 广告活动 LIKE 'SB%' THEN 'SB'
+                     WHEN 广告活动 LIKE '%_SD%' OR 广告活动 LIKE 'SD%' THEN 'SD'
+                     ELSE 'SP'
+                   END
+            ORDER BY 日期, sp DESC
+        """), {"prefix": f"{product}%", "country": country, "date_from": date_from, "date_to": date_to}).fetchall()
+
+        camp_rows = conn.execute(text("""
+            SELECT 日期, 广告活动,
+                   SUM(曝光量) AS im, SUM(点击) AS cl, SUM(广告订单) AS or_,
+                   SUM(花费) AS sp, SUM(广告销售额) AS sl
+            FROM raw_camp_lx
+            WHERE 广告活动 LIKE :prefix AND 国家 = :country
+              AND 日期 BETWEEN :date_from AND :date_to
+            GROUP BY 日期, 广告活动
+            ORDER BY 日期, sp DESC
+        """), {"prefix": f"{product}%", "country": country, "date_from": date_from, "date_to": date_to}).fetchall()
+
+    daily = []
+    for r in daily_rows:
+        date, im, cl, or_, sp, sl = str(r[0]), float(r[1] or 0), float(r[2] or 0), float(r[3] or 0), float(r[4] or 0), float(r[5] or 0)
+        daily.append({
+            "date": date, "im": im, "cl": cl, "or_": or_, "sp": round(sp, 2), "sl": round(sl, 2),
+            "ctr": round(cl / im * 100, 2) if im > 0 else None,
+            "cvr": round(or_ / cl * 100, 2) if cl > 0 else None,
+            "acos": round(sp / sl * 100, 2) if sl > 0 else None,
+        })
+
+    by_type: dict = {}
+    for r in type_rows:
+        date, typ, im, cl, or_, sp, sl = str(r[0]), r[1], float(r[2] or 0), float(r[3] or 0), float(r[4] or 0), float(r[5] or 0), float(r[6] or 0)
+        by_type.setdefault(date, []).append({
+            "type": typ, "im": im, "cl": cl, "or_": or_, "sp": round(sp, 2), "sl": round(sl, 2)
+        })
+
+    # 每日按花费排序，每天最多保留 top 8 条活动
+    by_camp: dict = {}
+    for r in camp_rows:
+        date, camp, im, cl, or_, sp, sl = str(r[0]), str(r[1]), float(r[2] or 0), float(r[3] or 0), float(r[4] or 0), float(r[5] or 0), float(r[6] or 0)
+        lst = by_camp.setdefault(date, [])
+        if len(lst) < 8:
+            lst.append({"n": camp, "im": im, "cl": cl, "or_": or_, "sp": round(sp, 2), "sl": round(sl, 2)})
+
+    return {"daily": daily, "by_type": by_type, "by_camp": by_camp}
 
 
 @app.get('/api/health')

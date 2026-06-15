@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 # ── 商品配置（按项目修改） ────────────────────────────────────────────────────
-PRODS = ['SL', 'DL', 'DSL2', 'Toy', 'ToyDH', 'MFL', 'SFM', 'ShortL', 'WB']
+PRODS = ['SL', 'SC', 'DL', 'DSL2', 'Toy', 'ToyDH', 'MFL', 'SFM', 'ShortL', 'WB']
 
 TYPE_MAP = {'SP': 'SP', 'SB': 'SB2', 'SB2': 'SB2', 'SD': 'SD'}
 

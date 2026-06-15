@@ -464,6 +464,7 @@ body.dark .drs-lbl{color:#64748b}
     <span class="filter-label">商品</span>
     <button class="filter-pill active" onclick="setOvProd('all')">全部</button>
     <button class="filter-pill" onclick="setOvProd('SL')">P绳(SL)</button>
+    <button class="filter-pill" onclick="setOvProd('SC')">P型项圈(SC)</button>
     <button class="filter-pill" onclick="setOvProd('DL')">双头牵引(DL)</button>
     <button class="filter-pill" onclick="setOvProd('DSL2')">双头P绳(DSL2)</button>
     <button class="filter-pill" onclick="setOvProd('Toy')">玩具羊毛球(Toy)</button>
@@ -525,6 +526,7 @@ body.dark .drs-lbl{color:#64748b}
     <span class="filter-label">商品</span>
     <button class="filter-pill active" id="l1pa-all" onclick="setL1Prod('all')">全部</button>
     <button class="filter-pill" id="l1pa-SL" onclick="setL1Prod('SL')">P绳(SL)</button>
+    <button class="filter-pill" id="l1pa-SC" onclick="setL1Prod('SC')">P型项圈(SC)</button>
     <button class="filter-pill" id="l1pa-DL" onclick="setL1Prod('DL')">双头牵引(DL)</button>
     <button class="filter-pill" id="l1pa-DSL2" onclick="setL1Prod('DSL2')">双头P绳(DSL2)</button>
     <button class="filter-pill" id="l1pa-Toy" onclick="setL1Prod('Toy')">玩具羊毛球(Toy)</button>
@@ -621,6 +623,7 @@ body.dark .drs-lbl{color:#64748b}
     <span class="filter-label">商品</span>
     <button class="filter-pill active" onclick="setL2Prod('all')">全部</button>
     <button class="filter-pill" onclick="setL2Prod('SL')">P绳(SL)</button>
+    <button class="filter-pill" onclick="setL2Prod('SC')">P型项圈(SC)</button>
     <button class="filter-pill" onclick="setL2Prod('DL')">双头牵引(DL)</button>
     <button class="filter-pill" onclick="setL2Prod('DSL2')">双头P绳(DSL2)</button>
     <button class="filter-pill" onclick="setL2Prod('Toy')">玩具羊毛球(Toy)</button>
@@ -687,6 +690,7 @@ body.dark .drs-lbl{color:#64748b}
     <span class="filter-label">商品</span>
     <button class="filter-pill active" id="l3pd-all" onclick="setL3Prod('all')">全部</button>
     <button class="filter-pill" id="l3pd-SL" onclick="setL3Prod('SL')">P绳(SL)</button>
+    <button class="filter-pill" id="l3pd-SC" onclick="setL3Prod('SC')">P型项圈(SC)</button>
     <button class="filter-pill" id="l3pd-DL" onclick="setL3Prod('DL')">双头牵引(DL)</button>
     <button class="filter-pill" id="l3pd-DSL2" onclick="setL3Prod('DSL2')">双头P绳(DSL2)</button>
     <button class="filter-pill" id="l3pd-Toy" onclick="setL3Prod('Toy')">玩具羊毛球(Toy)</button>
@@ -746,6 +750,7 @@ body.dark .drs-lbl{color:#64748b}
     <span class="filter-label">商品筛选</span>
     <button class="filter-pill active" onclick="setAnaProd('all')">全部</button>
     <button class="filter-pill" onclick="setAnaProd('SL')">P绳(SL)</button>
+    <button class="filter-pill" onclick="setAnaProd('SC')">P型项圈(SC)</button>
     <button class="filter-pill" onclick="setAnaProd('DL')">双头牵引(DL)</button>
     <button class="filter-pill" onclick="setAnaProd('DSL2')">双头P绳(DSL2)</button>
     <button class="filter-pill" onclick="setAnaProd('Toy')">玩具羊毛球(Toy)</button>
@@ -774,10 +779,53 @@ body.dark .drs-lbl{color:#64748b}
       <button class="ana-view-btn" onclick="switchAnaView('targeting')" id="anabtn-targeting" style="display:none">批量竞价优化</button>
       <button class="ana-view-btn" onclick="switchAnaView('targeting6')" id="anabtn-targeting6">批量竞价优化-6轮</button>
       <button class="ana-view-btn" onclick="switchAnaView('history')" id="anabtn-history">调价历史</button>
+      <button class="ana-view-btn" onclick="switchAnaView('product-trend')" id="anabtn-product-trend">单品趋势分析</button>
     </div>
     <div id="ana-funnel"></div>
     <div id="ana-recs" style="display:none"></div>
     <div id="ana-history" style="display:none"></div>
+    <div id="ana-product-trend" style="display:none">
+      <div style="margin-top:12px">
+        <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;padding:14px;background:var(--g0);border-radius:8px;border:1px solid var(--g2)">
+          <div>
+            <div style="font-size:11px;color:var(--g6);margin-bottom:4px">产品</div>
+            <select id="pt-product" style="padding:6px 8px;border:1px solid var(--g2);border-radius:6px;font-size:13px">
+              <option value="SL">SL · P绳</option>
+              <option value="SC">SC · P型项圈</option>
+              <option value="DL">DL · 双头牵引绳</option>
+              <option value="DSL2">DSL2 · 双头P绳</option>
+              <option value="Toy">Toy · 玩具羊毛球</option>
+              <option value="ToyDH">ToyDH · 双手柄玩具</option>
+              <option value="MFL">MFL · 多功能牵引绳</option>
+              <option value="SFM">SFM · 丰容碗</option>
+              <option value="ShortL">ShortL · 超短牵引绳</option>
+              <option value="WB">WB · 水杯</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--g6);margin-bottom:4px">开始日期</div>
+            <input id="pt-date-from" type="date" style="padding:6px 8px;border:1px solid var(--g2);border-radius:6px;font-size:13px">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--g6);margin-bottom:4px">结束日期</div>
+            <input id="pt-date-to" type="date" style="padding:6px 8px;border:1px solid var(--g2);border-radius:6px;font-size:13px">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--g6);margin-bottom:4px">国家</div>
+            <select id="pt-country" style="padding:6px 8px;border:1px solid var(--g2);border-radius:6px;font-size:13px;background:#fff">
+              <option value="US">US</option>
+              <option value="UK">UK</option>
+              <option value="DE">DE</option>
+              <option value="CA">CA</option>
+              <option value="JP">JP</option>
+            </select>
+          </div>
+          <button onclick="ptRunAnalysis()" style="padding:7px 20px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:500">分析</button>
+          <div id="pt-status" style="font-size:12px;color:var(--g6)"></div>
+        </div>
+        <div id="pt-result" style="margin-top:14px"></div>
+      </div>
+    </div>
     <div id="ana-targeting6" style="display:none">
 <div class="tgt-wrap" style="margin-top:12px">
 
@@ -1589,6 +1637,7 @@ body.dark .drs-lbl{color:#64748b}
         <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">产品代码对照表</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px">
           <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;font-weight:700;color:#2563eb;min-width:52px">SL</span><span style="font-size:11px;color:#4b5563">P绳</span></div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;font-weight:700;color:#2563eb;min-width:52px">SC</span><span style="font-size:11px;color:#4b5563">P型项圈</span></div>
           <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;font-weight:700;color:#2563eb;min-width:52px">DL</span><span style="font-size:11px;color:#4b5563">双头牵引绳</span></div>
           <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;font-weight:700;color:#2563eb;min-width:52px">DSL2</span><span style="font-size:11px;color:#4b5563">双头P绳</span></div>
           <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:7px 10px;display:flex;gap:8px;align-items:center"><span style="font-family:monospace;font-weight:700;color:#2563eb;min-width:52px">Toy</span><span style="font-size:11px;color:#4b5563">玩具羊毛球</span></div>
@@ -1792,7 +1841,7 @@ const WK_ISO_DATES = {};
 const CAT_ORDER = ['3_SP_KW精准','4_SP_KW拓展','5_SP_ASIN精准','6_SP_ASIN拓展','1_SB','2_SD'];
 const CAT_SHORT = {'1_SB':'SB','2_SD':'SD','3_SP_KW精准':'KW精准','4_SP_KW拓展':'KW拓展','5_SP_ASIN精准':'ASIN精准','6_SP_ASIN拓展':'ASIN拓展','7_Other':'Other'};
 const CAT_COLOR = {'1_SB':'#8b5cf6','2_SD':'#f59e0b','3_SP_KW精准':'#3b82f6','4_SP_KW拓展':'#06b6d4','5_SP_ASIN精准':'#10b981','6_SP_ASIN拓展':'#f97316','7_Other':'#94a3b8'};
-const PROD_DESC = {SL:'P绳',DL:'双头牵引绳',DSL2:'双头P绳',Toy:'玩具羊毛球',ToyDH:'双手柄玩具',MFL:'多功能牵引绳',SFM:'丰容碗',ShortL:'超短牵引绳',WB:'水杯',Other:'其他'};
+const PROD_DESC = {SL:'P绳',SC:'P型项圈',DL:'双头牵引绳',DSL2:'双头P绳',Toy:'玩具羊毛球',ToyDH:'双手柄玩具',MFL:'多功能牵引绳',SFM:'丰容碗',ShortL:'超短牵引绳',WB:'水杯',Other:'其他'};
 
 // ── 顶栏信息 ───────────────────────────────────────────────────────────────────
 (function(){
@@ -1809,7 +1858,7 @@ const PROD_DESC = {SL:'P绳',DL:'双头牵引绳',DSL2:'双头P绳',Toy:'玩具�
 })();
 
 // ── State ──────────────────────────────────────────────────────────────────────
-let acosTargets = {SL:35,DL:35,Toy:35,ToyDH:40,DSL2:40,MFL:40,SFM:40,ShortL:40,WB:40,Other:40};
+let acosTargets = {SL:35,SC:35,DL:35,Toy:35,ToyDH:40,DSL2:40,MFL:40,SFM:40,ShortL:40,WB:40,Other:40};
 let showWoW = false, l1ShowWoW = false;
 let ovProd='all', ovWkMode='click', ovDayMode='click';
 let ovWkFrom=WEEKS[0], ovWkTo=WEEKS[WEEKS.length-1];
@@ -3376,11 +3425,13 @@ function switchAnaView(v){
   document.getElementById('ana-recs').style.display      = v==='recs'       ? '' : 'none';
   document.getElementById('ana-targeting').style.display = v==='targeting'  ? '' : 'none';
   document.getElementById('ana-targeting6').style.display= v==='targeting6' ? '' : 'none';
-  document.getElementById('ana-history').style.display   = v==='history'    ? '' : 'none';
+  document.getElementById('ana-history').style.display        = v==='history'       ? '' : 'none';
+  document.getElementById('ana-product-trend').style.display  = v==='product-trend'  ? '' : 'none';
   document.querySelectorAll('.ana-view-btn').forEach(b=>b.classList.toggle('active',b.id==='anabtn-'+v));
   if(v==='targeting')  initTargetingDefaults();
   if(v==='targeting6') initTgt6Products();
   if(v==='history')    renderBidHistory();
+  if(v==='product-trend') ptInitDefaults();
 }
 function saveNote(key,val){try{localStorage.setItem('note_'+key,val);}catch(e){}}
 function getNote(key){try{return localStorage.getItem('note_'+key)||'';}catch(e){return'';}}
@@ -5242,6 +5293,300 @@ async function confirmBidUpdate(){
 }
 
 // ── 调价历史 ──────────────────────────────────────────────────────────────────
+// ── 单品趋势分析 ─────────────────────────────────────────────────────────────
+
+function ptInitDefaults(){
+  const today = new Date();
+  const to = today.toISOString().slice(0,10);
+  const from = new Date(today - 21*86400000).toISOString().slice(0,10);
+  const fd = document.getElementById('pt-date-from');
+  const td = document.getElementById('pt-date-to');
+  if(!fd.value) fd.value = from;
+  if(!td.value) td.value = to;
+  const cc = document.getElementById('pt-country');
+  if(!cc.value && REPORT_COUNTRY_CODE) cc.value = REPORT_COUNTRY_CODE;
+}
+
+async function ptRunAnalysis(){
+  const product = document.getElementById('pt-product').value.trim();
+  const dateFrom = document.getElementById('pt-date-from').value;
+  const dateTo   = document.getElementById('pt-date-to').value;
+  const country  = document.getElementById('pt-country').value;
+  const status   = document.getElementById('pt-status');
+  const result   = document.getElementById('pt-result');
+
+  if(!product){ status.textContent='请选择产品'; return; }
+  if(!dateFrom||!dateTo){ status.textContent='请选择日期范围'; return; }
+
+  status.textContent = '查询中...';
+  result.innerHTML = '';
+
+  let data;
+  try {
+    const res = await fetch(`/api/analysis/product-trend?product=${encodeURIComponent(product)}&country=${encodeURIComponent(country)}&date_from=${dateFrom}&date_to=${dateTo}`);
+    data = await res.json();
+  } catch(e){ status.textContent = '请求失败: ' + e.message; return; }
+
+  const daily = data.daily || [];
+  if(!daily.length){ status.textContent = '无数据，请确认产品代码和日期范围'; return; }
+  status.textContent = `共 ${daily.length} 天数据`;
+
+  // ── 计算均值 ──────────────────────────────────────────────────────────────
+  const avg = k => daily.reduce((s,d)=>s+(d[k]||0),0) / daily.length;
+  const avgIm   = avg('im');
+  const avgCl   = avg('cl');
+  const avgOr   = avg('or_');
+  const avgSp   = avg('sp');
+  const avgSl   = avg('sl');
+  const validCtr  = daily.filter(d=>d.ctr!=null);
+  const validCvr  = daily.filter(d=>d.cvr!=null);
+  const validAcos = daily.filter(d=>d.acos!=null);
+  const avgCtr  = validCtr.reduce((s,d)=>s+d.ctr,0)  / (validCtr.length||1);
+  const avgCvr  = validCvr.reduce((s,d)=>s+d.cvr,0)  / (validCvr.length||1);
+  const avgAcos = validAcos.reduce((s,d)=>s+d.acos,0) / (validAcos.length||1);
+
+  // ── 异常检测 ──────────────────────────────────────────────────────────────
+  const anomalies = [];
+  daily.forEach((d,i)=>{
+    const reasons = [];
+    if(d.or_ < avgOr * 0.65 && avgOr > 3)  reasons.push(`订单 ${d.or_} (均值 ${avgOr.toFixed(1)})`);
+    if(d.acos != null && d.acos > avgAcos * 1.4 && d.acos > 40) reasons.push(`ACoS ${d.acos}% (均值 ${avgAcos.toFixed(1)}%)`);
+    if(d.cvr  != null && d.cvr  < avgCvr  * 0.6  && avgCvr > 3)  reasons.push(`CVR ${d.cvr}% (均值 ${avgCvr.toFixed(1)}%)`);
+    if(i>0){
+      const prev = daily[i-1];
+      if(prev.or_>3 && d.or_ < prev.or_*0.5) reasons.push(`订单较前日骤降 ${prev.or_}→${d.or_}`);
+    }
+    if(reasons.length) anomalies.push({date:d.date, reasons, d});
+  });
+
+  // ── 类型分组数据（by_type / by_camp） ────────────────────────────────────
+  const byType = data.by_type || {};
+  const byCamp = data.by_camp || {};
+
+  // ── 渲染 ──────────────────────────────────────────────────────────────────
+  const fmt1  = v => v==null?'—':v.toFixed(1);
+  const fmt2  = v => v==null?'—':v.toFixed(2);
+  const fmtI  = v => Math.round(v).toLocaleString();
+  const fmtSp = v => '$'+v.toFixed(0);
+  const avgSp2 = daily.reduce((s,d)=>s+(d.sp||0),0) / daily.length;
+  const avgSl2 = daily.reduce((s,d)=>s+(d.sl||0),0) / daily.length;
+
+  // ── 期间合计 ─────────────────────────────────────────────────────────────
+  const totIm = daily.reduce((s,d)=>s+d.im,0);
+  const totCl = daily.reduce((s,d)=>s+d.cl,0);
+  const totOr = daily.reduce((s,d)=>s+d.or_,0);
+  const totSp = daily.reduce((s,d)=>s+(d.sp||0),0);
+  const totSl = daily.reduce((s,d)=>s+(d.sl||0),0);
+  const totAcos = totSl>0 ? totSp/totSl*100 : null;
+  const totCvr  = totCl>0 ? totOr/totCl*100 : null;
+
+  // ── 均值指标卡 ────────────────────────────────────────────────────────────
+  const mkCard = (label, val, sub, warn) => `
+    <div style="background:var(--g0);border-radius:10px;padding:12px 14px;border:1px solid var(--g2);min-width:0">
+      <div style="font-size:11px;color:var(--g6);white-space:nowrap">${label}</div>
+      <div style="font-size:20px;font-weight:700;margin-top:4px;color:${warn?'#ef4444':'var(--g9)'};letter-spacing:-.5px">${val}</div>
+      ${sub?`<div style="font-size:10px;color:var(--g5);margin-top:2px">${sub}</div>`:''}
+    </div>`;
+
+  const cardHtml = [
+    mkCard('均曝光/天',  fmtI(avgIm),   `期间 ${fmtI(totIm)}`),
+    mkCard('均点击/天',  fmtI(avgCl),   `期间 ${fmtI(totCl)}`),
+    mkCard('均订单/天',  fmt1(avgOr),   `期间 ${totOr} 单`),
+    mkCard('均花费/天',  fmtSp(avgSp2), `期间 ${fmtSp(totSp)}`),
+    mkCard('均CVR',     fmt1(avgCvr)+'%', `期间 ${fmt1(totCvr)}%`),
+    mkCard('均ACoS',    fmt1(avgAcos)+'%', `期间 ${fmt1(totAcos)}%`, avgAcos > 40),
+  ].join('');
+
+  // ── 异常卡片 ──────────────────────────────────────────────────────────────
+  const anomalyLabels = ['A','B','C','D','E','F'];
+  const anomalyDateSet = new Set(anomalies.map(a=>a.date));
+
+  // ── 自动结论生成 ─────────────────────────────────────────────────────────
+  function ptConclusion(a, prev, types, camps){
+    const lines = [];
+    const d = a.d;
+    // 主导类型
+    const topType = types[0];
+    if(topType){
+      const typeAcos = topType.sl>0 ? (topType.sp/topType.sl*100).toFixed(0) : null;
+      lines.push(`${topType.type} 是当日主要花费类型（$${topType.sp.toFixed(0)}），订单 ${topType.or_} 单${typeAcos?'，ACoS '+typeAcos+'%':''}。`);
+    }
+    // 订单对比
+    if(prev && prev.or_>0){
+      const drop = ((d.or_-prev.or_)/prev.or_*100).toFixed(0);
+      if(d.or_ < prev.or_*0.65) lines.push(`订单较前日下滑 ${Math.abs(drop)}%（${prev.or_}→${d.or_} 单），非正常波动。`);
+      else if(d.or_ > prev.or_*1.5) lines.push(`订单较前日增长 ${drop}%（${prev.or_}→${d.or_} 单）。`);
+    }
+    // ACoS 判断
+    if(d.acos!=null && d.acos > avgAcos*1.35 && d.acos>35){
+      const diff = (d.acos - avgAcos).toFixed(0);
+      lines.push(`ACoS ${d.acos.toFixed(0)}% 高于均值 ${diff}pp，花费转化效率明显偏低。`);
+      // 找高花费零订单活动
+      const wasteCamps = camps.filter(c=>c.sp>2 && c.or_===0);
+      if(wasteCamps.length) lines.push(`其中 ${wasteCamps.length} 条活动有花费但零转化（合计 $${wasteCamps.reduce((s,c)=>s+c.sp,0).toFixed(0)}），建议重点检查。`);
+    }
+    // CVR 判断
+    if(d.cvr!=null && d.cvr < avgCvr*0.6 && avgCvr>3){
+      lines.push(`CVR ${d.cvr.toFixed(1)}% 明显低于均值 ${avgCvr.toFixed(1)}%，点击质量下降或 Listing 转化异常。`);
+    }
+    // 单日恢复判断
+    const dayIdx2 = daily.findIndex(dd=>dd.date===a.date);
+    const next = dayIdx2>=0 && dayIdx2<daily.length-1 ? daily[dayIdx2+1] : null;
+    if(next && prev && next.or_>=prev.or_*0.8 && d.or_<prev.or_*0.7){
+      lines.push(`次日数据恢复正常，判断为平台侧偶发波动，无需调整结构。`);
+    }
+    if(!lines.length) lines.push('数据偏离幅度超过阈值，建议结合广告后台排查该日出价或预算变动。');
+    return lines;
+  }
+
+  const anomaliesDesc = [...anomalies].reverse();
+  const anomalyHtml = anomaliesDesc.map((a,idx)=>{
+    const origIdx = anomalies.indexOf(a);
+    const label = anomalyLabels[origIdx] || (origIdx+1);
+    const types = byType[a.date] || [];
+    const camps = byCamp[a.date] || [];
+
+    // 类型层
+    const typeRows = ['SP','SB','SD'].map(t=>{
+      const row = types.find(r=>r.type===t);
+      if(!row) return `<tr><td style="color:var(--g4)">${t}</td><td colspan="4" style="color:var(--g3);text-align:right">—</td></tr>`;
+      const acos = row.sl>0 ? (row.sp/row.sl*100).toFixed(0)+'%' : '—';
+      const cvr  = row.cl>0 ? (row.or_/row.cl*100).toFixed(1)+'%' : '—';
+      const isTop = t === (types[0]?.type);
+      const s = isTop ? 'font-weight:700;color:var(--g9)' : 'color:var(--g7)';
+      return `<tr style="${s}"><td>${t}</td><td style="text-align:right">${row.cl}</td><td style="text-align:right">${row.or_}</td><td style="text-align:right">${fmtSp(row.sp)}</td><td style="text-align:right;color:${parseFloat(acos)>40?'#ef4444':'inherit'}">${acos}</td></tr>`;
+    }).join('');
+
+    // 主要活动（按花费 top 5，标出高花费零订单）
+    const campRows = camps.slice(0,5).map(c=>{
+      const acos = c.sl>0 ? (c.sp/c.sl*100).toFixed(0)+'%' : '—';
+      const warn = c.sp>2 && c.or_===0;
+      const name = c.n.length>22 ? c.n.slice(0,20)+'…' : c.n;
+      return `<tr style="${warn?'color:#dc2626':'color:var(--g8)'}">
+        <td style="padding-right:4px" title="${c.n}">${name}${warn?' ⚠':''}</td>
+        <td style="text-align:right">${c.or_}</td>
+        <td style="text-align:right">${fmtSp(c.sp)}</td>
+        <td style="text-align:right">${acos}</td>
+      </tr>`;
+    }).join('');
+
+    // 前日数据
+    const dayIdx = daily.findIndex(dd=>dd.date===a.date);
+    const prev = dayIdx>0 ? daily[dayIdx-1] : null;
+    const delta = (k, fmt2) => {
+      if(!prev || prev[k]==null || !prev[k]) return '';
+      const d0 = prev[k], d1 = a.d[k]||0;
+      const pct = ((d1-d0)/d0*100).toFixed(0);
+      const bad = (k==='acos'&&d1>d0)||(k!=='acos'&&d1<d0);
+      return `<span style="color:${bad?'#ef4444':'#16a34a'};font-size:10px;margin-left:3px">${d1>d0?'+':''}${pct}%</span>`;
+    };
+
+    // 结论
+    const conclusionLines = ptConclusion(a, prev, types, camps);
+
+    return `
+    <div style="background:var(--g0);border:1px solid #fca5a5;border-radius:10px;padding:14px 16px;margin-top:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+        <span style="background:#fee2e2;color:#991b1b;font-size:12px;font-weight:700;padding:3px 10px;border-radius:5px;white-space:nowrap">异常 ${label} · ${a.date}</span>
+        <span style="font-size:12px;color:#374151;line-height:1.5">${a.reasons.join('&nbsp;&nbsp;|&nbsp;&nbsp;')}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:11px">
+
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--g6);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--g2)">类型层</div>
+          <table style="width:100%;border-collapse:collapse;line-height:1.8">
+            <thead><tr style="color:var(--g4);font-size:10px"><th style="text-align:left">类型</th><th style="text-align:right">点击</th><th style="text-align:right">订单</th><th style="text-align:right">花费</th><th style="text-align:right">ACoS</th></tr></thead>
+            <tbody>${typeRows}</tbody>
+          </table>
+          <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px">
+            ${[['订单','or_',v=>v+' 单'],['花费','sp',fmtSp],['CVR','cvr',v=>fmt1(v)+'%'],['ACoS','acos',v=>fmt1(v)+'%']].map(([lbl,k,f])=>`
+            <div style="background:var(--g1);border-radius:5px;padding:5px 7px">
+              <div style="font-size:10px;color:var(--g5)">${lbl}</div>
+              <div style="font-weight:600">${a.d[k]!=null?f(a.d[k]):'—'}${delta(k,f)}</div>
+              ${prev&&prev[k]!=null?`<div style="font-size:10px;color:var(--g4)">前日 ${f(prev[k])}</div>`:''}
+            </div>`).join('')}
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--g6);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--g2)">主要活动 <span style="font-weight:400;color:var(--g4)">(花费 Top5，⚠高费零单)</span></div>
+          ${camps.length ? `<table style="width:100%;border-collapse:collapse;line-height:1.8">
+            <thead><tr style="color:var(--g4);font-size:10px"><th style="text-align:left">活动名</th><th style="text-align:right">订单</th><th style="text-align:right">花费</th><th style="text-align:right">ACoS</th></tr></thead>
+            <tbody>${campRows}</tbody>
+          </table>` : '<div style="color:var(--g4);font-size:11px;margin-top:4px">暂无数据</div>'}
+        </div>
+
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--g6);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--g2)">结论说明</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            ${conclusionLines.map(l=>`<div style="font-size:11px;color:var(--g8);line-height:1.6;padding:5px 8px;background:var(--g1);border-radius:5px;border-left:3px solid #fca5a5">${l}</div>`).join('')}
+          </div>
+        </div>
+
+      </div>
+    </div>`;
+  }).join('');
+
+  const chartId = 'pt-chart-' + Date.now();
+  result.innerHTML = `
+    <div style="margin-bottom:6px;font-size:11px;color:var(--g6);font-weight:500">${product} · ${country} · ${dateFrom} ~ ${dateTo}（共 ${daily.length} 天）</div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:16px">${cardHtml}</div>
+    <div style="background:var(--g0);border:1px solid var(--g2);border-radius:10px;padding:14px 14px 10px">
+      <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:10px;font-size:11px;color:var(--g6)">
+        <span><span style="display:inline-block;width:12px;height:12px;background:rgba(148,163,184,.4);border-radius:2px;margin-right:4px;vertical-align:middle"></span>曝光(千)</span>
+        <span><span style="display:inline-block;width:12px;height:3px;background:#3b82f6;border-radius:1px;margin-right:4px;vertical-align:middle"></span>订单</span>
+        <span><span style="display:inline-block;width:12px;height:3px;background:#ef4444;border-radius:1px;margin-right:4px;vertical-align:middle;opacity:.7"></span>ACoS%</span>
+        <span><span style="display:inline-block;width:12px;height:3px;background:#f59e0b;border-radius:1px;margin-right:4px;vertical-align:middle"></span>CVR%</span>
+        ${anomalies.length ? `<span style="margin-left:auto">🔴 红点 = 异常日（${anomalies.map((_,i)=>anomalyLabels[i]).join('/')}）</span>` : ''}
+      </div>
+      <div style="position:relative;width:100%;height:280px"><canvas id="${chartId}" role="img"></canvas></div>
+    </div>
+    ${anomalies.length
+      ? `<div style="margin-top:16px;font-size:12px;font-weight:600;color:#374151">检测到 ${anomalies.length} 个异常日</div>${anomalyHtml}`
+      : `<div style="margin-top:14px;font-size:12px;color:var(--g5);padding:12px;background:var(--g0);border-radius:8px;border:1px solid var(--g2)">✅ 未检测到明显异常，数据波动在正常范围内。</div>`}
+  `;
+
+  setTimeout(()=>{
+    const labels = daily.map(d=>d.date.slice(5));
+    const anomalyDates = new Set(anomalies.map(a=>a.date.slice(5)));
+    new Chart(document.getElementById(chartId), {
+      type:'bar',
+      data:{labels, datasets:[
+        {type:'bar',  label:'曝光(千)', data:daily.map(d=>+(d.im/1000).toFixed(1)), backgroundColor:'rgba(148,163,184,0.35)', yAxisID:'y',  order:4},
+        {type:'line', label:'订单',     data:daily.map(d=>d.or_), borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,.1)', yAxisID:'y2', tension:.3,
+          pointRadius:labels.map(l=>anomalyDates.has(l)?7:3),
+          pointBackgroundColor:labels.map(l=>anomalyDates.has(l)?'#ef4444':'#3b82f6'),
+          pointBorderColor:labels.map(l=>anomalyDates.has(l)?'#fff':'#3b82f6'),
+          pointBorderWidth:labels.map(l=>anomalyDates.has(l)?2:1),
+          fill:false, order:1},
+        {type:'line', label:'ACoS%', data:daily.map(d=>d.acos), borderColor:'rgba(239,68,68,.8)', yAxisID:'y3', tension:.3, pointRadius:2, fill:false, borderDash:[5,3], order:2},
+        {type:'line', label:'CVR%',  data:daily.map(d=>d.cvr),  borderColor:'#f59e0b', yAxisID:'y3', tension:.3, pointRadius:2, fill:false, order:3},
+      ]},
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{
+            title: ctx => {
+              const lbl = ctx[0].label;
+              const aIdx = anomalies.findIndex(a=>a.date.slice(5)===lbl);
+              return aIdx>=0 ? `${lbl}  ⚠ 异常${anomalyLabels[aIdx]}` : lbl;
+            }
+          }}
+        },
+        scales:{
+          x:{ticks:{font:{size:10}, maxRotation:45, autoSkip:daily.length>14}},
+          y: {position:'left',  title:{display:true,text:'曝光(千)',font:{size:10}}, ticks:{font:{size:10}}},
+          y2:{position:'right', title:{display:true,text:'订单',font:{size:10}},    ticks:{font:{size:10},stepSize:1}, grid:{drawOnChartArea:false}},
+          y3:{position:'right', title:{display:true,text:'%',font:{size:10}},       ticks:{font:{size:10},callback:v=>v+'%'}, grid:{drawOnChartArea:false}, offset:true},
+        }
+      }
+    });
+  }, 50);
+}
+
+// ── 调价历史 ──────────────────────────────────────────────────────────────────
 async function renderBidHistory(){
   const el = document.getElementById('ana-history');
   el.innerHTML = '<div style="padding:32px;text-align:center;color:#94a3b8;font-size:13px">⏳ 加载中...</div>';
@@ -5484,7 +5829,7 @@ function renderAnaFunnel(){
 // CONFIG
 // ══════════════════════════════════════════════════════════════════════════════
 function renderCfg(){
-  const prods=['SL','DL','DSL2','Toy','ToyDH','MFL','SFM','ShortL','WB','Other'];
+  const prods=['SL','SC','DL','DSL2','Toy','ToyDH','MFL','SFM','ShortL','WB','Other'];
   document.getElementById('cfg-acos-grid').innerHTML=prods.map(p=>`
     <div class="acos-item"><label>${PROD_DESC[p]||p} (${p})</label>
     <div style="display:flex;align-items:center;gap:6px">
@@ -5493,14 +5838,14 @@ function renderCfg(){
     </div></div>`).join('');
 }
 function saveCfg(){
-  ['SL','DL','DSL2','Toy','ToyDH','MFL','SFM','ShortL','WB','Other'].forEach(p=>{
+  ['SL','SC','DL','DSL2','Toy','ToyDH','MFL','SFM','ShortL','WB','Other'].forEach(p=>{
     const el=document.getElementById('cfg_'+p);if(el)acosTargets[p]=parseFloat(el.value)||40;
   });
   try{localStorage.setItem('acosTargets',JSON.stringify(acosTargets));}catch(e){}
   document.getElementById('cfg-saved').style.display='block';
   setTimeout(()=>document.getElementById('cfg-saved').style.display='none',2000);
 }
-function resetCfg(){acosTargets={SL:35,DL:35,Toy:35,ToyDH:40,DSL2:40,MFL:40,SFM:40,ShortL:40,WB:40,Other:40};renderCfg();}
+function resetCfg(){acosTargets={SL:35,SC:35,DL:35,Toy:35,ToyDH:40,DSL2:40,MFL:40,SFM:40,ShortL:40,WB:40,Other:40};renderCfg();}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // DATA MANAGEMENT TAB
