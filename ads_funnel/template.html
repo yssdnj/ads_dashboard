@@ -484,8 +484,8 @@ body.dark .drs-lbl{color:#64748b}
     <div class="chart-title">
       <span>📈 周趋势</span>
       <div class="mode-toggle">
-        <button class="mode-btn active" id="ovWkM1" onclick="setOvWkMode('spend')">花费/销售/ACoS</button>
-        <button class="mode-btn" id="ovWkM2" onclick="setOvWkMode('click')">点击/订单/CTR/ACoS</button>
+        <button class="mode-btn" id="ovWkM1" onclick="setOvWkMode('spend')">花费/销售/ACoS</button>
+        <button class="mode-btn active" id="ovWkM2" onclick="setOvWkMode('click')">点击/订单/CVR/ACoS</button>
       </div>
     </div>
     <canvas id="ovWkChart" height="75"></canvas>
@@ -496,8 +496,8 @@ body.dark .drs-lbl{color:#64748b}
     <div class="chart-title">
       <span>📅 日趋势</span>
       <div class="mode-toggle">
-        <button class="mode-btn active" id="ovDayM1" onclick="setOvDayMode('spend')">花费/销售/ACoS</button>
-        <button class="mode-btn" id="ovDayM2" onclick="setOvDayMode('click')">点击/订单/CTR/ACoS</button>
+        <button class="mode-btn" id="ovDayM1" onclick="setOvDayMode('spend')">花费/销售/ACoS</button>
+        <button class="mode-btn active" id="ovDayM2" onclick="setOvDayMode('click')">点击/订单/CVR/ACoS</button>
         <button class="mode-btn" onclick="resetZoom('ovDayChart')" title="重置缩放">↺ 重置</button>
       </div>
     </div>
@@ -556,8 +556,8 @@ body.dark .drs-lbl{color:#64748b}
     <div class="chart-title">
       <span id="l1-wk-title">周趋势</span>
       <div class="mode-toggle">
-        <button class="mode-btn active" id="l1WkM1" onclick="setL1WkMode('spend')">花费/销售/ACoS</button>
-        <button class="mode-btn" id="l1WkM2" onclick="setL1WkMode('click')">点击/订单/CTR/ACoS</button>
+        <button class="mode-btn" id="l1WkM1" onclick="setL1WkMode('spend')">花费/销售/ACoS</button>
+        <button class="mode-btn active" id="l1WkM2" onclick="setL1WkMode('click')">点击/订单/CVR/ACoS</button>
       </div>
     </div>
     <canvas id="l1WkChart" height="75"></canvas>
@@ -587,8 +587,8 @@ body.dark .drs-lbl{color:#64748b}
     <div class="chart-title">
       <span id="l1-day-title">日趋势</span>
       <div class="mode-toggle">
-        <button class="mode-btn active" id="l1DayM1" onclick="setL1DayMode('spend')">花费/销售/ACoS</button>
-        <button class="mode-btn" id="l1DayM2" onclick="setL1DayMode('click')">点击/订单/CTR/ACoS</button>
+        <button class="mode-btn" id="l1DayM1" onclick="setL1DayMode('spend')">花费/销售/ACoS</button>
+        <button class="mode-btn active" id="l1DayM2" onclick="setL1DayMode('click')">点击/订单/CVR/ACoS</button>
         <button class="mode-btn" onclick="resetZoom('l1DayChart')" title="重置缩放">↺ 重置</button>
       </div>
     </div>
@@ -649,8 +649,8 @@ body.dark .drs-lbl{color:#64748b}
     <div class="chart-title">
       <span>📈 周趋势</span>
       <div class="mode-toggle">
-        <button class="mode-btn active" id="l2WkM1" onclick="setL2WkMode('spend')">花费/ACoS</button>
-        <button class="mode-btn" id="l2WkM2" onclick="setL2WkMode('click')">点击/订单/CTR/ACoS</button>
+        <button class="mode-btn" id="l2WkM1" onclick="setL2WkMode('spend')">花费/ACoS</button>
+        <button class="mode-btn active" id="l2WkM2" onclick="setL2WkMode('click')">点击/订单/CVR/ACoS</button>
       </div>
     </div>
     <canvas id="l2WkChart" height="75"></canvas>
@@ -659,8 +659,8 @@ body.dark .drs-lbl{color:#64748b}
     <div class="chart-title">
       <span>📅 日趋势 (<span id="l2-day-wk-label">W19</span>)</span>
       <div class="mode-toggle">
-        <button class="mode-btn active" id="l2DayM1" onclick="setL2DayMode('spend')">花费/ACoS</button>
-        <button class="mode-btn" id="l2DayM2" onclick="setL2DayMode('click')">点击/订单/CTR/ACoS</button>
+        <button class="mode-btn" id="l2DayM1" onclick="setL2DayMode('spend')">花费/ACoS</button>
+        <button class="mode-btn active" id="l2DayM2" onclick="setL2DayMode('click')">点击/订单/CVR/ACoS</button>
         <button class="mode-btn" onclick="resetZoom('l2DayChart')" title="重置缩放">↺ 重置</button>
       </div>
     </div>
@@ -1811,11 +1811,11 @@ const PROD_DESC = {SL:'P绳',DL:'双头牵引绳',DSL2:'双头P绳',Toy:'玩具�
 // ── State ──────────────────────────────────────────────────────────────────────
 let acosTargets = {SL:35,DL:35,Toy:35,ToyDH:40,DSL2:40,MFL:40,SFM:40,ShortL:40,WB:40,Other:40};
 let showWoW = false, l1ShowWoW = false;
-let ovProd='all', ovWkMode='spend', ovDayMode='spend';
+let ovProd='all', ovWkMode='click', ovDayMode='click';
 let ovWkFrom=WEEKS[0], ovWkTo=WEEKS[WEEKS.length-1];
-let l1Prod='all', l1Cat='all', l1WkMode='spend', l1DayMode='spend';
+let l1Prod='all', l1Cat='all', l1WkMode='click', l1DayMode='click';
 let l1WkFrom=WEEKS[0], l1WkTo=WEEKS[WEEKS.length-1];
-let l2Prod='all', l2Cat='all', l2WkMode='spend', l2DayMode='spend', l2Page=0, l2PerPage=20, l2Search='';
+let l2Prod='all', l2Cat='all', l2WkMode='click', l2DayMode='click', l2Page=0, l2PerPage=20, l2Search='';
 let l2WkFrom=WEEKS[0], l2WkTo=WEEKS[WEEKS.length-1];
 let l3Prod='all', l3Cat='all', l3St='all', l3Page=0, l3PerPage=50, l3Search='', l3PortSearch='', l3AcosFlt='all';
 let l3WkFrom=WEEKS[0], l3WkTo=WEEKS[WEEKS.length-1];
@@ -2003,8 +2003,8 @@ function buildComboDatasets(metrics, mode){
       {type:'bar',label:'曝光(百)',data:metrics.map(m=>m?+(m.im/100).toFixed(1):0),backgroundColor:'rgba(148,163,184,0.5)',yAxisID:'y',hidden:true},
       {type:'bar',label:'点击',data:metrics.map(m=>m?m.cl:0),backgroundColor:'rgba(59,130,246,0.7)',yAxisID:'y',datalabels:{display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:v=>v>0?v:''}},
       {type:'bar',label:'订单',data:metrics.map(m=>m?+(m.or||m.or_||0):0),backgroundColor:'rgba(16,185,129,0.7)',yAxisID:'y',datalabels:{display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:v=>v>0?v:''}},
-      {type:'line',label:'CVR(%)',data:metrics.map(m=>m?m.cv:null),borderColor:'#8b5cf6',yAxisID:'y2',tension:.3,pointRadius:4,fill:false,hidden:true},
-      {type:'line',label:'CTR(%)',data:metrics.map(m=>m?m.ct:null),borderColor:'#f59e0b',yAxisID:'y2',tension:.3,pointRadius:4,fill:false},
+      {type:'line',label:'CVR(%)',data:metrics.map(m=>m?m.cv:null),borderColor:'#8b5cf6',yAxisID:'y2',tension:.3,pointRadius:4,fill:false},
+      {type:'line',label:'CTR(%)',data:metrics.map(m=>m?m.ct:null),borderColor:'#f59e0b',yAxisID:'y2',tension:.3,pointRadius:4,fill:false,hidden:true},
       {type:'line',label:'ACoS(%)',data:metrics.map(m=>m?m.ac:null),borderColor:'#ef4444',yAxisID:'y2',tension:.3,pointRadius:4,fill:false},
     ];
   }
@@ -2728,8 +2728,8 @@ function drawL2Charts(){
     {type:'bar',label:'曝光(百)',data:wkAgg.map(m=>+(m.im/100).toFixed(1)),backgroundColor:'rgba(148,163,184,0.5)',yAxisID:'y',hidden:true},
     {type:'bar',label:'点击',data:wkAgg.map(m=>m.cl),backgroundColor:'rgba(59,130,246,.7)',yAxisID:'y',datalabels:{display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:v=>v>0?v:''}},
     {type:'bar',label:'订单',data:wkAgg.map(m=>m.or_),backgroundColor:'rgba(16,185,129,.7)',yAxisID:'y',datalabels:{display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:v=>v>0?v:''}},
-    {type:'line',label:'CVR(%)',data:wkAgg.map(m=>m.cv),borderColor:'#8b5cf6',yAxisID:'y2',tension:.3,pointRadius:4,fill:false,hidden:true},
-    {type:'line',label:'CTR(%)',data:wkAgg.map(m=>m.ct),borderColor:'#f59e0b',yAxisID:'y2',tension:.3,pointRadius:4,fill:false},
+    {type:'line',label:'CVR(%)',data:wkAgg.map(m=>m.cv),borderColor:'#8b5cf6',yAxisID:'y2',tension:.3,pointRadius:4,fill:false},
+    {type:'line',label:'CTR(%)',data:wkAgg.map(m=>m.ct),borderColor:'#f59e0b',yAxisID:'y2',tension:.3,pointRadius:4,fill:false,hidden:true},
     {type:'line',label:'ACoS(%)',data:wkAgg.map(m=>m.ac),borderColor:'#ef4444',yAxisID:'y2',tension:.3,pointRadius:4,fill:false},
   ];
   _charts['l2WkChart']=new Chart(document.getElementById('l2WkChart'),{type:'bar',data:{labels,datasets:ds},options:comboChartOpts('','%')});
@@ -2751,8 +2751,8 @@ function drawL2Charts(){
     {type:'bar',label:'曝光(百)',data:dayAgg.map(m=>+(m.im/100).toFixed(1)),backgroundColor:'rgba(148,163,184,0.5)',yAxisID:'y',hidden:true},
     {type:'bar',label:'点击',data:dayAgg.map(m=>m.cl),backgroundColor:'rgba(59,130,246,.6)',yAxisID:'y',datalabels:{display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:v=>v>0?v:''}},
     {type:'bar',label:'订单',data:dayAgg.map(m=>m.or_),backgroundColor:'rgba(16,185,129,.6)',yAxisID:'y',datalabels:{display:true,anchor:'end',align:'top',font:{size:9},color:'#374151',formatter:v=>v>0?v:''}},
-    {type:'line',label:'CVR(%)',data:dayAgg.map(m=>m.cv),borderColor:'#8b5cf6',yAxisID:'y2',tension:.2,pointRadius:2,fill:false,hidden:true},
-    {type:'line',label:'CTR(%)',data:dayAgg.map(m=>m.ct),borderColor:'#f59e0b',yAxisID:'y2',tension:.2,pointRadius:2,fill:false},
+    {type:'line',label:'CVR(%)',data:dayAgg.map(m=>m.cv),borderColor:'#8b5cf6',yAxisID:'y2',tension:.2,pointRadius:2,fill:false},
+    {type:'line',label:'CTR(%)',data:dayAgg.map(m=>m.ct),borderColor:'#f59e0b',yAxisID:'y2',tension:.2,pointRadius:2,fill:false,hidden:true},
     {type:'line',label:'ACoS(%)',data:dayAgg.map(m=>m.ac),borderColor:'#ef4444',yAxisID:'y2',tension:.2,pointRadius:2,fill:false},
   ];
   _charts['l2DayChart']=new Chart(document.getElementById('l2DayChart'),{type:'bar',data:{labels:days.map(d=>d.slice(5)),datasets:ds2},options:dayChartOpts('','%')});
