@@ -2759,13 +2759,27 @@ function drawL2Charts(){
   initDaySlider('l2DayChart','l2',days);
 }
 
+function _aggPortRange(portName,from,to){
+  const pd=RAW.daily_port[portName];
+  if(!pd)return null;
+  const days=rangeDays(from,to);
+  let sp=0,sl=0,cl=0,im=0,or_=0;
+  days.forEach(d=>{const dd=pd[d];if(!dd)return;sp+=dd.sp||0;sl+=dd.sl||0;cl+=dd.cl||0;im+=dd.im||0;or_+=(dd.or_||dd.or||0);});
+  if(!sp&&!cl&&!im)return{sp:0,sl:0,cl:0,im:0,or:0,or_:0,ac:null,ro:null,ct:null,cv:null,cp:null};
+  return{sp,sl,cl,im,or:or_,or_:or_,
+    ac:sl?+(sp/sl*100).toFixed(1):null,ro:sp?+(sl/sp).toFixed(2):null,
+    ct:im?+(cl/im*100).toFixed(2):null,cv:cl?+(or_/cl*100).toFixed(1):null,cp:cl?+(sp/cl).toFixed(2):null};
+}
+
 function renderL2Table(){
-  const ports=getL2Ports()
-    .filter(p=>!l2Search||p.n.toLowerCase().includes(l2Search.toLowerCase()))
-    .sort((a,b)=>{
-      const gv=p=>l2SortCol==='or'?(p.t.or||p.t.or_||0):(p.t[l2SortCol]??-Infinity);
-      return l2SortDir*(gv(a)-gv(b));
-    });
+  const portsBase=getL2Ports()
+    .filter(p=>!l2Search||p.n.toLowerCase().includes(l2Search.toLowerCase()));
+  // 为每个 port 计算当前周次范围内的指标
+  const ports=portsBase.map(p=>({...p,_rt:_aggPortRange(p.n,l2WkFrom,l2WkTo)||p.t}));
+  ports.sort((a,b)=>{
+    const gv=p=>l2SortCol==='or'?(p._rt.or||p._rt.or_||0):(p._rt[l2SortCol]??-Infinity);
+    return l2SortDir*(gv(a)-gv(b));
+  });
   const total=ports.length,pages=Math.max(1,Math.ceil(total/l2PerPage));
   if(l2Page>=pages)l2Page=pages-1;
   const slice=ports.slice(l2Page*l2PerPage,(l2Page+1)*l2PerPage);
@@ -2776,9 +2790,9 @@ function renderL2Table(){
     ${_l2th('im','曝光')}${_l2th('cl','点击')}${_l2th('or','订单')}
     ${_l2th('sp','花费($)')}${_l2th('sl','销售额($)')}${_l2th('cp','CPC($)')}${_l2th('ct','CTR%')}${_l2th('cv','CVR%')}${_l2th('ac','ACoS%')}<th>目标</th>${_l2th('ro','ROAS')}<th style="text-align:center">趋势</th>
   </tr></thead><tbody>`;
-  {const _s={im:0,cl:0,or:0,sp:0,sl:0};ports.forEach(p=>{const t=p.t;_s.im+=t.im||0;_s.cl+=t.cl||0;_s.or+=(t.or||t.or_||0);_s.sp+=t.sp||0;_s.sl+=t.sl||0;});html+=_mkSumRow(_s,'<td style="color:#475569;font-weight:700">汇总</td><td></td><td></td>','<td></td>');}
+  {const _s={im:0,cl:0,or:0,sp:0,sl:0};ports.forEach(p=>{const t=p._rt;_s.im+=t.im||0;_s.cl+=t.cl||0;_s.or+=(t.or||t.or_||0);_s.sp+=t.sp||0;_s.sl+=t.sl||0;});html+=_mkSumRow(_s,'<td style="color:#475569;font-weight:700">汇总</td><td></td><td></td>','<td></td>');}
   for(const p of slice){
-    const t=p.t;const acCls=acosClass(t.ac,p.p);
+    const t=p._rt;const acCls=acosClass(t.ac,p.p);
     html+=`<tr class="clickable" onclick="toggleL2Row('${p.n.replace(/'/g,"\'")}',this)">
       <td><span class="exp-toggle">▶</span>${p.n} <button onclick="event.stopPropagation();jumpToL3Port(this.dataset.n)" data-n="${p.n.replace(/"/g,'&quot;')}" style="margin-left:6px;padding:1px 6px;font-size:10px;border:1px solid #3b82f6;color:#3b82f6;background:none;border-radius:4px;cursor:pointer">→L3</button></td>
       <td><small style="color:#3b82f6">${p.p}</small></td>
