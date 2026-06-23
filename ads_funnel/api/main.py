@@ -4,6 +4,7 @@ main.py — FastAPI 后端
 """
 
 import asyncio, base64, gc, io, json, traceback
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 
@@ -18,7 +19,12 @@ from . import db, export, gen_data, targeting_analysis, bulk_update
 
 
 # ── App ───────────────────────────────────────────────────────────────────────
-app = FastAPI(title='广告漏斗分析 v2.0', version='2.0.0')
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db.init_db()
+    yield
+
+app = FastAPI(title='广告漏斗分析 v2.0', version='2.0.0', lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -79,9 +85,6 @@ def _check_file_country(df: pd.DataFrame, report_country: str, label: str):
         )
 
 
-@app.on_event('startup')
-def startup():
-    db.init_db()
     db.rebuild_from_raw()       # 从原始数据重建 JSON（若 raw 表有数据）
     print('Database ready (MySQL)')
 
