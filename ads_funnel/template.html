@@ -1568,7 +1568,7 @@ body.dark .drs-lbl{color:#64748b}
       <div id="cfg-placement-msg" style="font-size:11px;margin-top:8px;min-height:18px"></div>
     </div>
 
-    <div class="section-title" style="margin-bottom:12px">ACoS 目标设置（%）</div>
+    <div class="section-title" style="margin-bottom:12px">目标 ACoS% &amp; 平均出单点击</div>
     <div style="background:#fff;border-radius:10px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:20px">
       <p style="color:#718096;font-size:12px;margin-bottom:12px">设置各商品的 ACoS 目标，影响 ACoS 颜色评级和分析建议。</p>
       <div class="acos-grid" id="cfg-acos-grid"></div>
@@ -3772,16 +3772,14 @@ function buildFunnelCard(p,desc,tgt,status,agg,last,prev,catRows,portRows,campRo
 // ══════════════════════════════════════════════════════════════════════════════
 
 function initTargetingDefaults(){
-  // 填入已有 ACoS 配置默认值
   const prod = anaProd==='all'?null:anaProd;
-  if(prod && ACOS_TARGETS && ACOS_TARGETS[prod]){
-    const el=document.getElementById('tgt-target-acos');
-    if(el&&!el.value) el.value=ACOS_TARGETS[prod];
-  }
-  // 填入平均出单点击数默认值（从 avg_clicks 配置）
-  if(prod && window.AVG_CLICKS && window.AVG_CLICKS[prod]){
-    const el=document.getElementById('tgt-avg-clicks');
-    if(el&&!el.value) el.value=window.AVG_CLICKS[prod];
+  if(prod){
+    const acos = acosTargets[prod];
+    const clk  = window.AVG_CLICKS && window.AVG_CLICKS[prod];
+    const acosEl = document.getElementById('tgt-target-acos');
+    if(acosEl && acos != null) acosEl.value = acos;
+    const clkEl = document.getElementById('tgt-avg-clicks');
+    if(clkEl && clk) clkEl.value = clk;
   }
   // 加载库内数据范围（异步，不阻塞）
   fetch('api/analysis/mode1/data-stats?country='+encodeURIComponent(REPORT_COUNTRY))
@@ -3945,18 +3943,30 @@ function tgt6ToggleModule(n){
 function initTgt6Products(){
   fetch('api/analysis/mode1/data-stats?country='+encodeURIComponent(REPORT_COUNTRY))
     .then(r=>r.json()).then(s=>_renderDbStats(s)).catch(()=>{});
+  // 从当前产品筛选默认填入
+  const prod = anaProd==='all'?null:anaProd;
+  if(prod){
+    tgt6AutoFill(prod);
+    const ptEl = document.getElementById('tgt6-product-target');
+    if(ptEl && !ptEl.value) ptEl.value = prod;
+  }
 }
 
 function tgt6AutoFill(val){
   if(!val) return;
-  if(acosTargets && acosTargets[val] != null){
-    const target = acosTargets[val];
+  const acos = acosTargets[val];
+  if(acos != null){
     const inp    = document.getElementById('tgt6-target-acos');
     const slider = document.getElementById('tgt6-acos-slider');
     const display= document.getElementById('tgt6-acos-val');
-    if(inp)    inp.value = target;
-    if(slider) slider.value = target;
-    if(display)display.textContent = target + '%';
+    if(inp)    inp.value = acos;
+    if(slider) slider.value = acos;
+    if(display)display.textContent = acos + '%';
+  }
+  const clk = window.AVG_CLICKS && window.AVG_CLICKS[val];
+  if(clk){
+    const clkEl = document.getElementById('tgt6-avg-clicks');
+    if(clkEl) clkEl.value = clk;
   }
 }
 
@@ -5830,18 +5840,35 @@ function renderAnaFunnel(){
 // ══════════════════════════════════════════════════════════════════════════════
 function renderCfg(){
   const prods=['SL','SC','DL','DSL2','Toy','ToyDH','MFL','SFM','ShortL','WB','Other'];
+  const ac = window.AVG_CLICKS || {};
   document.getElementById('cfg-acos-grid').innerHTML=prods.map(p=>`
     <div class="acos-item"><label>${PROD_DESC[p]||p} (${p})</label>
-    <div style="display:flex;align-items:center;gap:6px">
-      <input type="number" id="cfg_${p}" value="${acosTargets[p]||40}" min="1" max="100">
-      <span style="color:#718096">%</span>
+    <div style="display:grid;grid-template-columns:1fr 68px;align-items:center;gap:6px;margin-bottom:6px">
+      <input type="number" id="cfg_${p}" value="${acosTargets[p]||40}" min="1" max="100" style="width:100%;box-sizing:border-box">
+      <span style="color:#718096;font-size:11px;text-align:left">目标ACoS%</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 68px;align-items:center;gap:6px">
+      <input type="number" id="cfg_clk_${p}" value="${ac[p]||''}" min="1" step="0.5" placeholder="如 8.5" style="width:100%;box-sizing:border-box">
+      <span style="color:#718096;font-size:11px;text-align:left">平均出单点击</span>
     </div></div>`).join('');
 }
-function saveCfg(){
-  ['SL','SC','DL','DSL2','Toy','ToyDH','MFL','SFM','ShortL','WB','Other'].forEach(p=>{
+async function saveCfg(){
+  const prods=['SL','SC','DL','DSL2','Toy','ToyDH','MFL','SFM','ShortL','WB','Other'];
+  prods.forEach(p=>{
     const el=document.getElementById('cfg_'+p);if(el)acosTargets[p]=parseFloat(el.value)||40;
   });
   try{localStorage.setItem('acosTargets',JSON.stringify(acosTargets));}catch(e){}
+  // 保存平均出单点击到后端
+  const clicks={};
+  prods.forEach(p=>{
+    const el=document.getElementById('cfg_clk_'+p);
+    if(el&&el.value) clicks[p]=parseFloat(el.value);
+  });
+  try{
+    await fetch('api/config/avg-clicks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(clicks)});
+    if(!window.AVG_CLICKS) window.AVG_CLICKS={};
+    Object.assign(window.AVG_CLICKS, clicks);
+  }catch(e){}
   document.getElementById('cfg-saved').style.display='block';
   setTimeout(()=>document.getElementById('cfg-saved').style.display='none',2000);
 }
