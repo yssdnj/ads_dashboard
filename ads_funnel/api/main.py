@@ -778,6 +778,19 @@ def api_set_avg_clicks(data: dict):
     return {'ok': True}
 
 
+# ── API: 目标 ACoS 配置 ────────────────────────────────────────────────────────
+
+@app.get('/api/config/acos-targets')
+def api_get_acos_targets():
+    return db.get_config('acos_targets', {})
+
+
+@app.post('/api/config/acos-targets')
+def api_set_acos_targets(data: dict):
+    db.set_config('acos_targets', data)
+    return {'ok': True}
+
+
 @app.post('/api/analysis/mode1/confirm-update')
 async def api_mode1_confirm_update(body: dict):
     """

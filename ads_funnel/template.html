@@ -5774,11 +5774,17 @@ function exportAnalysisCSV(){
 
 
 
-// 启动时加载 avg_clicks 配置
+// 启动时加载 avg_clicks + acos_targets 配置
 (async()=>{
   try{
     window.AVG_CLICKS = await fetch('api/config/avg-clicks').then(r=>r.json());
   }catch(e){ window.AVG_CLICKS={}; }
+  try{
+    const dbAcos = await fetch('api/config/acos-targets').then(r=>r.json());
+    if(dbAcos && Object.keys(dbAcos).length){
+      Object.assign(acosTargets, dbAcos);
+    }
+  }catch(e){}
   // 清除旧版遗留的分析结果缓存
   try{ localStorage.removeItem('mode1_last_result'); localStorage.removeItem('mode1_last_params'); }catch(e){}
 })();
@@ -5858,19 +5864,32 @@ async function saveCfg(){
     const el=document.getElementById('cfg_'+p);if(el)acosTargets[p]=parseFloat(el.value)||40;
   });
   try{localStorage.setItem('acosTargets',JSON.stringify(acosTargets));}catch(e){}
-  // 保存平均出单点击到后端
+  // 保存目标 ACoS 到后端
   const clicks={};
   prods.forEach(p=>{
     const el=document.getElementById('cfg_clk_'+p);
     if(el&&el.value) clicks[p]=parseFloat(el.value);
   });
   try{
-    await fetch('api/config/avg-clicks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(clicks)});
+    const [r1, r2] = await Promise.all([
+      fetch('api/config/avg-clicks',   {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(clicks)}),
+      fetch('api/config/acos-targets', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(acosTargets)}),
+    ]);
+    if(!r1.ok) throw new Error(`avg-clicks HTTP ${r1.status}`);
+    if(!r2.ok) throw new Error(`acos-targets HTTP ${r2.status}`);
     if(!window.AVG_CLICKS) window.AVG_CLICKS={};
     Object.assign(window.AVG_CLICKS, clicks);
-  }catch(e){}
+    document.getElementById('cfg-saved').textContent = '✓ 已保存';
+  }catch(e){
+    document.getElementById('cfg-saved').textContent = '✗ 保存失败: ' + e.message;
+    document.getElementById('cfg-saved').style.color = '#ef4444';
+  }
   document.getElementById('cfg-saved').style.display='block';
-  setTimeout(()=>document.getElementById('cfg-saved').style.display='none',2000);
+  setTimeout(()=>{
+    document.getElementById('cfg-saved').style.display='none';
+    document.getElementById('cfg-saved').style.color='#10b981';
+    document.getElementById('cfg-saved').textContent='✓ 已保存';
+  },3000);
 }
 function resetCfg(){acosTargets={SL:35,SC:35,DL:35,Toy:35,ToyDH:40,DSL2:40,MFL:40,SFM:40,ShortL:40,WB:40,Other:40};renderCfg();}
 
