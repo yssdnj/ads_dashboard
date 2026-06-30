@@ -466,7 +466,8 @@ def _upsert_lx(tbl: str, df_new: pd.DataFrame, keys: list, comp_key_fn=None):
             row_count = conn.execute(text(f'SELECT COUNT(*) FROM `{tbl}`')).scalar()
 
     if row_count == 0:
-        df_new.to_sql(tbl, engine, if_exists='replace', index=False)
+        with engine.begin() as conn:
+            df_new.to_sql(tbl, conn, if_exists='replace', index=False)
     else:
         date_col = '日期'
         new_min = str(df_new[date_col].min())
@@ -480,13 +481,15 @@ def _upsert_lx(tbl: str, df_new: pd.DataFrame, keys: list, comp_key_fn=None):
 
         if overlap == 0:
             # 无重叠：直接追加，零历史数据读取
-            df_new.to_sql(tbl, engine, if_exists='append', index=False)
+            with engine.begin() as conn:
+                df_new.to_sql(tbl, conn, if_exists='append', index=False)
         else:
             # 有重叠：只读重叠窗口，新数据覆盖旧数据
-            df_old = pd.read_sql(
-                text(f'SELECT * FROM `{tbl}` WHERE `{date_col}` BETWEEN :a AND :b'),
-                engine, params={'a': new_min, 'b': new_max}
-            )
+            with engine.connect() as conn:
+                df_old = pd.read_sql(
+                    text(f'SELECT * FROM `{tbl}` WHERE `{date_col}` BETWEEN :a AND :b'),
+                    conn, params={'a': new_min, 'b': new_max}
+                )
             df_old = df_old.drop(columns=['report_id'], errors='ignore')
             sep = '\x00'
             if comp_key_fn is not None:
@@ -504,9 +507,10 @@ def _upsert_lx(tbl: str, df_new: pd.DataFrame, keys: list, comp_key_fn=None):
                     text(f'DELETE FROM `{tbl}` WHERE `{date_col}` BETWEEN :a AND :b'),
                     {'a': new_min, 'b': new_max}
                 )
-            pd.concat([df_old, df_new], ignore_index=True).to_sql(
-                tbl, engine, if_exists='append', index=False
-            )
+            with engine.begin() as conn:
+                pd.concat([df_old, df_new], ignore_index=True).to_sql(
+                    tbl, conn, if_exists='append', index=False
+                )
 
     try:
         with engine.begin() as conn:
@@ -577,8 +581,9 @@ def get_raw_dfs():
     tables = set(insp.get_table_names())
     if 'raw_camp_lx' not in tables or 'raw_port_lx' not in tables:
         return None, None
-    df_c = pd.read_sql('SELECT * FROM `raw_camp_lx`', engine)
-    df_p = pd.read_sql('SELECT * FROM `raw_port_lx`', engine)
+    with engine.connect() as _c:
+        df_c = pd.read_sql('SELECT * FROM `raw_camp_lx`', _c)
+        df_p = pd.read_sql('SELECT * FROM `raw_port_lx`', _c)
     if df_c.empty or df_p.empty:
         return None, None
     for df in (df_c, df_p):
@@ -1072,7 +1077,8 @@ def _upsert_df(engine, tbl: str, df_new: pd.DataFrame, keys: list, date_col: str
             row_count = conn.execute(text(f'SELECT COUNT(*) FROM `{tbl}`')).scalar()
 
     if row_count == 0:
-        df_new.to_sql(tbl, engine, if_exists='replace', index=False)
+        with engine.begin() as conn:
+            df_new.to_sql(tbl, conn, if_exists='replace', index=False)
     else:
         new_min = str(df_new[date_col].min())
         new_max = str(df_new[date_col].max())
@@ -1085,13 +1091,15 @@ def _upsert_df(engine, tbl: str, df_new: pd.DataFrame, keys: list, date_col: str
 
         if overlap == 0:
             # 无重叠：直接追加，零历史数据读取
-            df_new.to_sql(tbl, engine, if_exists='append', index=False)
+            with engine.begin() as conn:
+                df_new.to_sql(tbl, conn, if_exists='append', index=False)
         else:
             # 有重叠：只读重叠窗口，新数据覆盖旧数据
-            df_old = pd.read_sql(
-                text(f'SELECT * FROM `{tbl}` WHERE `{date_col}` BETWEEN :a AND :b'),
-                engine, params={'a': new_min, 'b': new_max}
-            )
+            with engine.connect() as conn:
+                df_old = pd.read_sql(
+                    text(f'SELECT * FROM `{tbl}` WHERE `{date_col}` BETWEEN :a AND :b'),
+                    conn, params={'a': new_min, 'b': new_max}
+                )
             sep = '\x00'
             if comp_key_fn is not None:
                 old_comp = comp_key_fn(df_old, sep)
@@ -1108,9 +1116,10 @@ def _upsert_df(engine, tbl: str, df_new: pd.DataFrame, keys: list, date_col: str
                     text(f'DELETE FROM `{tbl}` WHERE `{date_col}` BETWEEN :a AND :b'),
                     {'a': new_min, 'b': new_max}
                 )
-            pd.concat([df_old, df_new], ignore_index=True).to_sql(
-                tbl, engine, if_exists='append', index=False
-            )
+            with engine.begin() as conn:
+                pd.concat([df_old, df_new], ignore_index=True).to_sql(
+                    tbl, conn, if_exists='append', index=False
+                )
 
     try:
         safe_col = date_col.replace('日期', 'rq')
@@ -1200,14 +1209,15 @@ def get_tar_ap_for_analysis(n_weeks: int = 6, country_values: set | None = None)
     # 3. 精准读取：只取 cutoff 之后 + 当前国家的行
     query_params = {**country_params, 'cutoff': cutoff_str}
 
-    tar_df = pd.read_sql(
-        text(f'SELECT * FROM `raw_tar` WHERE `Date` >= :cutoff{country_clause_tar}'),
-        engine, params=query_params
-    )
-    ap_df = pd.read_sql(
-        text(f'SELECT * FROM `raw_ap` WHERE `日期` >= :cutoff{country_clause_ap}'),
-        engine, params=query_params
-    )
+    with engine.connect() as conn:
+        tar_df = pd.read_sql(
+            text(f'SELECT * FROM `raw_tar` WHERE `Date` >= :cutoff{country_clause_tar}'),
+            conn, params=query_params
+        )
+        ap_df = pd.read_sql(
+            text(f'SELECT * FROM `raw_ap` WHERE `日期` >= :cutoff{country_clause_ap}'),
+            conn, params=query_params
+        )
 
     if tar_df.empty or ap_df.empty:
         return None, None, []
