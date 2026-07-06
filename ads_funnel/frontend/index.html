@@ -171,6 +171,15 @@ function formatAmazonSyncResults(results) {
   }).join('；');
 }
 
+async function readJsonResponse(resp) {
+  const text = await resp.text();
+  try { return JSON.parse(text); }
+  catch(e) {
+    const html = text.trim().startsWith('<');
+    throw new Error(html ? '请求超时或代理返回了错误页，请稍后查看同步结果或重试。' : (text || '接口未返回 JSON'));
+  }
+}
+
 async function doImport() {
   const btn = document.getElementById('btn-import');
   const status = document.getElementById('import-status');
@@ -209,26 +218,51 @@ async function doImport() {
   btn.disabled = !(files.camp && files.port);
 }
 
+async function pollAmazonSyncJob(jobId, status, btn, startedAt) {
+  const elapsed = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+  try {
+    const resp = await fetch(`api/amazon/sync-metadata/jobs/${encodeURIComponent(jobId)}`);
+    const data = await readJsonResponse(resp);
+    if (!resp.ok) throw new Error(data.detail || data.error || '同步任务查询失败');
+    if (data.status === 'queued' || data.status === 'running') {
+      status.className = 'status-loading';
+      status.textContent = `${data.message || '数据同步中'}（已用 ${elapsed} 秒）`;
+      setTimeout(() => pollAmazonSyncJob(jobId, status, btn, startedAt), 2000);
+      return;
+    }
+    if (data.status === 'success') {
+      status.className = 'status-ok';
+      status.textContent = `✓ ${formatAmazonSyncResults([data.result])}`;
+      loadReports();
+      btn.disabled = false;
+      return;
+    }
+    throw new Error(data.error || data.result?.error || '数据同步失败');
+  } catch(e) {
+    status.className = 'status-err';
+    status.textContent = `✗ 数据同步失败：${e.message}`;
+    btn.disabled = false;
+  }
+}
+
 async function doAmazonSync() {
   const btn = document.getElementById('btn-sync');
   const status = document.getElementById('sync-status');
   const country = document.getElementById('sync-country').value;
   btn.disabled = true;
   status.className = 'status-loading';
-  status.textContent = '⏳ 正在调用 amazon_ads_api 同步 campaign_id、portfolio_id 和 Placement 配置…';
+  status.textContent = `⏳ 正在启动 ${country} 数据同步任务…`;
   const fd = new FormData();
   fd.append('country_code', country);
   try {
     const resp = await fetch('api/amazon/sync-metadata', {method:'POST', body:fd});
-    const data = await resp.json();
-    if (!resp.ok || !data.ok) throw new Error(data.error || data.detail || '数据同步失败');
-    status.className = 'status-ok';
-    status.textContent = `✓ ${formatAmazonSyncResults([data])}`;
-    loadReports();
+    const data = await readJsonResponse(resp);
+    if (!resp.ok || !data.ok || !data.job_id) throw new Error(data.error || data.detail || '同步任务启动失败');
+    status.textContent = `${country} 数据同步任务已启动，正在后台处理…`;
+    pollAmazonSyncJob(data.job_id, status, btn, Date.now());
   } catch(e) {
     status.className = 'status-err';
     status.textContent = `✗ 数据同步失败：${e.message}。请确认 amazon_ads_api 已启动后再同步。`;
-  } finally {
     btn.disabled = false;
   }
 }

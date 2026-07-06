@@ -3,7 +3,7 @@ main.py — FastAPI 后端
 启动: uvicorn api.main:app --reload  （从 ads_funnel/ 目录执行）
 """
 
-import asyncio, base64, gc, io, json, traceback
+import asyncio, base64, gc, io, json, threading, traceback, uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
@@ -80,6 +80,78 @@ def _amazon_sync_result(country_code: str) -> dict:
         return {'ok': False, 'country_code': country_code, 'error': str(e)}
     except Exception as e:
         return {'ok': False, 'country_code': country_code, 'error': f'Amazon Ads 数据同步失败: {e}'}
+
+
+_AMAZON_SYNC_JOBS: dict[str, dict] = {}
+_AMAZON_SYNC_JOBS_LOCK = threading.Lock()
+
+
+def _set_amazon_sync_job(job_id: str, **updates):
+    with _AMAZON_SYNC_JOBS_LOCK:
+        job = _AMAZON_SYNC_JOBS.get(job_id)
+        if job:
+            job.update(updates)
+
+
+def _run_amazon_sync_job(job_id: str, country_code: str):
+    _set_amazon_sync_job(
+        job_id,
+        status='running',
+        message=f'正在同步 {country_code} 的 Amazon Ads 数据...',
+    )
+    try:
+        result = _amazon_sync_result(country_code)
+        if result.get('ok'):
+            db.rebuild_from_raw()
+            _set_amazon_sync_job(
+                job_id,
+                ok=True,
+                status='success',
+                message='数据同步完成',
+                result=result,
+            )
+        else:
+            _set_amazon_sync_job(
+                job_id,
+                ok=False,
+                status='failed',
+                message='数据同步失败',
+                error=result.get('error') or '数据同步失败',
+                result=result,
+            )
+    except Exception as e:
+        _set_amazon_sync_job(
+            job_id,
+            ok=False,
+            status='failed',
+            message='数据同步失败',
+            error=f'Amazon Ads 数据同步失败: {e}',
+        )
+
+
+def _start_amazon_sync_job(country_code: str) -> dict:
+    job_id = uuid.uuid4().hex
+    job = {
+        'ok': True,
+        'job_id': job_id,
+        'country_code': country_code,
+        'status': 'queued',
+        'message': f'已创建 {country_code} 数据同步任务',
+    }
+    with _AMAZON_SYNC_JOBS_LOCK:
+        _AMAZON_SYNC_JOBS[job_id] = job
+        # Keep the in-memory task list bounded for long-running local sessions.
+        if len(_AMAZON_SYNC_JOBS) > 100:
+            for old_job_id in list(_AMAZON_SYNC_JOBS.keys())[:-100]:
+                _AMAZON_SYNC_JOBS.pop(old_job_id, None)
+
+    worker = threading.Thread(
+        target=_run_amazon_sync_job,
+        args=(job_id, country_code),
+        daemon=True,
+    )
+    worker.start()
+    return job
 
 
 def _check_file_country(df: pd.DataFrame, report_country: str, label: str):
@@ -229,10 +301,16 @@ async def api_import(
 
 @app.post('/api/amazon/sync-metadata')
 def api_amazon_sync_metadata(country_code: str = Form(...)):
-    result = _amazon_sync_result(country_code)
-    if result.get('ok'):
-        db.rebuild_from_raw()
-    return result
+    return _start_amazon_sync_job(country_code.strip().upper())
+
+
+@app.get('/api/amazon/sync-metadata/jobs/{job_id}')
+def api_amazon_sync_metadata_job(job_id: str):
+    with _AMAZON_SYNC_JOBS_LOCK:
+        job = _AMAZON_SYNC_JOBS.get(job_id)
+        if job:
+            return dict(job)
+    raise HTTPException(404, '未找到数据同步任务')
 
 
 @app.post('/api/placement/upload')

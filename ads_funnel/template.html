@@ -5897,6 +5897,15 @@ function dmFormatAmazonSyncResults(results){
   }).join('；');
 }
 
+async function dmReadJsonResponse(resp){
+  const text=await resp.text();
+  try{return JSON.parse(text);}
+  catch(e){
+    const html=text.trim().startsWith('<');
+    throw new Error(html?'请求超时或代理返回了错误页，请稍后查看同步结果或重试。':(text||'接口未返回 JSON'));
+  }
+}
+
 function dmGetCurrentPageCountry(){
   const topStrong=document.querySelector('#topbar-sub strong');
   const fromTop=(topStrong?.textContent||'').trim().toUpperCase();
@@ -5905,6 +5914,33 @@ function dmGetCurrentPageCountry(){
   const matched=topText.match(/\b(US|UK|DE|FR|CA|JP|IT|ES)\b/);
   if(matched)return matched[1];
   return (REPORT_COUNTRY_CODE||'').trim().toUpperCase();
+}
+
+async function dmPollAmazonSyncJob(jobId, st, btn, startedAt){
+  const elapsed=Math.max(1,Math.round((Date.now()-startedAt)/1000));
+  try{
+    const resp=await fetch(`api/amazon/sync-metadata/jobs/${encodeURIComponent(jobId)}`);
+    const data=await dmReadJsonResponse(resp);
+    if(!resp.ok)throw new Error(data.detail||data.error||'同步任务查询失败');
+    if(data.status==='queued'||data.status==='running'){
+      st.style.color='#3b82f6';
+      st.textContent=`${data.message||'数据同步中'}（已用 ${elapsed} 秒）`;
+      setTimeout(()=>dmPollAmazonSyncJob(jobId,st,btn,startedAt),2000);
+      return;
+    }
+    if(data.status==='success'){
+      st.style.color='#16a34a';
+      st.textContent=dmFormatAmazonSyncResults([data.result]);
+      dmLoadReports();
+      btn.disabled=false;
+      return;
+    }
+    throw new Error(data.error||data.result?.error||'数据同步失败');
+  }catch(e){
+    st.style.color='#dc2626';
+    st.textContent='数据同步失败：'+e.message;
+    btn.disabled=false;
+  }
 }
 
 async function dmDoImport(){
@@ -5951,18 +5987,16 @@ async function dmDoAmazonSync(){
     return;
   }
   btn.disabled=true;
-  st.style.color='#3b82f6';st.textContent=`正在同步 ${country} 的 campaign_id、portfolio_id 和 Placement 配置…`;
+  st.style.color='#3b82f6';st.textContent=`正在启动 ${country} 数据同步任务…`;
   const fd=new FormData();fd.append('country_code',country);
   try{
     const resp=await fetch('api/amazon/sync-metadata',{method:'POST',body:fd});
-    const data=await resp.json();
-    const msg=dmFormatAmazonSyncResults([data]);
-    if(!resp.ok||!data.ok)throw new Error(data.error||data.detail||'数据同步失败');
-    st.style.color='#16a34a';st.textContent=msg;
-    dmLoadReports();
+    const data=await dmReadJsonResponse(resp);
+    if(!resp.ok||!data.ok||!data.job_id)throw new Error(data.error||data.detail||'同步任务启动失败');
+    st.textContent=`${country} 数据同步任务已启动，正在后台处理…`;
+    dmPollAmazonSyncJob(data.job_id,st,btn,Date.now());
   }catch(e){
     st.style.color='#dc2626';st.textContent='数据同步失败：'+e.message+'。请确认 amazon_ads_api 已启动后再同步。';
-  }finally{
     btn.disabled=false;
   }
 }
