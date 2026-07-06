@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import db, export, gen_data, targeting_analysis, bulk_update
+from . import amazon_ads_client, db, export, gen_data, targeting_analysis, bulk_update
 
 
 # ── App ───────────────────────────────────────────────────────────────────────
@@ -32,7 +32,6 @@ app.add_middleware(
 )
 
 FRONTEND = Path(__file__).parent.parent / 'frontend'
-BULK_DIR = Path(__file__).parent.parent / 'data' / 'bulk'
 
 # 国家别名映射：中文 → 所有等价写法（英文全称、短码、中文）
 _COUNTRY_ALIASES: dict[str, set[str]] = {
@@ -63,6 +62,24 @@ def _resolve_country(country: str) -> set[str] | None:
     if not c:
         return None
     return _COUNTRY_ALIASES.get(c) or _COUNTRY_REVERSE.get(c)
+
+
+def _amazon_sync_result(country_code: str) -> dict:
+    try:
+        metadata = amazon_ads_client.fetch_metadata(country_code)
+        stats = db.sync_amazon_metadata(country_code, metadata.campaigns, metadata.portfolios)
+        return {
+            'ok': True,
+            'country_code': country_code,
+            'api_calls_used': metadata.api_calls_used,
+            'campaign_pages_fetched': metadata.campaign_pages_fetched,
+            'rate_limit_qps': metadata.rate_limit_qps,
+            **stats,
+        }
+    except amazon_ads_client.AmazonAdsApiError as e:
+        return {'ok': False, 'country_code': country_code, 'error': str(e)}
+    except Exception as e:
+        return {'ok': False, 'country_code': country_code, 'error': f'Amazon Ads 数据同步失败: {e}'}
 
 
 def _check_file_country(df: pd.DataFrame, report_country: str, label: str):
@@ -195,199 +212,26 @@ async def api_import(
         raise HTTPException(500, 'raw 数据为空，导入失败')
 
     reports = [db.get_report(rid) for rid in report_ids]
+    country_codes = sorted({
+        r.get('country') for r in reports
+        if r and r.get('country')
+    })
+    amazon_sync = [_amazon_sync_result(c) for c in country_codes]
+    if any(s.get('ok') for s in amazon_sync):
+        db.rebuild_from_raw()
+        reports = [db.get_report(rid) for rid in report_ids]
     return {
         'ids':     report_ids,
         'reports': [{'id': r['id'], 'title': r['title'], 'weeks': r['weeks']} for r in reports if r],
+        'amazon_sync': amazon_sync,
     }
 
 
-# ── API: Bulk 文件管理 ────────────────────────────────────────────────────────
-
-import re as _re
-
-def _parse_bulk_end_date(filename: str) -> str | None:
-    """从 bulk 文件名提取 end_date（格式 YYYYMMDD），无法解析返回 None。"""
-    m = _re.search(r'\d{8}-(\d{8})', filename)
-    return m.group(1) if m else None
-
-
-def _safe_id(val) -> str:
-    """将数值型 ID 安全转为字符串，NaN / 空 → ''"""
-    if val is None:
-        return ''
-    try:
-        if pd.isna(val):
-            return ''
-    except Exception:
-        pass
-    s = str(val).strip()
-    if s in ('', 'nan', 'None'):
-        return ''
-    try:
-        return str(int(float(s)))
-    except ValueError:
-        return s
-
-
-@app.post('/api/bulk/upload')
-async def api_bulk_upload(
-    bulk_file: UploadFile = File(...),
-    country_code: str = Form(...),
-):
-    """上传 bulk 文件：按 end_date 判断是否替换，并同步四张原始表的 ID 列。"""
-    new_end = _parse_bulk_end_date(bulk_file.filename)
-    if not new_end:
-        raise HTTPException(400, f'文件名无法识别日期范围：{bulk_file.filename}')
-
-    country_dir = BULK_DIR / country_code
-    country_dir.mkdir(parents=True, exist_ok=True)
-
-    existing = sorted(country_dir.glob('*.xls*'))
-    existing_end = None
-    if existing:
-        existing_end = _parse_bulk_end_date(existing[0].name)
-
-    if existing_end and new_end <= existing_end:
-        return {
-            'replaced': False,
-            'message': f'当前已是最新（end_date={existing_end}），跳过替换',
-            'end_date': existing_end,
-            'filename': existing[0].name,
-        }
-
-    content = await bulk_file.read()
-
-    for f in existing:
-        f.unlink()
-    new_path = country_dir / bulk_file.filename
-    new_path.write_bytes(content)
-
-    # 提取 campaign/portfolio 映射
-    xls = pd.read_excel(io.BytesIO(content), sheet_name='Sponsored Products Campaigns')
-    xls.columns = [c.strip() for c in xls.columns]
-
-    camp_rows = xls[xls['Entity'] == 'Campaign'].copy()
-    camp_rows = camp_rows[camp_rows['Campaign Name'].notna()]
-
-    norm_names = db._normalize_camp_name(camp_rows['Campaign Name'].astype(str))
-    camp_map: dict = {}
-    port_col = 'Portfolio Name (Informational only)'
-    for orig, norm, cid, pid in zip(
-        camp_rows['Campaign Name'],
-        norm_names,
-        camp_rows.get('Campaign ID', pd.Series([''] * len(camp_rows), index=camp_rows.index)),
-        camp_rows.get('Portfolio ID', pd.Series([''] * len(camp_rows), index=camp_rows.index)),
-    ):
-        camp_map[norm] = (_safe_id(cid), _safe_id(pid))
-
-    port_map: dict = {}
-    if port_col in camp_rows.columns and 'Portfolio ID' in camp_rows.columns:
-        for pname, pid in zip(camp_rows[port_col], camp_rows['Portfolio ID']):
-            pname_s = str(pname).strip() if pd.notna(pname) else ''
-            if pname_s and pname_s not in ('nan', 'None'):
-                port_map[pname_s] = _safe_id(pid)
-
-    # 反向映射：ID → 规范名称（用于改名检测）
-    camp_id_name_map: dict = {}
-    for orig, cid_pid in zip(camp_rows['Campaign Name'], zip(
-        camp_rows.get('Campaign ID', pd.Series([''] * len(camp_rows), index=camp_rows.index)),
-        camp_rows.get('Portfolio ID', pd.Series([''] * len(camp_rows), index=camp_rows.index)),
-    )):
-        cid = _safe_id(cid_pid[0])
-        if cid:
-            camp_id_name_map[cid] = str(orig).strip()
-
-    port_id_name_map: dict = {v: k for k, v in port_map.items() if v}
-
-    stats = db.update_ids_from_bulk(camp_map, port_map, camp_id_name_map, port_id_name_map)
-    db.rebuild_from_raw()
-
-    # 提取 Placement PCT 数据写库
-    _STRATEGY_MAP = {
-        'Fixed bid': 'FX',
-        'Fixed bids': 'FX',
-        'Dynamic bids - down only': 'DW',
-        'Dynamic bids - up and down': 'UD',
-    }
-    _PLACEMENT_MAP = {
-        'Placement Top': 'top_pct',
-        'Placement Rest Of Search': 'rest_pct',
-        'Placement Product Page': 'pp_pct',
-    }
-    camp_strategy: dict = {}
-    camp_name_col = 'Campaign Name (Informational only)'
-    for _, row in xls[xls['Entity'] == 'Campaign'].iterrows():
-        cid = _safe_id(row.get('Campaign ID', ''))
-        cname = str(row.get('Campaign Name', '')).strip()
-        strategy_raw = str(row.get('Bidding Strategy', '')).strip()
-        strategy = _STRATEGY_MAP.get(strategy_raw, strategy_raw)
-        if cid:
-            camp_strategy[cid] = (cname, strategy)
-
-    placement_rows_raw = xls[xls['Entity'] == 'Bidding Adjustment'].copy()
-    pct_by_camp: dict = {}
-    for _, row in placement_rows_raw.iterrows():
-        cid = _safe_id(row.get('Campaign ID', ''))
-        placement = str(row.get('Placement', '')).strip()
-        pct_key = _PLACEMENT_MAP.get(placement)
-        if not cid or not pct_key:
-            continue
-        if cid not in pct_by_camp:
-            pct_by_camp[cid] = {'top_pct': 0, 'rest_pct': 0, 'pp_pct': 0}
-        try:
-            pct_by_camp[cid][pct_key] = int(float(row.get('Percentage', 0) or 0))
-        except (ValueError, TypeError):
-            pass
-
-    placement_pct_rows = []
-    for cid, pcts in pct_by_camp.items():
-        cname, strategy = camp_strategy.get(cid, ('', ''))
-        if not cname:
-            continue
-        pid = ''
-        for norm_n, (cid2, pid2) in camp_map.items():
-            if cid2 == cid:
-                pid = pid2
-                break
-        placement_pct_rows.append({
-            'campaign_name': cname,
-            'campaign_id': cid,
-            'portfolio_id': pid,
-            'bidding_strategy': strategy,
-            **pcts,
-        })
-    db.upsert_placement_pct(placement_pct_rows, country_code)
-
-    return {
-        'replaced': True,
-        'filename': bulk_file.filename,
-        'end_date': new_end,
-        'stats': stats,
-        'placement_pct_updated': len(placement_pct_rows),
-    }
-
-
-@app.get('/api/bulk/status')
-def api_bulk_status():
-    """返回各国家当前存储的 bulk 文件信息。"""
-    if not BULK_DIR.exists():
-        return []
-    result = []
-    for country_dir in sorted(BULK_DIR.iterdir()):
-        if not country_dir.is_dir():
-            continue
-        files = sorted(country_dir.glob('*.xls*'))
-        if not files:
-            continue
-        f = files[0]
-        end_date = _parse_bulk_end_date(f.name) or ''
-        mtime = datetime.fromtimestamp(f.stat().st_mtime).strftime('%Y-%m-%d %H:%M')
-        result.append({
-            'country_code': country_dir.name,
-            'filename': f.name,
-            'end_date': end_date,
-            'uploaded_at': mtime,
-        })
+@app.post('/api/amazon/sync-metadata')
+def api_amazon_sync_metadata(country_code: str = Form(...)):
+    result = _amazon_sync_result(country_code)
+    if result.get('ok'):
+        db.rebuild_from_raw()
     return result
 
 
@@ -411,64 +255,6 @@ def api_placement_pct(country: str):
     """返回指定国家的广告活动 Placement 配置（竞价策略 + TOS/ROS/PP%）。"""
     rows = db.get_placement_pct(country)
     return rows
-
-
-@app.post('/api/bulk/reprocess-placement')
-def api_bulk_reprocess_placement(country_code: str = Form(...)):
-    """从已存储的 bulk 文件重新提取 placement pct，不替换文件。"""
-    country_dir = BULK_DIR / country_code
-    files = sorted(country_dir.glob('*.xls*')) if country_dir.exists() else []
-    if not files:
-        raise HTTPException(404, f'未找到 {country_code} 的 bulk 文件')
-
-    xls = pd.read_excel(files[0], sheet_name='Sponsored Products Campaigns')
-    xls.columns = [c.strip() for c in xls.columns]
-
-    _STRATEGY_MAP = {
-        'Fixed bid': 'FX', 'Fixed bids': 'FX',
-        'Dynamic bids - down only': 'DW',
-        'Dynamic bids - up and down': 'UD',
-    }
-    _PLACEMENT_MAP = {
-        'Placement Top': 'top_pct',
-        'Placement Rest Of Search': 'rest_pct',
-        'Placement Product Page': 'pp_pct',
-    }
-
-    # cid → (cname, strategy, pid)
-    camp_info: dict = {}
-    for _, row in xls[xls['Entity'] == 'Campaign'].iterrows():
-        cid = _safe_id(row.get('Campaign ID', ''))
-        if not cid:
-            continue
-        camp_info[cid] = (
-            str(row.get('Campaign Name', '')).strip(),
-            _STRATEGY_MAP.get(str(row.get('Bidding Strategy', '')).strip(), ''),
-            _safe_id(row.get('Portfolio ID', '')),
-        )
-
-    pct_by_camp: dict = {}
-    for _, row in xls[xls['Entity'] == 'Bidding Adjustment'].iterrows():
-        cid = _safe_id(row.get('Campaign ID', ''))
-        pct_key = _PLACEMENT_MAP.get(str(row.get('Placement', '')).strip())
-        if not cid or not pct_key:
-            continue
-        pct_by_camp.setdefault(cid, {'top_pct': 0, 'rest_pct': 0, 'pp_pct': 0})
-        try:
-            pct_by_camp[cid][pct_key] = int(float(row.get('Percentage', 0) or 0))
-        except (ValueError, TypeError):
-            pass
-
-    rows = []
-    for cid, pcts in pct_by_camp.items():
-        info = camp_info.get(cid)
-        if not info or not info[0]:
-            continue
-        cname, strategy, pid = info
-        rows.append({'campaign_name': cname, 'campaign_id': cid,
-                     'portfolio_id': pid, 'bidding_strategy': strategy, **pcts})
-    db.upsert_placement_pct(rows, country_code)
-    return {'updated': len(rows), 'filename': files[0].name}
 
 
 # ── API: 导出 ─────────────────────────────────────────────────────────────────

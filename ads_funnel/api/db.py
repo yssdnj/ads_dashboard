@@ -157,8 +157,8 @@ def init_db():
             conn.execute(text(
                 'ALTER TABLE bid_update_log ADD COLUMN up_orders_threshold INT DEFAULT 2'
             ))
-        # 迁移：四张原始表补加 campaign_id / portfolio_id 列
-        _ensure_raw_id_cols(conn)
+        # 迁移：领星原始表补加 Amazon Ads metadata 列
+        ensure_raw_metadata_cols(conn)
 
 
 # ── Reports ───────────────────────────────────────────────────────────────────
@@ -225,14 +225,14 @@ _KEYS_P = ['国家', '广告组合', '日期']
 _ASIN_RE = re.compile(r'^B0[A-Z0-9]{8}$')
 
 
-def _ensure_raw_id_cols(conn=None):
-    """确保四张原始表含 campaign_id / portfolio_id 列（表不存在则跳过）。
-    conn: 已开启的 SQLAlchemy connection（用于 _ensure_schema 内部复用）；
-          None 时自行获取连接。
+def ensure_raw_metadata_cols(conn=None):
+    """Ensure Lingxing raw tables contain Amazon Ads metadata columns.
+
+    The raw Lingxing tables are created dynamically from uploaded Excel files,
+    so this migration is intentionally idempotent and skips tables that do not
+    exist yet.
     """
     _tables = {
-        'raw_tar':     ['campaign_id', 'portfolio_id'],
-        'raw_ap':      ['campaign_id', 'portfolio_id'],
         'raw_camp_lx': ['campaign_id', 'portfolio_id'],
         'raw_port_lx': ['portfolio_id'],
     }
@@ -249,7 +249,6 @@ def _ensure_raw_id_cols(conn=None):
                     c.execute(text(
                         f"ALTER TABLE `{tbl}` ADD COLUMN `{col}` VARCHAR(50) DEFAULT ''"
                     ))
-                # 建索引（忽略已存在错误）
                 try:
                     c.execute(text(
                         f'CREATE INDEX idx_{tbl}_{col} ON `{tbl}`(`{col}`)'
@@ -262,6 +261,130 @@ def _ensure_raw_id_cols(conn=None):
     else:
         with engine.begin() as c:
             _do(c)
+
+
+def _build_campaign_metadata_lookup(campaigns: list[dict]) -> dict[str, dict]:
+    if not campaigns:
+        return {}
+    names = pd.Series([c.get('campaign_name', '') for c in campaigns], dtype=str)
+    norms = _normalize_camp_name(names)
+    lookup = {}
+    for norm, row in zip(norms, campaigns):
+        norm_s = str(norm or '').strip()
+        if norm_s:
+            lookup[norm_s] = row
+    return lookup
+
+
+def _build_portfolio_metadata_lookup(portfolios: list[dict]) -> tuple[dict[str, str], dict[str, str]]:
+    by_name = {}
+    by_id = {}
+    for p in portfolios:
+        pid = str(p.get('portfolio_id') or '').strip()
+        name = str(p.get('portfolio_name') or '').strip()
+        if pid and name:
+            by_name[name] = pid
+            by_id[pid] = name
+    return by_name, by_id
+
+
+def sync_amazon_metadata(country: str, campaigns: list[dict], portfolios: list[dict]) -> dict:
+    """Sync Amazon Ads campaign/portfolio metadata into raw tables and placement config."""
+    ensure_raw_metadata_cols()
+    camp_lookup = _build_campaign_metadata_lookup(campaigns)
+    camp_by_id = {
+        str(c.get('campaign_id') or '').strip(): c
+        for c in campaigns if str(c.get('campaign_id') or '').strip()
+    }
+    port_by_name, port_by_id = _build_portfolio_metadata_lookup(portfolios)
+
+    stats = {
+        'campaigns_fetched': len(campaigns),
+        'portfolios_fetched': len(portfolios),
+        'raw_camp_ids_updated': 0,
+        'raw_camp_names_updated': 0,
+        'raw_port_ids_updated': 0,
+        'raw_port_names_updated': 0,
+        'placement_pct_updated': 0,
+    }
+
+    engine = get_engine()
+    with engine.begin() as conn:
+        tables = {r[0] for r in conn.execute(text('SHOW TABLES')).fetchall()}
+
+        if 'raw_camp_lx' in tables:
+            rows = conn.execute(text(
+                'SELECT DISTINCT `广告活动`, campaign_id FROM raw_camp_lx WHERE `国家`=:country'
+            ), {'country': country}).fetchall()
+            for name, existing_cid in rows:
+                name_s = str(name or '')
+                cid_s = str(existing_cid or '').strip()
+                if cid_s and cid_s in camp_by_id:
+                    latest = str(camp_by_id[cid_s].get('campaign_name') or '').strip()
+                    if latest and latest != name_s:
+                        result = conn.execute(text(
+                            'UPDATE raw_camp_lx SET `广告活动`=:new_name '
+                            'WHERE `国家`=:country AND campaign_id=:cid'
+                        ), {'new_name': latest, 'country': country, 'cid': cid_s})
+                        stats['raw_camp_names_updated'] += int(result.rowcount or 0)
+                    continue
+
+                norm = _normalize_camp_name(pd.Series([name_s], dtype=str)).iloc[0]
+                match = camp_lookup.get(str(norm))
+                if match:
+                    result = conn.execute(text(
+                        'UPDATE raw_camp_lx SET campaign_id=:cid, portfolio_id=:pid '
+                        'WHERE `国家`=:country AND `广告活动`=:name '
+                        "AND (campaign_id IS NULL OR campaign_id='')"
+                    ), {
+                        'cid': match.get('campaign_id', ''),
+                        'pid': match.get('portfolio_id', ''),
+                        'country': country,
+                        'name': name_s,
+                    })
+                    stats['raw_camp_ids_updated'] += int(result.rowcount or 0)
+
+        if 'raw_port_lx' in tables:
+            rows = conn.execute(text(
+                'SELECT DISTINCT `广告组合`, portfolio_id FROM raw_port_lx WHERE `国家`=:country'
+            ), {'country': country}).fetchall()
+            for name, existing_pid in rows:
+                name_s = str(name or '')
+                pid_s = str(existing_pid or '').strip()
+                if pid_s and pid_s in port_by_id:
+                    latest = port_by_id[pid_s]
+                    if latest and latest != name_s:
+                        result = conn.execute(text(
+                            'UPDATE raw_port_lx SET `广告组合`=:new_name '
+                            'WHERE `国家`=:country AND portfolio_id=:pid'
+                        ), {'new_name': latest, 'country': country, 'pid': pid_s})
+                        stats['raw_port_names_updated'] += int(result.rowcount or 0)
+                    continue
+
+                pid = port_by_name.get(name_s)
+                if pid:
+                    result = conn.execute(text(
+                        'UPDATE raw_port_lx SET portfolio_id=:pid '
+                        'WHERE `国家`=:country AND `广告组合`=:name '
+                        "AND (portfolio_id IS NULL OR portfolio_id='')"
+                    ), {'pid': pid, 'country': country, 'name': name_s})
+                    stats['raw_port_ids_updated'] += int(result.rowcount or 0)
+
+    placement_rows = [
+        {
+            'campaign_name': c.get('campaign_name', ''),
+            'campaign_id': c.get('campaign_id', ''),
+            'portfolio_id': c.get('portfolio_id', ''),
+            'bidding_strategy': c.get('bidding_strategy', ''),
+            'top_pct': c.get('top_pct', 0),
+            'rest_pct': c.get('rest_pct', 0),
+            'pp_pct': c.get('pp_pct', 0),
+        }
+        for c in campaigns
+    ]
+    upsert_placement_pct(placement_rows, country)
+    stats['placement_pct_updated'] = len(placement_rows)
+    return stats
 
 
 # ── Placement PCT ─────────────────────────────────────────────────────────────
@@ -1272,129 +1395,3 @@ def get_bid_update_details(log_id: int) -> list:
         return [dict(r) for r in result.mappings().all()]
 
 
-# ── Bulk ID 同步 ───────────────────────────────────────────────────────────────
-
-def update_ids_from_bulk(
-    camp_map: dict,
-    port_map: dict,
-    camp_id_name_map: dict | None = None,
-    port_id_name_map: dict | None = None,
-) -> dict:
-    """
-    根据 bulk 映射更新四张原始表的 campaign_id / portfolio_id 列，
-    并反向同步：若 bulk 里同 ID 的名称与 DB 不同，则以 bulk 为准更新名称。
-    camp_map:         {normalized_name: (campaign_id, portfolio_id)}
-    port_map:         {portfolio_name: portfolio_id}
-    camp_id_name_map: {campaign_id: canonical_campaign_name}（反向同步用）
-    port_id_name_map: {portfolio_id: canonical_portfolio_name}（反向同步用）
-    """
-    engine = get_engine()
-    _ensure_raw_id_cols()
-    insp   = sa_inspect(engine)
-    tables = set(insp.get_table_names())
-    stats  = {}
-
-    def _update_camp_table(tbl: str, camp_col: str):
-        if tbl not in tables:
-            stats[tbl] = 0
-            return
-
-        # ① 名称 → ID 正向同步
-        with engine.connect() as conn:
-            rows = conn.execute(text(f'SELECT DISTINCT `{camp_col}` FROM `{tbl}`')).fetchall()
-        if not rows:
-            stats[tbl] = 0
-            return
-        names = pd.Series([r[0] for r in rows], dtype=str)
-        norm  = _normalize_camp_name(names)
-        fwd_updates = [
-            (camp_map[n][0], camp_map[n][1], orig)
-            for orig, n in zip(names, norm) if n in camp_map
-        ]
-        if fwd_updates:
-            with engine.begin() as conn:
-                for cid, pid, name in fwd_updates:
-                    conn.execute(
-                        text(f'UPDATE `{tbl}` SET campaign_id=:cid, portfolio_id=:pid'
-                             f' WHERE `{camp_col}`=:n'),
-                        {'cid': cid, 'pid': pid, 'n': name}
-                    )
-
-        # ② ID → 名称反向同步（bulk 为准）
-        rev_updates = 0
-        if camp_id_name_map:
-            with engine.connect() as conn:
-                id_rows = conn.execute(text(
-                    f"SELECT DISTINCT campaign_id, `{camp_col}` FROM `{tbl}`"
-                    f" WHERE campaign_id != '' AND campaign_id IS NOT NULL"
-                )).fetchall()
-            renames = [
-                (camp_id_name_map[cid], cid)
-                for cid, db_name in id_rows
-                if cid in camp_id_name_map and camp_id_name_map[cid] != db_name
-            ]
-            if renames:
-                with engine.begin() as conn:
-                    for new_name, cid in renames:
-                        conn.execute(
-                            text(f'UPDATE `{tbl}` SET `{camp_col}`=:n WHERE campaign_id=:cid'),
-                            {'n': new_name, 'cid': cid}
-                        )
-            rev_updates = len(renames)
-
-        stats[tbl] = len(fwd_updates)
-        stats[tbl + '_renamed'] = rev_updates
-
-    _update_camp_table('raw_tar', 'Campaign Name')
-
-    if 'raw_ap' in tables:
-        with engine.connect() as conn:
-            ap_cols = {r[0] for r in conn.execute(text('SHOW COLUMNS FROM raw_ap')).fetchall()}
-        camp_col = '广告活动名称' if '广告活动名称' in ap_cols else 'Campaign Name'
-        _update_camp_table('raw_ap', camp_col)
-    else:
-        stats['raw_ap'] = 0
-
-    _update_camp_table('raw_camp_lx', '广告活动')
-
-    # raw_port_lx：正向 + 反向
-    if 'raw_port_lx' in tables:
-        with engine.connect() as conn:
-            rows = conn.execute(text('SELECT DISTINCT `广告组合` FROM raw_port_lx')).fetchall()
-        fwd = [(port_map[r[0]], r[0]) for r in rows if r[0] in port_map]
-        if fwd:
-            with engine.begin() as conn:
-                for pid, name in fwd:
-                    conn.execute(
-                        text('UPDATE raw_port_lx SET portfolio_id=:pid WHERE `广告组合`=:n'),
-                        {'pid': pid, 'n': name}
-                    )
-
-        rev = 0
-        if port_id_name_map:
-            with engine.connect() as conn:
-                id_rows = conn.execute(text(
-                    "SELECT DISTINCT portfolio_id, `广告组合` FROM raw_port_lx"
-                    " WHERE portfolio_id != '' AND portfolio_id IS NOT NULL"
-                )).fetchall()
-            renames = [
-                (port_id_name_map[pid], pid)
-                for pid, db_name in id_rows
-                if pid in port_id_name_map and port_id_name_map[pid] != db_name
-            ]
-            if renames:
-                with engine.begin() as conn:
-                    for new_name, pid in renames:
-                        conn.execute(
-                            text('UPDATE raw_port_lx SET `广告组合`=:n WHERE portfolio_id=:pid'),
-                            {'n': new_name, 'pid': pid}
-                        )
-            rev = len(renames)
-
-        stats['raw_port_lx'] = len(fwd)
-        stats['raw_port_lx_renamed'] = rev
-    else:
-        stats['raw_port_lx'] = 0
-        stats['raw_port_lx_renamed'] = 0
-
-    return stats

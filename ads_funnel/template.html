@@ -1495,44 +1495,6 @@ body.dark .drs-lbl{color:#64748b}
 <div id="tab-cfg" class="tab-pane">
   <div style="max-width:820px">
 
-    <div class="section-title" style="margin-bottom:12px">Bulk Sheet 导入</div>
-    <div style="background:#fff;border-radius:10px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:20px">
-      <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
-        <div id="cfg-zone-bulk" class="dm-zone" onclick="document.getElementById('cfg-inp-bulk').click()" style="flex:1;min-width:220px">
-          <input type="file" id="cfg-inp-bulk" accept=".xlsx,.xls" style="display:none" onchange="cfgOnBulkFile(this)">
-          <div style="font-size:20px">📋</div>
-          <div style="font-weight:600;font-size:12px;margin-top:4px">亚马逊批量操作 Bulk Sheet</div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:2px">下载路径：广告后台 → 批量操作 → 下载广告活动</div>
-          <div style="font-size:11px;color:#6b7280;margin-top:6px;line-height:1.6;text-align:left">
-            导入后系统将自动同步：<br>
-            · 广告活动 / 广告组合的唯一 ID（Campaign ID / Portfolio ID）<br>
-            · 各广告活动的竞价策略（固定 / 动态降低 / 动态升降）<br>
-            · 各 Placement 的竞价调整百分比（Top / Rest / PP）
-          </div>
-          <div id="cfg-bulk-name" style="font-size:11px;color:#16a34a;font-weight:600;margin-top:6px;word-break:break-all"></div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:8px;min-width:160px">
-          <label style="font-size:11px;color:#6b7280;font-weight:600">国家</label>
-          <select id="cfg-bulk-country" style="padding:7px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;background:#fff">
-            <option value="US">🇺🇸 美国 (US)</option>
-            <option value="UK">🇬🇧 英国 (UK)</option>
-            <option value="DE">🇩🇪 德国 (DE)</option>
-            <option value="FR">🇫🇷 法国 (FR)</option>
-            <option value="CA">🇨🇦 加拿大 (CA)</option>
-            <option value="JP">🇯🇵 日本 (JP)</option>
-            <option value="IT">🇮🇹 意大利 (IT)</option>
-            <option value="ES">🇪🇸 西班牙 (ES)</option>
-          </select>
-          <button id="cfg-btn-bulk" onclick="cfgDoBulkImport()" disabled
-            style="padding:8px 18px;background:#3b82f6;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;transition:background .15s">
-            导入 Bulk
-          </button>
-        </div>
-      </div>
-      <div id="cfg-bulk-msg" style="font-size:11px;margin-top:8px;min-height:18px"></div>
-      <div id="cfg-bulk-stored" style="margin-top:10px"></div>
-    </div>
-
     <div class="section-title" style="margin-bottom:12px">Placement 报告导入</div>
     <div style="background:#fff;border-radius:10px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:20px">
       <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
@@ -1611,6 +1573,23 @@ body.dark .drs-lbl{color:#64748b}
         </button>
       </div>
       <div id="dm-status" style="font-size:11px;min-height:18px"></div>
+    </div>
+
+    <div class="section-title" style="margin-bottom:12px">Amazon Ads 数据同步</div>
+    <div style="background:#fff;border-radius:10px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:20px">
+      <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <div style="flex:1;min-width:260px">
+          <div style="font-size:12px;color:#374151;font-weight:700;margin-bottom:6px">同步内容</div>
+          <div style="font-size:11px;color:#6b7280;line-height:1.6">
+            从 amazon_ads_api 同步广告活动 campaign_id、广告组合 portfolio_id，以及 Placement 竞价策略和百分比。
+          </div>
+        </div>
+        <button id="dm-btn-sync" onclick="dmDoAmazonSync()"
+          style="padding:8px 18px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;transition:background .15s">
+          数据同步
+        </button>
+      </div>
+      <div id="dm-sync-status" style="font-size:11px;margin-top:8px;min-height:18px"></div>
     </div>
 
     <div class="section-title" style="margin-bottom:12px">历史报告</div>
@@ -2173,12 +2152,9 @@ function switchTab(id){
   else if(id==='ana'){renderAna();renderAnaFunnel();}
   else if(id==='cfg'){
     renderCfg();
-    cfgLoadBulkStatus();
     if(REPORT_COUNTRY_CODE){
-      for(const sid of ['cfg-bulk-country','cfg-placement-country']){
-        const sel=document.getElementById(sid);
-        if(sel){const opt=[...sel.options].find(o=>o.value===REPORT_COUNTRY_CODE);if(opt)sel.value=REPORT_COUNTRY_CODE;}
-      }
+      const sel=document.getElementById('cfg-placement-country');
+      if(sel){const opt=[...sel.options].find(o=>o.value===REPORT_COUNTRY_CODE);if(opt)sel.value=REPORT_COUNTRY_CODE;}
     }
   }
   else if(id==='data'){
@@ -5906,6 +5882,31 @@ function dmOnFile(type,input){
   document.getElementById('dm-btn-import').disabled=!(_dmFiles.camp&&_dmFiles.port);
 }
 
+function dmFormatAmazonSyncResults(results){
+  if(!Array.isArray(results)||!results.length)return '';
+  return results.map(r=>{
+    if(!r||!r.ok)return `${r?.country_code||'未知国家'} 数据同步失败：${r?.error||'amazon_ads_api 未返回可用结果'}`;
+    const parts=[
+      `活动ID ${r.raw_camp_ids_updated||0}条`,
+      `活动名称 ${r.raw_camp_names_updated||0}条`,
+      `组合ID ${r.raw_port_ids_updated||0}条`,
+      `组合名称 ${r.raw_port_names_updated||0}条`,
+      `Placement ${r.placement_pct_updated||0}条`
+    ];
+    return `${r.country_code} 数据同步完成：${parts.join('，')}；API调用 ${r.api_calls_used||0}次，QPS≤${r.rate_limit_qps||2}`;
+  }).join('；');
+}
+
+function dmGetCurrentPageCountry(){
+  const topStrong=document.querySelector('#topbar-sub strong');
+  const fromTop=(topStrong?.textContent||'').trim().toUpperCase();
+  if(/^[A-Z]{2}$/.test(fromTop))return fromTop;
+  const topText=(document.getElementById('topbar-sub')?.textContent||'').toUpperCase();
+  const matched=topText.match(/\b(US|UK|DE|FR|CA|JP|IT|ES)\b/);
+  if(matched)return matched[1];
+  return (REPORT_COUNTRY_CODE||'').trim().toUpperCase();
+}
+
 async function dmDoImport(){
   const btn=document.getElementById('dm-btn-import');
   const st=document.getElementById('dm-status');
@@ -5922,7 +5923,8 @@ async function dmDoImport(){
     if(!resp.ok)throw new Error(data.detail||'导入失败');
     st.style.color='#16a34a';
     const summary=(data.reports||[]).map(r=>`${r.title}（${(r.weeks||[]).join('、')}）`).join('；');
-    st.textContent='导入成功：'+summary;
+    const syncSummary=dmFormatAmazonSyncResults(data.amazon_sync);
+    st.textContent='导入成功：'+summary+(syncSummary?'；'+syncSummary:'');
     _dmFiles.camp=_dmFiles.port=null;
     ['camp','port'].forEach(tp=>{
       document.getElementById('dm-'+tp+'-name').textContent='';
@@ -5936,6 +5938,32 @@ async function dmDoImport(){
   }catch(e){
     st.style.color='#dc2626';st.textContent='错误: '+e.message;
     btn.disabled=!(_dmFiles.camp&&_dmFiles.port);
+  }
+}
+
+async function dmDoAmazonSync(){
+  const btn=document.getElementById('dm-btn-sync');
+  const st=document.getElementById('dm-sync-status');
+  const country=dmGetCurrentPageCountry();
+  if(!btn||!st)return;
+  if(!country){
+    st.style.color='#dc2626';st.textContent='未能从页面右上角读取当前国家，请先打开某个国家报告后再同步。';
+    return;
+  }
+  btn.disabled=true;
+  st.style.color='#3b82f6';st.textContent=`正在同步 ${country} 的 campaign_id、portfolio_id 和 Placement 配置…`;
+  const fd=new FormData();fd.append('country_code',country);
+  try{
+    const resp=await fetch('api/amazon/sync-metadata',{method:'POST',body:fd});
+    const data=await resp.json();
+    const msg=dmFormatAmazonSyncResults([data]);
+    if(!resp.ok||!data.ok)throw new Error(data.error||data.detail||'数据同步失败');
+    st.style.color='#16a34a';st.textContent=msg;
+    dmLoadReports();
+  }catch(e){
+    st.style.color='#dc2626';st.textContent='数据同步失败：'+e.message+'。请确认 amazon_ads_api 已启动后再同步。';
+  }finally{
+    btn.disabled=false;
   }
 }
 
@@ -5979,87 +6007,6 @@ async function dmDel(id,title,isCurrent){
   await fetch('api/reports/'+id,{method:'DELETE'});
   if(isCurrent)window.location='./';
   else dmLoadReports();
-}
-
-// ── Bulk 导入（导入和配置 Tab）────────────────────────────────────────────────
-let _cfgBulkFile=null;
-
-function cfgOnBulkFile(input){
-  const f=input.files[0];if(!f)return;
-  _cfgBulkFile=f;
-  document.getElementById('cfg-bulk-name').textContent=f.name;
-  document.getElementById('cfg-zone-bulk').classList.add('ready');
-  document.getElementById('cfg-btn-bulk').disabled=false;
-}
-
-async function cfgDoBulkImport(){
-  const btn=document.getElementById('cfg-btn-bulk');
-  const msg=document.getElementById('cfg-bulk-msg');
-  btn.disabled=true;
-  msg.style.color='#3b82f6';msg.textContent='⏳ 正在上传并同步数据库…';
-  const fd=new FormData();
-  fd.append('bulk_file',_cfgBulkFile);
-  fd.append('country_code',document.getElementById('cfg-bulk-country').value);
-  try{
-    const resp=await fetch('api/bulk/upload',{method:'POST',body:fd});
-    const data=await resp.json();
-    if(!resp.ok)throw new Error(data.detail||'上传失败');
-    if(data.replaced){
-      const s=data.stats||{};
-      const detail=Object.entries(s).map(([t,n])=>`${t}: ${n}条`).join('，');
-      const pct=data.placement_pct_updated!=null?`，Placement配置: ${data.placement_pct_updated}条`:'';
-      msg.style.color='#16a34a';
-      msg.textContent=`✓ 已替换 (end_date=${data.end_date})，ID同步：${detail}${pct}`;
-    }else{
-      msg.style.color='#6b7280';msg.textContent=`ℹ️ ${data.message}`;
-    }
-    _cfgBulkFile=null;
-    document.getElementById('cfg-bulk-name').textContent='';
-    document.getElementById('cfg-zone-bulk').classList.remove('ready');
-    document.getElementById('cfg-inp-bulk').value='';
-    btn.disabled=true;
-    cfgLoadBulkStatus();
-  }catch(e){
-    msg.style.color='#dc2626';msg.textContent='✗ '+e.message;
-    btn.disabled=false;
-  }
-}
-
-async function cfgLoadBulkStatus(){
-  const el=document.getElementById('cfg-bulk-stored');
-  if(!el)return;
-  try{
-    const list=await fetch('api/bulk/status').then(r=>r.json());
-    if(!list.length){el.innerHTML='<div style="font-size:11px;color:#94a3b8">暂无存储记录</div>';return;}
-    el.innerHTML=list.map(b=>`
-      <div style="display:flex;gap:12px;align-items:center;font-size:11px;padding:6px 10px;background:#f8fafc;border-radius:6px;margin-bottom:4px">
-        <span style="font-weight:700;color:#1e40af;min-width:28px">${b.country_code}</span>
-        <span style="color:#374151;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${b.filename}">${b.filename}</span>
-        <span style="color:#6b7280;white-space:nowrap">截止 ${b.end_date}</span>
-        <span style="color:#9ca3af;white-space:nowrap">${b.uploaded_at}</span>
-        <button onclick="cfgReprocessPlacement('${b.country_code}',this)"
-          style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid #d1d5db;background:#fff;color:#374151;white-space:nowrap">
-          重提 Placement
-        </button>
-      </div>`).join('');
-  }catch(e){el.innerHTML='';}
-}
-
-async function cfgReprocessPlacement(countryCode, btn){
-  const orig=btn.textContent;
-  btn.disabled=true;btn.textContent='处理中…';
-  const fd=new FormData();fd.append('country_code',countryCode);
-  try{
-    const resp=await fetch('api/bulk/reprocess-placement',{method:'POST',body:fd});
-    const data=await resp.json();
-    if(!resp.ok)throw new Error(data.detail||'失败');
-    btn.textContent='✓ '+data.updated+'条';
-    btn.style.color='#16a34a';btn.style.borderColor='#16a34a';
-    setTimeout(()=>{btn.textContent=orig;btn.style.color='';btn.style.borderColor='';btn.disabled=false;},3000);
-  }catch(e){
-    btn.textContent='✗ 失败';btn.style.color='#dc2626';
-    setTimeout(()=>{btn.textContent=orig;btn.style.color='';btn.disabled=false;},3000);
-  }
 }
 
 // ── Placement 报告导入 ─────────────────────────────────────────────────────────

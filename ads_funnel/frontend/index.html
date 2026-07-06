@@ -97,20 +97,19 @@ a{color:inherit;text-decoration:none}
     <div id="import-status"></div>
   </div>
 
-  <!-- Bulk Import -->
+  <!-- Amazon Ads Sync -->
   <div class="import-card">
-    <h2>📦 Bulk Sheet 导入</h2>
-    <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
-      <div class="file-zone" id="zone-bulk" onclick="document.getElementById('inp-bulk').click()" style="flex:1;min-width:220px">
-        <input type="file" id="inp-bulk" accept=".xlsx,.xls" onchange="onBulkFile(this)">
-        <div style="font-size:20px">📋</div>
-        <div style="font-weight:600;font-size:12px;margin-top:4px">亚马逊批量操作 Bulk Sheet</div>
-        <div class="label">批量操作 → 下载广告活动</div>
-        <div class="fname" id="bulk-name"></div>
+    <h2>🔄 Amazon Ads 数据同步</h2>
+    <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+      <div style="flex:1;min-width:260px">
+        <div style="font-size:12px;color:#374151;font-weight:700;margin-bottom:6px">同步内容</div>
+        <div class="label" style="line-height:1.6">
+          从 amazon_ads_api 同步广告活动 campaign_id、广告组合 portfolio_id，以及 Placement 竞价策略和百分比。
+        </div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:8px;min-width:160px">
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:150px">
         <label style="font-size:11px;color:#6b7280;font-weight:600">国家</label>
-        <select id="bulk-country" style="padding:7px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;background:#fff">
+        <select id="sync-country" style="padding:7px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;background:#fff">
           <option value="US">🇺🇸 美国 (US)</option>
           <option value="UK">🇬🇧 英国 (UK)</option>
           <option value="DE">🇩🇪 德国 (DE)</option>
@@ -120,11 +119,10 @@ a{color:inherit;text-decoration:none}
           <option value="IT">🇮🇹 意大利 (IT)</option>
           <option value="ES">🇪🇸 西班牙 (ES)</option>
         </select>
-        <button class="btn btn-primary" id="btn-bulk" onclick="doBulkImport()" disabled>导入 Bulk</button>
       </div>
+      <button class="btn btn-primary" id="btn-sync" onclick="doAmazonSync()" style="background:#10b981">数据同步</button>
     </div>
-    <div id="bulk-status-msg" style="font-size:11px;margin-top:8px;min-height:18px"></div>
-    <div id="bulk-stored" style="margin-top:10px"></div>
+    <div id="sync-status" style="font-size:11px;margin-top:8px;min-height:18px"></div>
   </div>
 
   <!-- Reports -->
@@ -158,6 +156,21 @@ function checkReady() {
 }
 
 // ── Import ────────────────────────────────────────────────────────────────────
+function formatAmazonSyncResults(results) {
+  if (!Array.isArray(results) || !results.length) return '';
+  return results.map(r => {
+    if (!r || !r.ok) return `${r?.country_code || '未知国家'} 数据同步失败：${r?.error || 'amazon_ads_api 未返回可用结果'}`;
+    const parts = [
+      `活动ID ${r.raw_camp_ids_updated || 0}条`,
+      `活动名称 ${r.raw_camp_names_updated || 0}条`,
+      `组合ID ${r.raw_port_ids_updated || 0}条`,
+      `组合名称 ${r.raw_port_names_updated || 0}条`,
+      `Placement ${r.placement_pct_updated || 0}条`
+    ];
+    return `${r.country_code} 数据同步完成：${parts.join('，')}；API调用 ${r.api_calls_used || 0}次，QPS≤${r.rate_limit_qps || 2}`;
+  }).join('；');
+}
+
 async function doImport() {
   const btn = document.getElementById('btn-import');
   const status = document.getElementById('import-status');
@@ -178,7 +191,8 @@ async function doImport() {
 
     status.className = 'status-ok';
     const summary = data.reports.map(r => `${r.title}（${r.weeks.join('、')}）`).join('；');
-    status.textContent = `✓ 导入成功：${summary}`;
+    const syncSummary = formatAmazonSyncResults(data.amazon_sync);
+    status.textContent = `✓ 导入成功：${summary}${syncSummary ? '；' + syncSummary : ''}`;
     // reset
     files.camp = files.port = null;
     ['camp','port'].forEach(t => {
@@ -193,6 +207,30 @@ async function doImport() {
     status.textContent = `✗ ${e.message}`;
   }
   btn.disabled = !(files.camp && files.port);
+}
+
+async function doAmazonSync() {
+  const btn = document.getElementById('btn-sync');
+  const status = document.getElementById('sync-status');
+  const country = document.getElementById('sync-country').value;
+  btn.disabled = true;
+  status.className = 'status-loading';
+  status.textContent = '⏳ 正在调用 amazon_ads_api 同步 campaign_id、portfolio_id 和 Placement 配置…';
+  const fd = new FormData();
+  fd.append('country_code', country);
+  try {
+    const resp = await fetch('api/amazon/sync-metadata', {method:'POST', body:fd});
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) throw new Error(data.error || data.detail || '数据同步失败');
+    status.className = 'status-ok';
+    status.textContent = `✓ ${formatAmazonSyncResults([data])}`;
+    loadReports();
+  } catch(e) {
+    status.className = 'status-err';
+    status.textContent = `✗ 数据同步失败：${e.message}。请确认 amazon_ads_api 已启动后再同步。`;
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // ── Reports List ──────────────────────────────────────────────────────────────
@@ -210,9 +248,9 @@ async function loadReports() {
     // 国家下拉预选最近报告的国家
     const latestCountry = reports[0]?.country || '';
     if (latestCountry) {
-      const sel = document.getElementById('bulk-country');
-      const opt = [...sel.options].find(o => o.value === latestCountry);
-      if (opt) sel.value = latestCountry;
+      const syncSel = document.getElementById('sync-country');
+      const syncOpt = [...syncSel.options].find(o => o.value === latestCountry);
+      if (syncOpt) syncSel.value = latestCountry;
     }
 
     list.innerHTML = reports.map(r => {
@@ -283,92 +321,8 @@ function toast(msg) {
   });
 });
 
-// ── Bulk Import ───────────────────────────────────────────────────────────────
-let bulkFile = null;
-
-function onBulkFile(input) {
-  const f = input.files[0];
-  if (!f) return;
-  bulkFile = f;
-  document.getElementById('bulk-name').textContent = f.name;
-  document.getElementById('zone-bulk').classList.add('ready');
-  document.getElementById('btn-bulk').disabled = false;
-}
-
-async function doBulkImport() {
-  const btn = document.getElementById('btn-bulk');
-  const msg = document.getElementById('bulk-status-msg');
-  btn.disabled = true;
-  msg.className = 'status-loading';
-  msg.textContent = '⏳ 正在上传并同步数据库…';
-
-  const fd = new FormData();
-  fd.append('bulk_file', bulkFile);
-  fd.append('country_code', document.getElementById('bulk-country').value);
-
-  try {
-    const resp = await fetch('api/bulk/upload', {method: 'POST', body: fd});
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.detail || '上传失败');
-
-    if (data.replaced) {
-      const s = data.stats || {};
-      const detail = Object.entries(s).map(([t,n])=>`${t}: ${n}条`).join('，');
-      msg.className = 'status-ok';
-      msg.textContent = `✓ 已替换 (end_date=${data.end_date})，ID 同步：${detail}`;
-    } else {
-      msg.className = 'status-loading';
-      msg.textContent = `ℹ️ ${data.message}`;
-    }
-    bulkFile = null;
-    document.getElementById('bulk-name').textContent = '';
-    document.getElementById('zone-bulk').classList.remove('ready');
-    document.getElementById('inp-bulk').value = '';
-    btn.disabled = true;
-    loadBulkStatus();
-    loadReports();
-  } catch(e) {
-    msg.className = 'status-err';
-    msg.textContent = `✗ ${e.message}`;
-    btn.disabled = false;
-  }
-}
-
-async function loadBulkStatus() {
-  const el = document.getElementById('bulk-stored');
-  try {
-    const list = await fetch('api/bulk/status').then(r => r.json());
-    if (!list.length) { el.innerHTML = '<div style="font-size:11px;color:#94a3b8">暂无存储记录</div>'; return; }
-    el.innerHTML = list.map(b => `
-      <div style="display:flex;gap:12px;align-items:center;font-size:11px;padding:6px 10px;background:#f8fafc;border-radius:6px;margin-bottom:4px">
-        <span style="font-weight:700;color:#1e40af;min-width:30px">${b.country_code}</span>
-        <span style="color:#374151;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${b.filename}">${b.filename}</span>
-        <span style="color:#6b7280;white-space:nowrap">截止 ${b.end_date}</span>
-        <span style="color:#9ca3af;white-space:nowrap">${b.uploaded_at}</span>
-      </div>`).join('');
-  } catch(e) {
-    el.innerHTML = '';
-  }
-}
-
-// Bulk drag & drop
-const bulkZone = document.getElementById('zone-bulk');
-bulkZone.addEventListener('dragover', e => { e.preventDefault(); bulkZone.classList.add('drag'); });
-bulkZone.addEventListener('dragleave', () => bulkZone.classList.remove('drag'));
-bulkZone.addEventListener('drop', e => {
-  e.preventDefault();
-  bulkZone.classList.remove('drag');
-  const f = e.dataTransfer.files[0];
-  if (!f || !f.name.match(/\.xlsx?$/i)) return;
-  bulkFile = f;
-  document.getElementById('bulk-name').textContent = f.name;
-  bulkZone.classList.add('ready');
-  document.getElementById('btn-bulk').disabled = false;
-});
-
 // ── Init ──────────────────────────────────────────────────────────────────────
 loadReports();
-loadBulkStatus();
 </script>
 </body>
 </html>
