@@ -57,6 +57,7 @@ canvas{max-width:100%}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
 .three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
 .tbl-wrap{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.07);overflow:hidden;margin-bottom:14px}
+#tab-l3 .tbl-wrap{overflow:visible}
 .tbl-header{padding:10px 14px;font-size:12px;font-weight:700;color:#4a5568;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:8px}
 table{width:100%;border-collapse:collapse;font-size:12px}
 thead th{padding:7px 8px;text-align:right;font-weight:600;color:#718096;background:#f7fafc;white-space:nowrap;border-bottom:1px solid #e2e8f0;font-size:11px}
@@ -128,6 +129,19 @@ td:hover .copy-icon{opacity:1}
 .row-indent1 td:first-child{padding-left:22px!important}
 #l1-prod-table td:nth-child(2){text-align:left;font-weight:400}
 .row-indent2 td:first-child{padding-left:40px!important}
+.l3-port-picker{position:relative;width:230px;flex-shrink:0}
+.l3-port-btn{width:100%;padding:4px 26px 4px 10px;border:1.5px solid #e2e8f0;border-radius:6px;background:#fff;color:#334155;font-size:12px;text-align:left;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.l3-port-btn:after{content:'▾';position:absolute;right:9px;top:5px;color:#64748b;font-size:11px;pointer-events:none}
+.l3-port-menu{position:fixed;z-index:1000;width:310px;max-height:360px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 12px 28px rgba(15,23,42,.18);padding:8px;display:none}
+.l3-port-menu.open{display:block}
+.l3-port-menu input[type="text"]{width:100%;box-sizing:border-box;padding:6px 9px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;margin-bottom:7px;outline:none}
+.l3-port-menu input[type="text"]:focus{border-color:#60a5fa;box-shadow:0 0 0 2px rgba(96,165,250,.18)}
+.l3-port-options{max-height:285px;overflow:auto}
+.l3-port-row{display:flex;align-items:center;gap:7px;padding:6px 7px;border-radius:5px;font-size:12px;color:#334155;cursor:pointer}
+.l3-port-row:hover{background:#f1f5f9}
+.l3-port-row input{cursor:pointer}
+.l3-port-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.l3-port-empty{padding:16px 8px;text-align:center;color:#94a3b8;font-size:12px}
 
 .tdots-ext{display:flex;gap:3px;align-items:flex-end}
 .tdot-col{display:flex;flex-direction:column;align-items:center;gap:2px}
@@ -725,7 +739,13 @@ body.dark .drs-lbl{color:#64748b}
       <span class="tbl-title">广告活动列表</span>
       <span id="l3-count" style="font-size:11px;color:#718096"></span>
       <span style="margin-left:auto;display:flex;align-items:center;gap:8px">
-        <input type="text" id="l3PortSearchInput" placeholder="🔍 广告组合..." oninput="setL3PortSearch(this.value)" style="padding:4px 10px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px;width:160px">
+        <div class="l3-port-picker" id="l3PortPicker">
+          <button type="button" class="l3-port-btn" id="l3PortPickerBtn" onclick="toggleL3PortDropdown(event)" title="按当前商品和类别列出广告组合">全部广告组合</button>
+          <div class="l3-port-menu" id="l3PortDropdown" onclick="event.stopPropagation()">
+            <input type="text" id="l3PortSearchInput" placeholder="搜索广告组合..." oninput="setL3PortQuery(this.value)">
+            <div class="l3-port-options" id="l3PortOptions"></div>
+          </div>
+        </div>
         <input type="text" id="l3SearchInput" placeholder="🔍 广告活动..." oninput="setL3Search(this.value)" style="padding:4px 10px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px;width:160px">
         <span style="font-size:12px;color:#64748b">ACoS:</span>
         <button class="l3-acos-btn" data-v="all" onclick="setL3AcosFlt('all')" style="padding:2px 8px;font-size:12px;border:1px solid #94a3b8;border-radius:4px;cursor:pointer;background:#f8fafc;font-weight:700;opacity:1">全部</button>
@@ -1845,7 +1865,9 @@ let l1Prod='all', l1Cat='all', l1WkMode='click', l1DayMode='click';
 let l1WkFrom=WEEKS[0], l1WkTo=WEEKS[WEEKS.length-1];
 let l2Prod='all', l2Cat='all', l2WkMode='click', l2DayMode='click', l2Page=0, l2PerPage=20, l2Search='';
 let l2WkFrom=WEEKS[0], l2WkTo=WEEKS[WEEKS.length-1];
-let l3Prod='all', l3Cat='all', l3St='all', l3Page=0, l3PerPage=50, l3Search='', l3PortSearch='', l3AcosFlt='all';
+let l3Prod='all', l3Cat='all', l3St='all', l3Page=0, l3PerPage=50, l3Search='', l3PortSearch='', l3PortQuery='', l3AcosFlt='all';
+let l3PortSelections=[];
+let l3PortDropdownOpen=false;
 let l3WkFrom=WEEKS[0], l3WkTo=WEEKS[WEEKS.length-1];
 let l3WkData=null;   // null=全范围使用RAW.camps; object=DB查询结果
 let l3WkNoData=false; // true=查询返回空，已降级回总计
@@ -1939,14 +1961,20 @@ function sliceWa(wa,from,to){
   if(fi<0||ti<0)return wa;
   return wa.slice(fi,ti+1);
 }
-function trendDots(wa,prod){
+function trendDots(wa,prod,maxPerRow){
   if(!wa||!wa.length)return'';
-  return'<div class="tdots-ext">'+wa.map((v,i)=>{
+  const dots=wa.map((v,i)=>{
     let bg='#e2e8f0';
     if(v!==null){const t=getTarget(prod);bg=v<=t*0.85?'#10b981':v<=t?'#3b82f6':v<=t*1.3?'#f59e0b':'#ef4444';}
     const lbl=v!==null?v.toFixed(0)+'%':'--';
     return`<div class="tdot-col"><div class="tdot-val" style="color:${bg==='#e2e8f0'?'#94a3b8':bg}">${lbl}</div><div class="tdot-dot" style="background:${bg}"></div></div>`;
-  }).join('')+'</div>';
+  });
+  if(!maxPerRow)return'<div class="tdots-ext">'+dots.join('')+'</div>';
+  const rows=[];
+  for(let i=0;i<dots.length;i+=maxPerRow){
+    rows.push(`<div class="tdots-ext">${dots.slice(i,i+maxPerRow).join('')}</div>`);
+  }
+  return`<div style="display:flex;flex-direction:column;align-items:center;gap:3px">${rows.join('')}</div>`;
 }
 
 // ── Date/week helpers ──────────────────────────────────────────────────────────
@@ -2694,7 +2722,7 @@ function setL2WkRange(){
   if(WEEKS.indexOf(l2WkFrom)>WEEKS.indexOf(l2WkTo)){l2WkTo=l2WkFrom;document.getElementById('l2WkTo').value=l2WkTo;}
   const lbl=l2WkFrom===l2WkTo?l2WkFrom:l2WkFrom+'–'+l2WkTo;
   const el=document.getElementById('l2-day-wk-label');if(el)el.textContent=lbl;
-  renderL2Cards();drawL2Charts();
+  renderL2Cards();drawL2Charts();renderL2Table();
 }
 
 function getL2Ports(){return RAW.ports.filter(p=>(l2Prod==='all'||p.p===l2Prod)&&(l2Cat==='all'||p.c===l2Cat));}
@@ -2936,7 +2964,99 @@ function setL3St(s){
 function setL3PerPage(n){l3PerPage=n;l3Page=0;renderL3();}
 function setL2Search(v){l2Search=v;l2Page=0;renderL2Table();}
 function setL3Search(v){l3Search=v;l3Page=0;renderL3();}
-function setL3PortSearch(v){l3PortSearch=v;l3Page=0;renderL3();}
+function setL3PortSearch(v){
+  l3PortSearch=v||'';
+  l3PortSelections=l3PortSearch?[l3PortSearch]:[];
+  l3PortQuery='';
+  l3Page=0;
+  renderL3();
+}
+function setL3PortQuery(v){
+  l3PortQuery=v||'';
+  l3Page=0;
+  renderL3();
+  const inp=document.getElementById('l3PortSearchInput');
+  if(inp){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}
+}
+function toggleL3PortDropdown(e){
+  if(e)e.stopPropagation();
+  l3PortDropdownOpen=!l3PortDropdownOpen;
+  refreshL3PortOptions();
+  if(l3PortDropdownOpen)setTimeout(()=>document.getElementById('l3PortSearchInput')?.focus(),0);
+}
+function closeL3PortDropdown(){l3PortDropdownOpen=false;refreshL3PortOptions();}
+function positionL3PortDropdown(){
+  const btn=document.getElementById('l3PortPickerBtn');
+  const menu=document.getElementById('l3PortDropdown');
+  const list=document.getElementById('l3PortOptions');
+  if(!btn||!menu||!list||!l3PortDropdownOpen)return;
+  const r=btn.getBoundingClientRect();
+  const margin=10;
+  const menuW=Math.min(360,Math.max(310,window.innerWidth-margin*2));
+  const below=window.innerHeight-r.bottom-margin;
+  const above=r.top-margin;
+  const openUp=below<240&&above>below;
+  const maxH=Math.max(180,Math.min(360,(openUp?above:below)-6));
+  menu.style.width=menuW+'px';
+  menu.style.left=Math.max(margin,Math.min(window.innerWidth-menuW-margin,r.right-menuW))+'px';
+  menu.style.top=openUp?'auto':(r.bottom+6)+'px';
+  menu.style.bottom=openUp?(window.innerHeight-r.top+6)+'px':'auto';
+  menu.style.maxHeight=maxH+'px';
+  list.style.maxHeight=Math.max(120,maxH-75)+'px';
+}
+function selectL3PortSingle(v){
+  l3PortSelections=v?[v]:[];
+  l3PortSearch=v||'';
+  l3PortQuery='';
+  l3PortDropdownOpen=false;
+  l3Page=0;
+  renderL3();
+}
+function toggleL3PortCheck(e,v){
+  e.stopPropagation();
+  const idx=l3PortSelections.indexOf(v);
+  if(idx>=0)l3PortSelections.splice(idx,1);
+  else l3PortSelections.push(v);
+  l3PortSearch=l3PortSelections.join(' | ');
+  l3Page=0;
+  renderL3();
+}
+function _l3EscOption(v){
+  return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function _l3JsArg(v){return JSON.stringify(String(v??'')).replace(/"/g,'&quot;');}
+function refreshL3PortOptions(){
+  const btn=document.getElementById('l3PortPickerBtn');
+  const menu=document.getElementById('l3PortDropdown');
+  const inp=document.getElementById('l3PortSearchInput');
+  const list=document.getElementById('l3PortOptions');
+  if(!btn||!menu||!inp||!list)return;
+  const ports=Array.from(new Set((RAW.ports||[])
+    .filter(p=>(l3Prod==='all'||p.p===l3Prod)&&(l3Cat==='all'||p.c===l3Cat))
+    .map(p=>p.n).filter(Boolean)))
+    .sort((a,b)=>a.localeCompare(b,'zh-Hans-CN'));
+  l3PortSelections=l3PortSelections.filter(p=>ports.includes(p));
+  if(l3PortSearch&&!ports.includes(l3PortSearch)&&!l3PortSelections.length)l3PortSearch='';
+  const q=(l3PortQuery||'').trim().toLowerCase();
+  const visible=ports.filter(p=>!q||p.toLowerCase().includes(q));
+  btn.textContent=l3PortSelections.length===0
+    ? `全部广告组合 (${ports.length})`
+    : (l3PortSelections.length===1?l3PortSelections[0]:`已选 ${l3PortSelections.length} 个广告组合`);
+  btn.title=l3PortSelections.length?l3PortSelections.join('\n'):'按当前商品和类别列出广告组合';
+  inp.value=l3PortQuery||'';
+  menu.classList.toggle('open',l3PortDropdownOpen);
+  list.innerHTML=visible.length?visible.map(p=>{
+    const checked=l3PortSelections.includes(p)?'checked':'';
+    return `<div class="l3-port-row" onclick="selectL3PortSingle(${_l3JsArg(p)})" title="${_l3EscOption(p)}">
+      <input type="checkbox" ${checked} onclick="toggleL3PortCheck(event,${_l3JsArg(p)})">
+      <span>${_l3EscOption(p)}</span>
+    </div>`;
+  }).join(''):`<div class="l3-port-empty">没有匹配的广告组合</div>`;
+  positionL3PortDropdown();
+}
+document.addEventListener('click',()=>{if(l3PortDropdownOpen)closeL3PortDropdown();});
+window.addEventListener('resize',positionL3PortDropdown);
+window.addEventListener('scroll',positionL3PortDropdown,true);
 function setL3AcosFlt(v){
   l3AcosFlt=v;
   document.querySelectorAll('.l3-acos-btn').forEach(b=>{
@@ -2946,15 +3066,40 @@ function setL3AcosFlt(v){
   l3Page=0;renderL3();
 }
 function jumpToL3Port(portName){
+  l3Prod=l2Prod;
+  l3Cat=l2Cat;
+  l3WkFrom=l2WkFrom;
+  l3WkTo=l2WkTo;
+  l3St='all';
+  l3AcosFlt='all';
   l3PortSearch=portName;
-  const inp=document.getElementById('l3PortSearchInput');if(inp)inp.value=portName;
+  l3PortSelections=portName?[portName]:[];
+  l3PortQuery='';
+  l3PortDropdownOpen=false;
+  l3Search='';
+  l3Page=0;
+
+  document.querySelectorAll('[id^="l3pd-"]').forEach(el=>el.classList.remove('active'));
+  document.getElementById('l3pd-'+l3Prod)?.classList.add('active');
+  document.querySelectorAll('[id^="l3ca-"]').forEach(el=>el.classList.remove('active'));
+  document.getElementById('l3ca-'+(l3Cat==='all'?'all':l3Cat))?.classList.add('active');
+  document.querySelectorAll('[id^="l3st-"]').forEach(el=>el.classList.remove('active'));
+  document.getElementById('l3st-all')?.classList.add('active');
+  document.querySelectorAll('.l3-acos-btn').forEach(b=>{
+    b.style.opacity=b.dataset.v==='all'?'1':'0.45';
+    b.style.fontWeight=b.dataset.v==='all'?'700':'400';
+  });
+  const wkFrom=document.getElementById('l3WkFrom');if(wkFrom)wkFrom.value=l3WkFrom;
+  const wkTo=document.getElementById('l3WkTo');if(wkTo)wkTo.value=l3WkTo;
+  const inp=document.getElementById('l3PortSearchInput');if(inp)inp.value='';
+  const campInp=document.getElementById('l3SearchInput');if(campInp)campInp.value='';
   switchTab('l3');
-  renderL3();
+  setL3WkRange();
 }
 function jumpToL3Camp(campName){
   // 重置其他过滤条件，仅按广告活动名搜索
   l3Prod='all'; l3Cat='all'; l3St='all'; l3AcosFlt='all';
-  l3PortSearch=''; l3Search=campName; l3Page=0;
+  l3PortSearch=''; l3PortSelections=[]; l3PortQuery=''; l3PortDropdownOpen=false; l3Search=campName; l3Page=0;
   const inp=document.getElementById('l3SearchInput');if(inp)inp.value=campName;
   const inpP=document.getElementById('l3PortSearchInput');if(inpP)inpP.value='';
   // 重置筛选 pill 状态
@@ -2984,9 +3129,24 @@ function jumpToL3Camp(campName){
   },150);
 }
 function jumpToL2Prod(prod,cat){
-  setL2Prod(prod);
-  setL2Cat(cat||l1Cat);
+  l2Prod=prod;
+  l2Cat=cat||l1Cat;
+  l2WkFrom=l1WkFrom;
+  l2WkTo=l1WkTo;
+  l2Page=0;
+  l2Search='';
+
+  document.querySelectorAll('#tab-l2 .filter-bar .filter-pill').forEach(b=>{
+    const t=b.textContent;
+    b.classList.toggle('active',l2Prod==='all'?t.includes('全部'):t.includes('('+l2Prod+')'));
+  });
+  document.querySelectorAll('[id^="l2ca-"]').forEach(el=>el.classList.remove('active'));
+  document.getElementById('l2ca-'+(l2Cat==='all'?'all':l2Cat))?.classList.add('active');
+  const wkFrom=document.getElementById('l2WkFrom');if(wkFrom)wkFrom.value=l2WkFrom;
+  const wkTo=document.getElementById('l2WkTo');if(wkTo)wkTo.value=l2WkTo;
+  const search=document.getElementById('l2SearchInput');if(search)search.value='';
   switchTab('l2');
+  renderL2();
 }
 
 
@@ -3078,15 +3238,19 @@ function _initL3ColResize(){ _initColResize('#l3-table',      _l3ColWidths); }
 const _copyIconSVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:13px;height:13px;display:block"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
 
 function renderL3(){
+  refreshL3PortOptions();
   const getRenderCamp=(c)=>{
     if(!l3WkData)return c;
     const d=l3WkData[c.n];
     if(!d)return{...c,sp:0,sl:0,cl:0,im:0,or_:0,or:0,ac:null,ro:null,cp:null,ct:null,cv:null};
     return{...c,...d};
   };
+  const selectedPorts=l3PortSelections.length?l3PortSelections:(l3PortSearch?[l3PortSearch]:[]);
+  const portQuery=(l3PortQuery||'').trim().toLowerCase();
   const camps=RAW.camps
     .filter(c=>(l3Prod==='all'||c.p===l3Prod)&&(l3Cat==='all'||c.c===l3Cat)&&(l3St==='all'||c.st===l3St)
-      &&(!l3Search||c.n.toLowerCase().includes(l3Search.toLowerCase()))&&(!l3PortSearch||(c.po||'').toLowerCase().includes(l3PortSearch.toLowerCase()))
+      &&(!l3Search||c.n.toLowerCase().includes(l3Search.toLowerCase()))
+      &&(selectedPorts.length?selectedPorts.includes(c.po||''):(!portQuery||(c.po||'').toLowerCase().includes(portQuery)))
       &&(l3AcosFlt==='all'||acosClass(getRenderCamp(c).ac,c.p)==='acos-'+l3AcosFlt))
     .sort((a,b)=>{
       const gv=c=>{const r=getRenderCamp(c);return l3SortCol==='or'?(r.or||r.or_||0):(r[l3SortCol]??-Infinity);};
@@ -3124,7 +3288,7 @@ function renderL3(){
       <td>${fmt(r.im,'int')}</td><td>${fmt(r.cl,'int')}</td><td>${fmt(r.or_||r.or,'int')}</td>
       <td>${fmt(r.sp,'$')}</td><td>${fmt(r.sl,'$')}</td><td>${fmt(r.cp,'$')}</td><td>${fmt(r.ct,'pct2')}</td><td>${fmt(r.cv,'pct2')}</td>
       <td class="${acCls}">${fmt(r.ac,'pct')}</td><td style="color:#718096;font-size:11px">${getTarget(c.p)}%</td><td>${fmt(r.ro,'x')}</td>
-      <td><div style="display:flex;justify-content:center">${trendDots(sliceWa(c.wa,l3WkFrom,l3WkTo),c.p)}</div></td>
+      <td><div style="display:flex;justify-content:flex-start">${trendDots(sliceWa(c.wa,l3WkFrom,l3WkTo),c.p,20)}</div></td>
     </tr>`;
   }
   html+='</tbody></table>';
