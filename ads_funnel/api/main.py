@@ -174,6 +174,104 @@ def _check_file_country(df: pd.DataFrame, report_country: str, label: str):
         )
 
 
+_IMPORT_JOBS: dict[str, dict] = {}
+_IMPORT_JOBS_LOCK = threading.Lock()
+
+
+def _set_import_job(job_id: str, **updates):
+    with _IMPORT_JOBS_LOCK:
+        job = _IMPORT_JOBS.get(job_id)
+        if job:
+            job.update(updates)
+
+
+def _import_reports_from_bytes(camp_bytes: bytes, port_bytes: bytes, title: str = '') -> dict:
+    try:
+        df_c = pd.read_excel(io.BytesIO(camp_bytes))
+        df_p = pd.read_excel(io.BytesIO(port_bytes))
+    except Exception as e:
+        raise ValueError(f'Excel 读取失败: {e}') from e
+
+    db.upsert_raw(df_c, df_p)
+    del df_c, df_p
+    gc.collect()
+
+    report_ids = db.rebuild_from_raw()
+    if not report_ids:
+        raise RuntimeError('raw 数据为空，导入失败')
+
+    reports = [db.get_report(rid) for rid in report_ids]
+    country_codes = sorted({
+        r.get('country') for r in reports
+        if r and r.get('country')
+    })
+    amazon_sync = [_amazon_sync_result(c) for c in country_codes]
+    if any(s.get('ok') for s in amazon_sync):
+        db.rebuild_from_raw()
+        reports = [db.get_report(rid) for rid in report_ids]
+
+    return {
+        'ids': report_ids,
+        'reports': [
+            {'id': r['id'], 'title': r['title'], 'weeks': r['weeks']}
+            for r in reports if r
+        ],
+        'amazon_sync': amazon_sync,
+    }
+
+
+def _run_import_job(job_id: str, camp_bytes: bytes, port_bytes: bytes, title: str = ''):
+    _set_import_job(job_id, status='running', message='正在解析 Excel 并写入数据库...')
+    try:
+        result = _import_reports_from_bytes(camp_bytes, port_bytes, title)
+        _set_import_job(
+            job_id,
+            ok=True,
+            status='success',
+            message='报告导入完成',
+            result=result,
+        )
+    except ValueError as e:
+        _set_import_job(
+            job_id,
+            ok=False,
+            status='failed',
+            message='报告导入失败',
+            error=str(e),
+        )
+    except Exception as e:
+        _set_import_job(
+            job_id,
+            ok=False,
+            status='failed',
+            message='报告导入失败',
+            error=f'数据处理失败: {e}',
+        )
+
+
+def _start_import_job(camp_bytes: bytes, port_bytes: bytes, title: str = '') -> dict:
+    job_id = uuid.uuid4().hex
+    job = {
+        'ok': True,
+        'job_id': job_id,
+        'status': 'queued',
+        'message': '已创建报告导入任务',
+    }
+    with _IMPORT_JOBS_LOCK:
+        _IMPORT_JOBS[job_id] = job
+        if len(_IMPORT_JOBS) > 100:
+            for old_job_id in list(_IMPORT_JOBS.keys())[:-100]:
+                _IMPORT_JOBS.pop(old_job_id, None)
+
+    worker = threading.Thread(
+        target=_run_import_job,
+        args=(job_id, camp_bytes, port_bytes, title),
+        daemon=True,
+    )
+    worker.start()
+    return job
+
+
     db.rebuild_from_raw()       # 从原始数据重建 JSON（若 raw 表有数据）
     print('Database ready (MySQL)')
 
@@ -252,51 +350,16 @@ async def api_import(
     """
     camp_bytes = await camp_file.read()
     port_bytes = await port_file.read()
+    return _start_import_job(camp_bytes, port_bytes, title)
 
-    # P0: 重型同步操作放入线程池，释放事件循环，避免 nginx 502
-    # P1: 读完 DataFrame 后立即释放原始字节，降低内存峰值
-    loop = asyncio.get_event_loop()
 
-    def _do_import():
-        nonlocal camp_bytes, port_bytes
-        try:
-            df_c = pd.read_excel(io.BytesIO(camp_bytes))
-            df_p = pd.read_excel(io.BytesIO(port_bytes))
-        except Exception as e:
-            raise ValueError(f'Excel 读取失败: {e}')
-        finally:
-            del camp_bytes, port_bytes
-            gc.collect()
-
-        db.upsert_raw(df_c, df_p)
-        del df_c, df_p
-        gc.collect()
-        return db.rebuild_from_raw()
-
-    try:
-        report_ids = await loop.run_in_executor(None, _do_import)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    except Exception as e:
-        raise HTTPException(500, f'数据处理失败: {e}')
-
-    if not report_ids:
-        raise HTTPException(500, 'raw 数据为空，导入失败')
-
-    reports = [db.get_report(rid) for rid in report_ids]
-    country_codes = sorted({
-        r.get('country') for r in reports
-        if r and r.get('country')
-    })
-    amazon_sync = [_amazon_sync_result(c) for c in country_codes]
-    if any(s.get('ok') for s in amazon_sync):
-        db.rebuild_from_raw()
-        reports = [db.get_report(rid) for rid in report_ids]
-    return {
-        'ids':     report_ids,
-        'reports': [{'id': r['id'], 'title': r['title'], 'weeks': r['weeks']} for r in reports if r],
-        'amazon_sync': amazon_sync,
-    }
+@app.get('/api/import/jobs/{job_id}')
+def api_import_job(job_id: str):
+    with _IMPORT_JOBS_LOCK:
+        job = _IMPORT_JOBS.get(job_id)
+        if job:
+            return dict(job)
+    raise HTTPException(404, '未找到报告导入任务')
 
 
 @app.post('/api/amazon/sync-metadata')

@@ -5943,6 +5943,46 @@ async function dmPollAmazonSyncJob(jobId, st, btn, startedAt){
   }
 }
 
+function dmFinishImportResult(data, st){
+  st.style.color='#16a34a';
+  const summary=(data.reports||[]).map(r=>`${r.title}（${(r.weeks||[]).join('、')}）`).join('；');
+  const syncSummary=dmFormatAmazonSyncResults(data.amazon_sync);
+  st.textContent='导入成功：'+summary+(syncSummary?'；'+syncSummary:'');
+  _dmFiles.camp=_dmFiles.port=null;
+  ['camp','port'].forEach(tp=>{
+    document.getElementById('dm-'+tp+'-name').textContent='';
+    document.getElementById('dm-zone-'+tp).classList.remove('ready');
+    document.getElementById('dm-inp-'+tp).value='';
+  });
+  document.getElementById('dm-title').value='';
+  dmLoadReports();
+  if(data.ids&&data.ids.length)setTimeout(()=>window.location='?id='+data.ids[0],800);
+}
+
+async function dmPollImportJob(jobId, st, btn, startedAt){
+  const elapsed=Math.max(1,Math.round((Date.now()-startedAt)/1000));
+  try{
+    const resp=await fetch(`api/import/jobs/${encodeURIComponent(jobId)}`);
+    const data=await dmReadJsonResponse(resp);
+    if(!resp.ok)throw new Error(data.detail||data.error||'导入任务查询失败');
+    if(data.status==='queued'||data.status==='running'){
+      st.style.color='#3b82f6';
+      st.textContent=`${data.message||'报告导入中'}（已用 ${elapsed} 秒）`;
+      setTimeout(()=>dmPollImportJob(jobId,st,btn,startedAt),2000);
+      return;
+    }
+    if(data.status==='success'){
+      dmFinishImportResult(data.result||{},st);
+      btn.disabled=true;
+      return;
+    }
+    throw new Error(data.error||'导入失败');
+  }catch(e){
+    st.style.color='#dc2626';st.textContent='错误: '+e.message;
+    btn.disabled=!(_dmFiles.camp&&_dmFiles.port);
+  }
+}
+
 async function dmDoImport(){
   const btn=document.getElementById('dm-btn-import');
   const st=document.getElementById('dm-status');
@@ -5955,22 +5995,10 @@ async function dmDoImport(){
   if(t)fd.append('title',t);
   try{
     const resp=await fetch('api/import',{method:'POST',body:fd});
-    const data=await resp.json();
-    if(!resp.ok)throw new Error(data.detail||'导入失败');
-    st.style.color='#16a34a';
-    const summary=(data.reports||[]).map(r=>`${r.title}（${(r.weeks||[]).join('、')}）`).join('；');
-    const syncSummary=dmFormatAmazonSyncResults(data.amazon_sync);
-    st.textContent='导入成功：'+summary+(syncSummary?'；'+syncSummary:'');
-    _dmFiles.camp=_dmFiles.port=null;
-    ['camp','port'].forEach(tp=>{
-      document.getElementById('dm-'+tp+'-name').textContent='';
-      document.getElementById('dm-zone-'+tp).classList.remove('ready');
-      document.getElementById('dm-inp-'+tp).value='';
-    });
-    document.getElementById('dm-title').value='';
-    dmLoadReports();
-    // 自动跳转到第一个报告
-    if(data.ids&&data.ids.length)setTimeout(()=>window.location='?id='+data.ids[0],800);
+    const data=await dmReadJsonResponse(resp);
+    if(!resp.ok||!data.ok||!data.job_id)throw new Error(data.detail||data.error||'导入任务启动失败');
+    st.textContent='报告导入任务已启动，正在后台处理…';
+    dmPollImportJob(data.job_id,st,btn,Date.now());
   }catch(e){
     st.style.color='#dc2626';st.textContent='错误: '+e.message;
     btn.disabled=!(_dmFiles.camp&&_dmFiles.port);

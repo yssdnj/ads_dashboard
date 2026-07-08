@@ -195,27 +195,55 @@ async function doImport() {
 
   try {
     const resp = await fetch('api/import', {method:'POST', body:fd});
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.detail || '导入失败');
-
-    status.className = 'status-ok';
-    const summary = data.reports.map(r => `${r.title}（${r.weeks.join('、')}）`).join('；');
-    const syncSummary = formatAmazonSyncResults(data.amazon_sync);
-    status.textContent = `✓ 导入成功：${summary}${syncSummary ? '；' + syncSummary : ''}`;
-    // reset
-    files.camp = files.port = null;
-    ['camp','port'].forEach(t => {
-      document.getElementById(`${t}-name`).textContent = '';
-      document.getElementById(`zone-${t}`).classList.remove('ready');
-      document.getElementById(`inp-${t}`).value = '';
-    });
-    document.getElementById('report-title').value = '';
-    loadReports();
+    const data = await readJsonResponse(resp);
+    if (!resp.ok || !data.ok || !data.job_id) throw new Error(data.detail || data.error || '导入任务启动失败');
+    status.textContent = '报告导入任务已启动，正在后台处理…';
+    pollImportJob(data.job_id, status, btn, Date.now());
   } catch(e) {
     status.className = 'status-err';
     status.textContent = `✗ ${e.message}`;
+    btn.disabled = !(files.camp && files.port);
   }
-  btn.disabled = !(files.camp && files.port);
+}
+
+function finishImportResult(data, status) {
+  status.className = 'status-ok';
+  const summary = (data.reports || []).map(r => `${r.title}（${(r.weeks || []).join('、')}）`).join('；');
+  const syncSummary = formatAmazonSyncResults(data.amazon_sync);
+  status.textContent = `✓ 导入成功：${summary}${syncSummary ? '；' + syncSummary : ''}`;
+  files.camp = files.port = null;
+  ['camp','port'].forEach(t => {
+    document.getElementById(`${t}-name`).textContent = '';
+    document.getElementById(`zone-${t}`).classList.remove('ready');
+    document.getElementById(`inp-${t}`).value = '';
+  });
+  document.getElementById('report-title').value = '';
+  loadReports();
+}
+
+async function pollImportJob(jobId, status, btn, startedAt) {
+  const elapsed = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+  try {
+    const resp = await fetch(`api/import/jobs/${encodeURIComponent(jobId)}`);
+    const data = await readJsonResponse(resp);
+    if (!resp.ok) throw new Error(data.detail || data.error || '导入任务查询失败');
+    if (data.status === 'queued' || data.status === 'running') {
+      status.className = 'status-loading';
+      status.textContent = `${data.message || '报告导入中'}（已用 ${elapsed} 秒）`;
+      setTimeout(() => pollImportJob(jobId, status, btn, startedAt), 2000);
+      return;
+    }
+    if (data.status === 'success') {
+      finishImportResult(data.result || {}, status);
+      btn.disabled = true;
+      return;
+    }
+    throw new Error(data.error || '导入失败');
+  } catch(e) {
+    status.className = 'status-err';
+    status.textContent = `✗ ${e.message}`;
+    btn.disabled = !(files.camp && files.port);
+  }
 }
 
 async function pollAmazonSyncJob(jobId, status, btn, startedAt) {
