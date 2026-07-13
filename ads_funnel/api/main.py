@@ -784,43 +784,43 @@ def api_product_trend(product: str, country: str, date_from: str, date_to: str):
                    SUM(曝光量) AS im, SUM(点击) AS cl, SUM(广告订单) AS or_,
                    SUM(花费) AS sp, SUM(广告销售额) AS sl
             FROM raw_camp_lx
-            WHERE 广告活动 LIKE :prefix AND 国家 = :country
+            WHERE (广告组合 LIKE :port_prefix OR 广告组合 = :product) AND 国家 = :country
               AND 日期 BETWEEN :date_from AND :date_to
             GROUP BY 日期
             ORDER BY 日期
-        """), {"prefix": f"{product}%", "country": country, "date_from": date_from, "date_to": date_to}).fetchall()
+        """), {"port_prefix": f"{product}_%", "product": product, "country": country, "date_from": date_from, "date_to": date_to}).fetchall()
 
         type_rows = conn.execute(text("""
             SELECT 日期,
                    CASE
-                     WHEN 广告活动 LIKE '%_SB%' OR 广告活动 LIKE 'SB%' THEN 'SB'
-                     WHEN 广告活动 LIKE '%_SD%' OR 广告活动 LIKE 'SD%' THEN 'SD'
+                     WHEN 类型 IN ('SB', 'SB2') THEN 'SB'
+                     WHEN 类型 = 'SD' THEN 'SD'
                      ELSE 'SP'
                    END AS 类型,
                    SUM(曝光量) AS im, SUM(点击) AS cl, SUM(广告订单) AS or_,
                    SUM(花费) AS sp, SUM(广告销售额) AS sl
             FROM raw_camp_lx
-            WHERE 广告活动 LIKE :prefix AND 国家 = :country
+            WHERE (广告组合 LIKE :port_prefix OR 广告组合 = :product) AND 国家 = :country
               AND 日期 BETWEEN :date_from AND :date_to
             GROUP BY 日期,
                    CASE
-                     WHEN 广告活动 LIKE '%_SB%' OR 广告活动 LIKE 'SB%' THEN 'SB'
-                     WHEN 广告活动 LIKE '%_SD%' OR 广告活动 LIKE 'SD%' THEN 'SD'
+                     WHEN 类型 IN ('SB', 'SB2') THEN 'SB'
+                     WHEN 类型 = 'SD' THEN 'SD'
                      ELSE 'SP'
                    END
             ORDER BY 日期, sp DESC
-        """), {"prefix": f"{product}%", "country": country, "date_from": date_from, "date_to": date_to}).fetchall()
+        """), {"port_prefix": f"{product}_%", "product": product, "country": country, "date_from": date_from, "date_to": date_to}).fetchall()
 
         camp_rows = conn.execute(text("""
             SELECT 日期, 广告活动,
                    SUM(曝光量) AS im, SUM(点击) AS cl, SUM(广告订单) AS or_,
                    SUM(花费) AS sp, SUM(广告销售额) AS sl
             FROM raw_camp_lx
-            WHERE 广告活动 LIKE :prefix AND 国家 = :country
+            WHERE (广告组合 LIKE :port_prefix OR 广告组合 = :product) AND 国家 = :country
               AND 日期 BETWEEN :date_from AND :date_to
             GROUP BY 日期, 广告活动
             ORDER BY 日期, sp DESC
-        """), {"prefix": f"{product}%", "country": country, "date_from": date_from, "date_to": date_to}).fetchall()
+        """), {"port_prefix": f"{product}_%", "product": product, "country": country, "date_from": date_from, "date_to": date_to}).fetchall()
 
     daily = []
     for r in daily_rows:
