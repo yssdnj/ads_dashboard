@@ -25,6 +25,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .dm-zone.ready{border-color:#22c55e;background:#f0fdf4}
 .filter-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px;background:#fff;padding:10px 14px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08)}#tab-ov .filter-bar,#tab-l1 .filter-bar,#tab-l2 .filter-bar,#tab-l3 .filter-bar,#tab-ana .filter-bar{position:sticky;top:42px;z-index:10;margin-bottom:0;border-radius:8px 8px 0 0}
 .filter-label{font-size:11px;font-weight:600;color:#718096;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.week-range{display:flex;align-items:center;gap:4px;white-space:nowrap}.week-range select{padding:4px 7px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px;min-width:62px}.week-range .week-select{min-width:54px}.week-range .week-sep{font-size:11px;color:#94a3b8;padding:0 1px}
 .filter-pill{padding:4px 12px;border-radius:20px;border:1.5px solid #e2e8f0;background:#f7fafc;cursor:pointer;font-size:12px;color:#4a5568;transition:all .15s;white-space:nowrap}
 .filter-pill:hover{border-color:#93c5fd;color:#2563eb}
 .filter-pill.active{background:#3b82f6;border-color:#3b82f6;color:#fff;font-weight:600}
@@ -487,9 +488,13 @@ body.dark .drs-lbl{color:#64748b}
     <button class="filter-pill" onclick="setOvProd('SFM')">丰容碗(SFM)</button>
     <div class="filter-sep"></div>
     <span class="filter-label">周次</span>
-    <select id="ovWkFrom" onchange="setOvWkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
-    <span style="font-size:11px;color:#94a3b8;padding:0 2px">—</span>
-    <select id="ovWkTo" onchange="setOvWkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
+    <span class="week-range">
+      <select id="ovYrFrom" onchange="setWeekPickerYear('ov','from')"></select>
+      <select id="ovWkFrom" class="week-select" onchange="setWeekPickerWeek('ov')"></select>
+      <span class="week-sep">—</span>
+      <select id="ovYrTo" onchange="setWeekPickerYear('ov','to')"></select>
+      <select id="ovWkTo" class="week-select" onchange="setWeekPickerWeek('ov')"></select>
+    </span>
   </div>
 
   <div id="ov-cards" class="metric-grid"></div>
@@ -558,9 +563,13 @@ body.dark .drs-lbl{color:#64748b}
     <button class="filter-pill" id="l1ca-2" onclick="setL1Cat('2_SD')">SD</button>
     <div class="filter-sep"></div>
     <span class="filter-label">周次</span>
-    <select id="l1WkFrom" onchange="setL1WkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
-    <span style="font-size:11px;color:#94a3b8;padding:0 2px">—</span>
-    <select id="l1WkTo" onchange="setL1WkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
+    <span class="week-range">
+      <select id="l1YrFrom" onchange="setWeekPickerYear('l1','from')"></select>
+      <select id="l1WkFrom" class="week-select" onchange="setWeekPickerWeek('l1')"></select>
+      <span class="week-sep">—</span>
+      <select id="l1YrTo" onchange="setWeekPickerYear('l1','to')"></select>
+      <select id="l1WkTo" class="week-select" onchange="setWeekPickerWeek('l1')"></select>
+    </span>
   </div>
 
   <!-- Metric cards -->
@@ -655,9 +664,13 @@ body.dark .drs-lbl{color:#64748b}
     <button class="filter-pill" id="l2ca-2_SD" onclick="setL2Cat('2_SD')">SD</button>
     <div class="filter-sep"></div>
     <span class="filter-label">周次</span>
-    <select id="l2WkFrom" onchange="setL2WkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
-    <span style="font-size:11px;color:#94a3b8;padding:0 2px">—</span>
-    <select id="l2WkTo" onchange="setL2WkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
+    <span class="week-range">
+      <select id="l2YrFrom" onchange="setWeekPickerYear('l2','from')"></select>
+      <select id="l2WkFrom" class="week-select" onchange="setWeekPickerWeek('l2')"></select>
+      <span class="week-sep">—</span>
+      <select id="l2YrTo" onchange="setWeekPickerYear('l2','to')"></select>
+      <select id="l2WkTo" class="week-select" onchange="setWeekPickerWeek('l2')"></select>
+    </span>
   </div>
   <!-- Metric cards -->
   <div id="l2-cards" class="metric-grid" style="margin-top:10px"></div>
@@ -729,9 +742,13 @@ body.dark .drs-lbl{color:#64748b}
     <button class="filter-pill" id="l3st-no" onclick="setL3St('no_imp')">🚫 无曝光</button>
     <div class="filter-sep"></div>
     <span class="filter-label">周次</span>
-    <select id="l3WkFrom" onchange="setL3WkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
-    <span style="font-size:11px;color:#94a3b8;padding:0 2px">—</span>
-    <select id="l3WkTo" onchange="setL3WkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
+    <span class="week-range">
+      <select id="l3YrFrom" onchange="setWeekPickerYear('l3','from')"></select>
+      <select id="l3WkFrom" class="week-select" onchange="setWeekPickerWeek('l3')"></select>
+      <span class="week-sep">—</span>
+      <select id="l3YrTo" onchange="setWeekPickerYear('l3','to')"></select>
+      <select id="l3WkTo" class="week-select" onchange="setWeekPickerWeek('l3')"></select>
+    </span>
   </div>
 
   <div class="tbl-wrap">
@@ -788,9 +805,13 @@ body.dark .drs-lbl{color:#64748b}
     <button class="filter-pill" id="anca-2_SD" onclick="setAnaCat('2_SD')">SD</button>
     <div class="filter-sep"></div>
     <span class="filter-label">周次</span>
-    <select id="anaWkFrom" onchange="setAnaWkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
-    <span style="font-size:11px;color:#94a3b8;padding:0 2px">—</span>
-    <select id="anaWkTo" onchange="setAnaWkRange()" style="padding:4px 8px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px"></select>
+    <span class="week-range">
+      <select id="anaYrFrom" onchange="setWeekPickerYear('ana','from')"></select>
+      <select id="anaWkFrom" class="week-select" onchange="setWeekPickerWeek('ana')"></select>
+      <span class="week-sep">—</span>
+      <select id="anaYrTo" onchange="setWeekPickerYear('ana','to')"></select>
+      <select id="anaWkTo" class="week-select" onchange="setWeekPickerWeek('ana')"></select>
+    </span>
   </div>
   <div id="ana-content">
     <div style="display:flex;gap:8px;margin:10px 0 8px">
@@ -1585,7 +1606,7 @@ body.dark .drs-lbl{color:#64748b}
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-        <input type="text" id="dm-title" placeholder="报告名称（留空自动生成，如 HOWGO-US W20-W24）"
+          <input type="text" id="dm-title" placeholder="报告名称（留空自动生成，如 HOWGO-US 26W20-26W24）"
           style="flex:1;padding:7px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px">
         <button id="dm-btn-import" onclick="dmDoImport()" disabled
           style="padding:8px 18px;background:#3b82f6;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;transition:background .15s">
@@ -1859,16 +1880,87 @@ const PROD_DESC = {SL:'P绳',SC:'P型项圈',DL:'双头牵引绳',DSL2:'双头P�
 // ── State ──────────────────────────────────────────────────────────────────────
 let acosTargets = {SL:35,SC:35,DL:35,Toy:35,ToyDH:40,DSL2:40,MFL:40,SFM:40,ShortL:40,WB:40,Other:40};
 let showWoW = false, l1ShowWoW = false;
+function weekYearKey(w){
+  const m=String(w||'').match(/^(\d{2,4})W\d+$/);
+  return m?m[1]:'';
+}
+function weekNumber(w){
+  const m=String(w||'').match(/W(\d+)$/);
+  return m?Number(m[1]):0;
+}
+function weekIndex(w){
+  const i=WEEKS.indexOf(w);
+  return i<0?0:i;
+}
+const WEEK_YEARS=Array.from(new Set(WEEKS.map(weekYearKey).filter(Boolean)));
+const CURRENT_WEEK_YEAR=String(new Date().getFullYear()%100).padStart(2,'0');
+const DEFAULT_WEEK_YEAR=WEEK_YEARS.includes(CURRENT_WEEK_YEAR)?CURRENT_WEEK_YEAR:(WEEK_YEARS[WEEK_YEARS.length-1]||'');
+const DEFAULT_YEAR_WEEKS=DEFAULT_WEEK_YEAR?WEEKS.filter(w=>weekYearKey(w)===DEFAULT_WEEK_YEAR):WEEKS;
+const DEFAULT_WK_FROM=DEFAULT_YEAR_WEEKS[0]||WEEKS[0]||'';
+const DEFAULT_WK_TO=DEFAULT_YEAR_WEEKS[DEFAULT_YEAR_WEEKS.length-1]||WEEKS[WEEKS.length-1]||'';
+function weeksForYear(y){
+  return WEEKS.filter(w=>weekYearKey(w)===String(y));
+}
+function fillSelectOptions(sel, values, selectedValue, labeler){
+  if(!sel)return '';
+  sel.innerHTML='';
+  const final=values.includes(selectedValue)?selectedValue:(values[0]||'');
+  values.forEach(v=>{
+    const opt=document.createElement('option');
+    opt.value=v;
+    opt.textContent=labeler?labeler(v):v;
+    opt.selected=v===final;
+    sel.appendChild(opt);
+  });
+  sel.value=final;
+  return final;
+}
+function normalizeWeekPair(fromVal,toVal){
+  let from=WEEKS.includes(fromVal)?fromVal:DEFAULT_WK_FROM;
+  let to=WEEKS.includes(toVal)?toVal:DEFAULT_WK_TO;
+  if(weekIndex(from)>weekIndex(to))to=from;
+  return [from,to];
+}
+function syncWeekPicker(prefix,fromVal,toVal){
+  const [from,to]=normalizeWeekPair(fromVal,toVal);
+  const fromYear=weekYearKey(from),toYear=weekYearKey(to);
+  fillSelectOptions(document.getElementById(prefix+'YrFrom'),WEEK_YEARS,fromYear,y=>`${y}年`);
+  fillSelectOptions(document.getElementById(prefix+'YrTo'),WEEK_YEARS,toYear,y=>`${y}年`);
+  fillSelectOptions(document.getElementById(prefix+'WkFrom'),weeksForYear(fromYear),from,w=>`W${weekNumber(w)}`);
+  fillSelectOptions(document.getElementById(prefix+'WkTo'),weeksForYear(toYear),to,w=>`W${weekNumber(w)}`);
+  return [from,to];
+}
+function applyWeekPicker(prefix){
+  const fn={ov:setOvWkRange,l1:setL1WkRange,l2:setL2WkRange,l3:setL3WkRange,ana:setAnaWkRange}[prefix];
+  if(fn)return fn();
+}
+function setWeekPickerYear(prefix,side){
+  const ySel=document.getElementById(prefix+(side==='from'?'YrFrom':'YrTo'));
+  const weeks=weeksForYear(ySel?.value);
+  const wkSel=document.getElementById(prefix+(side==='from'?'WkFrom':'WkTo'));
+  const preferred=side==='from'?weeks[0]:weeks[weeks.length-1];
+  fillSelectOptions(wkSel,weeks,preferred,w=>`W${weekNumber(w)}`);
+  const from=document.getElementById(prefix+'WkFrom')?.value;
+  const to=document.getElementById(prefix+'WkTo')?.value;
+  syncWeekPicker(prefix,from,to);
+  return applyWeekPicker(prefix);
+}
+function setWeekPickerWeek(prefix){
+  const from=document.getElementById(prefix+'WkFrom')?.value;
+  const to=document.getElementById(prefix+'WkTo')?.value;
+  syncWeekPicker(prefix,from,to);
+  return applyWeekPicker(prefix);
+}
 let ovProd='all', ovWkMode='click', ovDayMode='click';
-let ovWkFrom=WEEKS[0], ovWkTo=WEEKS[WEEKS.length-1];
+let ovWkFrom=DEFAULT_WK_FROM, ovWkTo=DEFAULT_WK_TO;
 let l1Prod='all', l1Cat='all', l1WkMode='click', l1DayMode='click';
-let l1WkFrom=WEEKS[0], l1WkTo=WEEKS[WEEKS.length-1];
+let l1WkFrom=DEFAULT_WK_FROM, l1WkTo=DEFAULT_WK_TO;
 let l2Prod='all', l2Cat='all', l2WkMode='click', l2DayMode='click', l2Page=0, l2PerPage=20, l2Search='';
-let l2WkFrom=WEEKS[0], l2WkTo=WEEKS[WEEKS.length-1];
+let l2WkFrom=DEFAULT_WK_FROM, l2WkTo=DEFAULT_WK_TO;
 let l3Prod='all', l3Cat='all', l3St='all', l3Page=0, l3PerPage=50, l3Search='', l3PortSearch='', l3PortQuery='', l3AcosFlt='all';
 let l3PortSelections=[];
 let l3PortDropdownOpen=false;
-let l3WkFrom=WEEKS[0], l3WkTo=WEEKS[WEEKS.length-1];
+let l3WkFrom=DEFAULT_WK_FROM, l3WkTo=DEFAULT_WK_TO;
 let l3WkData=null;   // null=全范围使用RAW.camps; object=DB查询结果
 let l3WkNoData=false; // true=查询返回空，已降级回总计
 let l3OpenCamp=null; // 当前展开的广告活动名，防止快速切换时数据错位
@@ -1876,7 +1968,7 @@ let L3_PCT_MAP=null; // campaign_name(lower) → placement pct data
 const l3TrendCache={};  // {campName: trendData}，切换图表模式时复用
 const l3TrendModes={};  // {campName: {wk:'spend', day:'spend'}}
 let anaProd='all', anaCat='all';
-let anaWkFrom=WEEKS[0], anaWkTo=WEEKS[WEEKS.length-1];
+let anaWkFrom=DEFAULT_WK_FROM, anaWkTo=DEFAULT_WK_TO;
 let anaView='funnel';
 let _charts={};
 
@@ -1984,11 +2076,19 @@ function _isoWkNum(dateStr){
   const w1=new Date(d.getFullYear(),0,4);
   return 1+Math.round(((d-w1)/86400000-3+(w1.getDay()+6)%7)/7);
 }
+function _isoWeekKey(dateStr){
+  const d=new Date(dateStr+'T12:00:00');
+  d.setDate(d.getDate()+3-(d.getDay()+6)%7);
+  const w1=new Date(d.getFullYear(),0,4);
+  const wk=1+Math.round(((d-w1)/86400000-3+(w1.getDay()+6)%7)/7);
+  const yr=String(d.getFullYear()%100).padStart(2,'0');
+  return `${yr}W${wk}`;
+}
 // 从 RAW.daily_ov 实际日期动态构建 周→日期列表 映射
 const _wkDaysCache=(()=>{
   const m={};
   Object.keys(RAW.daily_ov).forEach(d=>{
-    const w='W'+_isoWkNum(d);
+    const w=_isoWeekKey(d);
     (m[w]=m[w]||[]).push(d);
   });
   Object.values(m).forEach(a=>a.sort());
@@ -3089,8 +3189,7 @@ function jumpToL3Port(portName){
     b.style.opacity=b.dataset.v==='all'?'1':'0.45';
     b.style.fontWeight=b.dataset.v==='all'?'700':'400';
   });
-  const wkFrom=document.getElementById('l3WkFrom');if(wkFrom)wkFrom.value=l3WkFrom;
-  const wkTo=document.getElementById('l3WkTo');if(wkTo)wkTo.value=l3WkTo;
+  syncWeekPicker('l3',l3WkFrom,l3WkTo);
   const inp=document.getElementById('l3PortSearchInput');if(inp)inp.value='';
   const campInp=document.getElementById('l3SearchInput');if(campInp)campInp.value='';
   switchTab('l3');
@@ -3142,8 +3241,7 @@ function jumpToL2Prod(prod,cat){
   });
   document.querySelectorAll('[id^="l2ca-"]').forEach(el=>el.classList.remove('active'));
   document.getElementById('l2ca-'+(l2Cat==='all'?'all':l2Cat))?.classList.add('active');
-  const wkFrom=document.getElementById('l2WkFrom');if(wkFrom)wkFrom.value=l2WkFrom;
-  const wkTo=document.getElementById('l2WkTo');if(wkTo)wkTo.value=l2WkTo;
+  syncWeekPicker('l2',l2WkFrom,l2WkTo);
   const search=document.getElementById('l2SearchInput');if(search)search.value='';
   switchTab('l2');
   renderL2();
@@ -6273,26 +6371,7 @@ async function cfgDoPlacementImport(){
 
 // ── 初始化周次区间下拉框（从 WEEKS 动态生成）────────────────────────────────
 function initWeekRangeSelects(){
-  const pairs=[
-    {fromId:'ovWkFrom', toId:'ovWkTo'},
-    {fromId:'l1WkFrom', toId:'l1WkTo'},
-    {fromId:'l2WkFrom', toId:'l2WkTo'},
-    {fromId:'anaWkFrom', toId:'anaWkTo'},
-    {fromId:'l3WkFrom',  toId:'l3WkTo'},
-  ];
-  pairs.forEach(({fromId,toId})=>{
-    const selFrom=document.getElementById(fromId);
-    const selTo=document.getElementById(toId);
-    if(!selFrom||!selTo)return;
-    WEEKS.forEach((w,i)=>{
-      const o1=document.createElement('option');
-      o1.value=w;o1.textContent=w;if(i===0)o1.selected=true;
-      selFrom.appendChild(o1);
-      const o2=document.createElement('option');
-      o2.value=w;o2.textContent=w;if(i===WEEKS.length-1)o2.selected=true;
-      selTo.appendChild(o2);
-    });
-  });
+  ['ov','l1','l2','ana','l3'].forEach(prefix=>syncWeekPicker(prefix,DEFAULT_WK_FROM,DEFAULT_WK_TO));
 }
 initWeekRangeSelects();
 

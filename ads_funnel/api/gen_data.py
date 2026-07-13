@@ -120,10 +120,16 @@ def process(df_c: pd.DataFrame, df_p: pd.DataFrame) -> dict:
         if col in df_p.columns: df_p[col] = df_p[col].apply(_parse_pct)
 
     # ── 自动检测周次 ─────────────────────────────────────────────────────────
-    iso_weeks = sorted(df_c['日期'].apply(lambda d: d.isocalendar().week).unique())
-    WEEKS = [f'W{w}' for w in iso_weeks]
+    # 周次 key 必须带 ISO 年份，否则 25W1 和 26W1 会被合并到同一个 W1。
+    def get_week(dt):
+        iso = dt.isocalendar()
+        return f'{iso.year % 100:02d}W{iso.week}'
 
-    def get_week(dt): return f'W{dt.isocalendar().week}'
+    def week_sort_key(w):
+        year, week = str(w).split('W', 1)
+        return int(year), int(week)
+
+    WEEKS = sorted(df_c['日期'].apply(get_week).unique(), key=week_sort_key)
     df_c['week'] = df_c['日期'].apply(get_week)
     df_p['week'] = df_p['日期'].apply(get_week)
     df_c = df_c[df_c['week'].isin(WEEKS)].copy()

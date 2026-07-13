@@ -1102,7 +1102,8 @@ def get_campaign_trend(
         wk_buckets: dict = {}
         for d in daily:
             date_obj = _dt.strptime(d['date'], '%Y-%m-%d').date()
-            wk = f'W{date_obj.isocalendar().week}'
+            iso = date_obj.isocalendar()
+            wk = f'{iso.year % 100:02d}W{iso.week}'
             if wk not in wk_buckets:
                 wk_buckets[wk] = {'sp': 0, 'sl': 0, 'cl': 0, 'im': 0, 'or_': 0}
             b = wk_buckets[wk]
@@ -1110,8 +1111,15 @@ def get_campaign_trend(
             b['cl']  += d['cl'];  b['im']  += d['im']
             b['or_'] += d['or_']
 
+        def _week_sort_key(wk: str) -> tuple[int, int]:
+            try:
+                year_part, week_part = str(wk).split('W', 1)
+                return int(year_part), int(week_part)
+            except Exception:
+                return (0, 0)
+
         weekly = []
-        for wk, b in sorted(wk_buckets.items(), key=lambda x: int(x[0][1:])):
+        for wk, b in sorted(wk_buckets.items(), key=lambda item: _week_sort_key(item[0])):
             sp, sl, cl, im, or_ = b['sp'], b['sl'], b['cl'], b['im'], b['or_']
             weekly.append({
                 'wk': wk, 'sp': sp, 'sl': sl, 'cl': cl, 'im': im, 'or_': or_,
