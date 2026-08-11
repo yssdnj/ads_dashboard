@@ -147,7 +147,11 @@ def process(df_c: pd.DataFrame, df_p: pd.DataFrame) -> dict:
 
     # ── 商品/类别分类 ────────────────────────────────────────────────────────
     df_c['prod'], df_c['cat'] = zip(*df_c['广告组合'].apply(classify_port))
-    df_p['prod'], df_p['cat'] = zip(*df_p['广告组合'].apply(classify_port))
+    if df_p.empty:
+        df_p['prod'] = []
+        df_p['cat'] = []
+    else:
+        df_p['prod'], df_p['cat'] = zip(*df_p['广告组合'].apply(classify_port))
 
     # ── 总体(OV) ─────────────────────────────────────────────────────────────
     ov = dict(t=_metrics(df_c), w=_weekly_metrics(df_c, WEEKS))

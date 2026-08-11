@@ -7,6 +7,7 @@ import asyncio, base64, gc, io, json, threading, traceback, uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 import pandas as pd
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -16,15 +17,19 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import amazon_ads_client, db, export, gen_data, targeting_analysis, bulk_update
+from .market_monitor import router as market_monitor_router
+from .market_monitoring import repository as market_monitor_repository
 
 
 # ── App ───────────────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
+    market_monitor_repository.init_market_db(seed_defaults=True)
     yield
 
 app = FastAPI(title='广告漏斗分析 v2.0', version='2.0.0', lifespan=lifespan)
+app.include_router(market_monitor_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -102,7 +107,7 @@ def _run_amazon_sync_job(job_id: str, country_code: str):
     try:
         result = _amazon_sync_result(country_code)
         if result.get('ok'):
-            db.rebuild_from_raw()
+            db.rebuild_from_raw(countries=[country_code])
             _set_amazon_sync_job(
                 job_id,
                 ok=True,
@@ -192,23 +197,27 @@ def _import_reports_from_bytes(camp_bytes: bytes, port_bytes: bytes, title: str 
     except Exception as e:
         raise ValueError(f'Excel 读取失败: {e}') from e
 
-    db.upsert_raw(df_c, df_p)
+    affected = db.upsert_raw(df_c, df_p)
     del df_c, df_p
     gc.collect()
 
-    report_ids = db.rebuild_from_raw()
+    report_ids = db.rebuild_from_raw(
+        countries=affected.get('countries') or None,
+        week_keys=affected.get('week_keys') or None,
+    )
     if not report_ids:
         raise RuntimeError('raw 数据为空，导入失败')
 
-    reports = [db.get_report(rid) for rid in report_ids]
-    country_codes = sorted({
+    reports = db.list_reports()
+    country_codes = affected.get('countries') or sorted({
         r.get('country') for r in reports
         if r and r.get('country')
     })
     amazon_sync = [_amazon_sync_result(c) for c in country_codes]
     if any(s.get('ok') for s in amazon_sync):
-        db.rebuild_from_raw()
-        reports = [db.get_report(rid) for rid in report_ids]
+        synced_countries = [s.get('country_code') for s in amazon_sync if s.get('ok')]
+        db.rebuild_from_raw(countries=synced_countries)
+        reports = db.list_reports()
 
     return {
         'ids': report_ids,
@@ -413,12 +422,12 @@ def api_export_html(report_id: int):
 
     weeks = r['weeks']
     fname = f'广告漏斗分析_{weeks[0]}-{weeks[-1]}.html' if weeks else f'report_{report_id}.html'
-    fname_encoded = fname.encode('utf-8').hex()  # 避免中文文件名编码问题
+    fname_encoded = quote(fname, safe='')
 
     return StreamingResponse(
         io.BytesIO(html.encode('utf-8')),
         media_type='text/html; charset=utf-8',
-        headers={'Content-Disposition': f"attachment; filename*=UTF-8''{fname}"}
+        headers={'Content-Disposition': f"attachment; filename*=UTF-8''{fname_encoded}"}
     )
 
 

@@ -157,25 +157,95 @@ def init_db():
             conn.execute(text(
                 'ALTER TABLE bid_update_log ADD COLUMN up_orders_threshold INT DEFAULT 2'
             ))
-        # 迁移：领星原始表补加 Amazon Ads metadata 列
+        ensure_report_week_cols(conn)
         ensure_raw_metadata_cols(conn)
 
 
 # ── Reports ───────────────────────────────────────────────────────────────────
 
+def ensure_report_week_cols(conn=None):
+    """Ensure reports can store one country/week snapshot per row."""
+    engine = get_engine()
+
+    def _do(c):
+        cols = {row[0] for row in c.execute(text('SHOW COLUMNS FROM reports')).fetchall()}
+        if 'week_key' not in cols:
+            c.execute(text("ALTER TABLE reports ADD COLUMN week_key VARCHAR(10) NOT NULL DEFAULT ''"))
+        if 'week_start' not in cols:
+            c.execute(text('ALTER TABLE reports ADD COLUMN week_start DATE NULL'))
+        if 'week_end' not in cols:
+            c.execute(text('ALTER TABLE reports ADD COLUMN week_end DATE NULL'))
+        try:
+            c.execute(text(
+                'CREATE UNIQUE INDEX uq_reports_country_week '
+                'ON reports(country, week_key)'
+            ))
+        except Exception:
+            pass
+        try:
+            c.execute(text(
+                'CREATE INDEX idx_reports_country_week_start '
+                'ON reports(country, week_start)'
+            ))
+        except Exception:
+            pass
+
+    if conn is not None:
+        _do(conn)
+    else:
+        with engine.begin() as c:
+            _do(c)
+
+
+def _report_week_cols_exist() -> bool:
+    with get_engine().connect() as conn:
+        cols = {row[0] for row in conn.execute(text('SHOW COLUMNS FROM reports')).fetchall()}
+    return {'week_key', 'week_start', 'week_end'}.issubset(cols)
+
+
+def _week_sort_key(w):
+    year, week = str(w).split('W', 1)
+    return int(year), int(week)
+
+
+def _format_country_title(country, weeks):
+    wk_range = f'{weeks[0]}-{weeks[-1]}' if weeks else ''
+    return f'{country} {wk_range}' if wk_range else str(country)
+
+
 def list_reports():
+    if not _report_week_cols_exist():
+        with get_engine().connect() as conn:
+            result = conn.execute(text(
+                'SELECT id, title, country, weeks, wk_dates, camp_file, port_file, created_at '
+                'FROM reports ORDER BY created_at DESC'
+            ))
+            rows = result.mappings().all()
+        out = []
+        for r in rows:
+            d = dict(r)
+            d['weeks']    = json.loads(d['weeks'])
+            d['wk_dates'] = json.loads(d['wk_dates'])
+            out.append(d)
+        return out
+
     with get_engine().connect() as conn:
         result = conn.execute(text(
-            'SELECT id, title, country, weeks, wk_dates, camp_file, port_file, created_at '
-            'FROM reports ORDER BY created_at DESC'
+            """
+            SELECT country, MAX(id) AS id, MAX(created_at) AS created_at
+            FROM reports
+            WHERE week_key <> ''
+            GROUP BY country
+            ORDER BY MAX(created_at) DESC
+            """
         ))
         rows = result.mappings().all()
+
     out = []
     for r in rows:
-        d = dict(r)
-        d['weeks']    = json.loads(d['weeks'])
-        d['wk_dates'] = json.loads(d['wk_dates'])
-        out.append(d)
+        summary = _get_country_report_summary(r['country'])
+        if summary:
+            out.append(summary)
     return out
 
 
@@ -188,9 +258,236 @@ def get_report(report_id: int):
     if not row:
         return None
     d = dict(row)
+    if d.get('week_key'):
+        return get_country_report(d.get('country', ''))
     d['weeks']    = json.loads(d['weeks'])
     d['wk_dates'] = json.loads(d['wk_dates'])
     return d
+
+
+def _get_country_week_rows(country: str):
+    with get_engine().connect() as conn:
+        result = conn.execute(
+            text(
+                """
+                SELECT *
+                FROM reports
+                WHERE country=:country AND week_key <> ''
+                ORDER BY week_start ASC, week_key ASC
+                """
+            ),
+            {'country': str(country)}
+        )
+        return [dict(r) for r in result.mappings().all()]
+
+
+def _get_country_report_summary(country: str):
+    rows = _get_country_week_rows(country)
+    if not rows:
+        return None
+    weeks = []
+    wk_dates = {}
+    for row in rows:
+        row_weeks = json.loads(row['weeks'])
+        row_wk_dates = json.loads(row['wk_dates'])
+        for week in row_weeks:
+            if week not in weeks:
+                weeks.append(week)
+        wk_dates.update(row_wk_dates)
+    weeks = sorted(weeks, key=_week_sort_key)
+    latest = max(rows, key=lambda r: r['id'])
+    return {
+        'id': latest['id'],
+        'title': _format_country_title(country, weeks),
+        'country': country,
+        'weeks': weeks,
+        'wk_dates': wk_dates,
+        'camp_file': latest.get('camp_file') or '',
+        'port_file': latest.get('port_file') or '',
+        'created_at': latest.get('created_at'),
+    }
+
+
+def get_country_report(country: str):
+    rows = _get_country_week_rows(country)
+    if not rows:
+        return None
+    weekly_data = [json.loads(r['data']) for r in rows]
+    data = _merge_ads_compact(weekly_data)
+    latest = max(rows, key=lambda r: r['id'])
+    weeks = data.get('wk', [])
+    return {
+        'id': latest['id'],
+        'title': _format_country_title(country, weeks),
+        'country': country,
+        'weeks': weeks,
+        'wk_dates': data.get('wk_dates', {}),
+        'data': json.dumps(data, ensure_ascii=False, separators=(',', ':')),
+        'camp_file': latest.get('camp_file') or '',
+        'port_file': latest.get('port_file') or '',
+        'created_at': latest.get('created_at'),
+    }
+
+
+def _sum_metrics(items):
+    totals = {'sp': 0.0, 'sl': 0.0, 'cl': 0, 'im': 0, 'or_': 0}
+    for item in items:
+        if not item:
+            continue
+        totals['sp'] += float(item.get('sp') or 0)
+        totals['sl'] += float(item.get('sl') or 0)
+        totals['cl'] += int(item.get('cl') or 0)
+        totals['im'] += int(item.get('im') or 0)
+        totals['or_'] += int(item.get('or_') or 0)
+    sp, sl, cl, im, or_ = totals['sp'], totals['sl'], totals['cl'], totals['im'], totals['or_']
+    return {
+        'sp': round(sp, 4),
+        'sl': round(sl, 4),
+        'cl': cl,
+        'im': im,
+        'or_': or_,
+        'ac': round(sp / sl * 100, 4) if sl > 0 else None,
+        'ro': round(sl / sp, 4) if sp > 0 else None,
+        'ct': round(cl / im * 100, 4) if im > 0 else None,
+        'cv': round(or_ / cl * 100, 4) if cl > 0 else None,
+        'cp': round(sp / cl, 4) if cl > 0 else None,
+    }
+
+
+def _camp_status(metric):
+    if metric['or_'] > 0:
+        return 'converting'
+    if metric['cl'] > 0:
+        return 'click_no_order'
+    if metric['im'] > 0:
+        return 'imp_only'
+    return 'no_imp'
+
+
+def _merge_daily_maps(target, source):
+    for key, value in (source or {}).items():
+        if isinstance(value, dict) and all(k in value for k in ('sp', 'sl', 'cl', 'im', 'or_')):
+            target[key] = value
+        elif isinstance(value, dict):
+            child = target.setdefault(key, {})
+            _merge_daily_maps(child, value)
+        else:
+            target[key] = value
+
+
+def _merge_section_map(weekly_data, section, weeks):
+    week_index = {week: idx for idx, week in enumerate(weeks)}
+    merged = {}
+    for data in weekly_data:
+        week = data.get('wk', [''])[0] if data.get('wk') else ''
+        idx = week_index.get(week)
+        if idx is None:
+            continue
+        for name, item in (data.get(section) or {}).items():
+            bucket = merged.setdefault(name, {'w': [None] * len(weeks)})
+            bucket['w'][idx] = (item.get('w') or [item.get('t') or None])[0]
+    for bucket in merged.values():
+        bucket['t'] = _sum_metrics(bucket['w'])
+    return merged
+
+
+def _merge_prod_cats(weekly_data, weeks):
+    week_index = {week: idx for idx, week in enumerate(weeks)}
+    merged = {}
+    for data in weekly_data:
+        week = data.get('wk', [''])[0] if data.get('wk') else ''
+        idx = week_index.get(week)
+        if idx is None:
+            continue
+        for prod, cats in (data.get('prod_cats') or {}).items():
+            prod_bucket = merged.setdefault(prod, {})
+            for cat, item in (cats or {}).items():
+                bucket = prod_bucket.setdefault(cat, {'w': [None] * len(weeks)})
+                bucket['w'][idx] = (item.get('w') or [item.get('t') or None])[0]
+    for cats in merged.values():
+        for bucket in cats.values():
+            bucket['t'] = _sum_metrics(bucket['w'])
+    return merged
+
+
+def _merge_list_section(weekly_data, section, key_field, weeks):
+    week_index = {week: idx for idx, week in enumerate(weeks)}
+    merged = {}
+    for data in weekly_data:
+        week = data.get('wk', [''])[0] if data.get('wk') else ''
+        idx = week_index.get(week)
+        if idx is None:
+            continue
+        for item in data.get(section) or []:
+            key = item.get(key_field)
+            if key is None:
+                continue
+            bucket = merged.setdefault(key, {'base': {}, 'metrics': [None] * len(weeks)})
+            bucket['base'].update({k: v for k, v in item.items() if k not in ('t', 'wa')})
+            metric = item.get('t') or {k: item.get(k) for k in ('sp', 'sl', 'cl', 'im', 'or_')}
+            bucket['metrics'][idx] = metric
+
+    out = []
+    for bucket in merged.values():
+        total = _sum_metrics(bucket['metrics'])
+        row = dict(bucket['base'])
+        row['t'] = total
+        row['wa'] = [m.get('ac') if m else None for m in bucket['metrics']]
+        if section == 'camps':
+            row.update(total)
+            row['st'] = _camp_status(total)
+        out.append(row)
+    out.sort(key=lambda x: (x.get('t') or x).get('sp', 0) if isinstance(x.get('t'), dict) else x.get('sp', 0), reverse=True)
+    return out
+
+
+def _merge_ads_compact(weekly_data):
+    weeks = []
+    wk_dates = {}
+    wk_iso_dates = {}
+    for data in weekly_data:
+        for week in data.get('wk', []):
+            if week not in weeks:
+                weeks.append(week)
+        wk_dates.update(data.get('wk_dates') or {})
+        wk_iso_dates.update(data.get('wk_iso_dates') or {})
+    weeks = sorted(weeks, key=_week_sort_key)
+    week_index = {week: idx for idx, week in enumerate(weeks)}
+
+    ov_w = [None] * len(weeks)
+    for data in weekly_data:
+        week = data.get('wk', [''])[0] if data.get('wk') else ''
+        idx = week_index.get(week)
+        if idx is not None:
+            ov_w[idx] = (data.get('ov') or {}).get('w', [(data.get('ov') or {}).get('t')])[0]
+
+    merged_daily = {}
+    for data in weekly_data:
+        _merge_daily_maps(merged_daily, data.get('daily_ov') or {})
+
+    daily_prod, daily_cat, daily_prod_cat, daily_port = {}, {}, {}, {}
+    for data in weekly_data:
+        _merge_daily_maps(daily_prod, data.get('daily_prod') or {})
+        _merge_daily_maps(daily_cat, data.get('daily_cat') or {})
+        _merge_daily_maps(daily_prod_cat, data.get('daily_prod_cat') or {})
+        _merge_daily_maps(daily_port, data.get('daily_port') or {})
+
+    return {
+        'wk': weeks,
+        'wk_dates': {w: wk_dates[w] for w in weeks if w in wk_dates},
+        'wk_iso_dates': {w: wk_iso_dates[w] for w in weeks if w in wk_iso_dates},
+        'ov': {'t': _sum_metrics(ov_w), 'w': ov_w},
+        'cats': _merge_section_map(weekly_data, 'cats', weeks),
+        'prods': _merge_section_map(weekly_data, 'prods', weeks),
+        'ports': _merge_list_section(weekly_data, 'ports', 'n', weeks),
+        'camps': _merge_list_section(weekly_data, 'camps', 'n', weeks),
+        'prod_cats': _merge_prod_cats(weekly_data, weeks),
+        'daily_ov': dict(sorted(merged_daily.items())),
+        'daily_prod': daily_prod,
+        'daily_cat': daily_cat,
+        'daily_prod_cat': daily_prod_cat,
+        'daily_port': daily_port,
+    }
 
 
 def save_report(title: str, weeks: list, wk_dates: dict, data: dict,
@@ -685,13 +982,35 @@ def _sync_portfolio_from_import(df_new: pd.DataFrame):
             ), params)
 
 
+def _week_key_for_date(dt) -> str:
+    iso = pd.to_datetime(dt).isocalendar()
+    return f'{iso.year % 100:02d}W{iso.week}'
+
+
+def _affected_country_weeks(dc: pd.DataFrame, dp: pd.DataFrame) -> dict:
+    frames = [df for df in (dc, dp) if df is not None and not df.empty]
+    countries = set()
+    week_keys = set()
+    for df in frames:
+        if '国家' in df.columns:
+            countries.update(str(v) for v in df['国家'].dropna().unique())
+        if '日期' in df.columns:
+            week_keys.update(_week_key_for_date(v) for v in df['日期'].dropna().unique())
+    return {
+        'countries': sorted(countries),
+        'week_keys': sorted(week_keys, key=_week_sort_key),
+    }
+
+
 def upsert_raw(df_c: pd.DataFrame, df_p: pd.DataFrame):
     """增量写入 raw_camp_lx / raw_port_lx"""
     dc = _prep_raw(df_c)
     dp = _prep_raw(df_p)
+    affected = _affected_country_weeks(dc, dp)
     _upsert_lx('raw_camp_lx', dc, _KEYS_C, comp_key_fn=_camp_comp_key)
     _upsert_lx('raw_port_lx', dp, _KEYS_P)
     _sync_portfolio_from_import(dc)
+    return affected
 
 
 def get_raw_dfs():
@@ -715,11 +1034,10 @@ def get_raw_dfs():
     return df_c, df_p
 
 
-def rebuild_from_raw() -> list:
+def rebuild_from_raw(countries=None, week_keys=None, clear_reports: bool = False) -> list:
     """
-    按国家分组，从 raw_camp_lx / raw_port_lx 重建每个国家的报告 JSON。
-    - 每次导入后调用
-    - 服务器重启时调用
+    从 raw_camp_lx / raw_port_lx 重建报告 JSON。
+    物理存储粒度为 country + week_key；读取时再按 country 合并给前端。
     返回本次更新的 report_id 列表；raw 表为空时返回 []。
     """
     from . import gen_data
@@ -727,12 +1045,27 @@ def rebuild_from_raw() -> list:
     df_c, df_p = get_raw_dfs()
     if df_c is None:
         return []
+    ensure_report_week_cols()
 
     col_c = '国家' if '国家' in df_c.columns else None
     col_p = '国家' if '国家' in df_p.columns else None
 
-    # 获取所有国家（以 raw_camp_lx 为准）
-    countries = df_c[col_c].unique().tolist() if col_c else ['']
+    if countries is None:
+        countries = df_c[col_c].unique().tolist() if col_c else ['']
+    countries = [str(c) for c in countries]
+    if not countries:
+        countries = ['']
+
+    df_c['_report_week'] = df_c['日期'].apply(_week_key_for_date)
+    df_p['_report_week'] = df_p['日期'].apply(_week_key_for_date)
+    if week_keys is None:
+        week_keys = sorted(df_c['_report_week'].dropna().unique().tolist(), key=_week_sort_key)
+    else:
+        week_keys = sorted({str(w) for w in week_keys}, key=_week_sort_key)
+
+    if clear_reports:
+        with get_engine().begin() as conn:
+            conn.execute(text('DELETE FROM reports'))
 
     report_ids = []
     for country in countries:
@@ -741,54 +1074,70 @@ def rebuild_from_raw() -> list:
         if dc.empty or dp.empty:
             continue
 
-        try:
-            data = gen_data.process(dc, dp)
-        except Exception as e:
-            print(f'[rebuild] {country} 处理失败: {e}')
-            continue
+        for week_key in week_keys:
+            dcw = dc[dc['_report_week'] == week_key].drop(columns=['_report_week']).copy()
+            dpw = dp[dp['_report_week'] == week_key].drop(columns=['_report_week']).copy()
+            if dcw.empty:
+                continue
 
-        weeks     = data['wk']
-        wk_dates  = data.get('wk_dates', {})
-        wk_range  = f'{weeks[0]}-{weeks[-1]}' if weeks else ''
-        new_title = f'{country} {wk_range}' if wk_range else str(country)
+            try:
+                data = gen_data.process(dcw, dpw)
+            except Exception as e:
+                print(f'[rebuild] {country} {week_key} 处理失败: {e}')
+                continue
 
-        data_json    = json.dumps(data,     ensure_ascii=False, separators=(',', ':'))
-        weeks_json   = json.dumps(weeks,    ensure_ascii=False)
-        wkdates_json = json.dumps(wk_dates, ensure_ascii=False)
+            weeks = data['wk']
+            wk_dates = data.get('wk_dates', {})
+            wk_iso_dates = data.get('wk_iso_dates', {})
+            iso_range = wk_iso_dates.get(week_key) or []
+            week_start = iso_range[0] if len(iso_range) >= 1 else None
+            week_end = iso_range[1] if len(iso_range) >= 2 else None
+            new_title = _format_country_title(country, weeks)
 
-        with get_engine().begin() as conn:
-            existing = conn.execute(
-                text('SELECT id FROM reports WHERE country=:c ORDER BY id DESC LIMIT 1'),
-                {'c': str(country)}
-            ).first()
+            data_json = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
+            weeks_json = json.dumps(weeks, ensure_ascii=False)
+            wkdates_json = json.dumps(wk_dates, ensure_ascii=False)
 
-            if existing:
-                report_id = existing[0]
-                conn.execute(
-                    text(
-                        'UPDATE reports '
-                        'SET title=:title, weeks=:weeks, wk_dates=:wk_dates, '
-                        '    data=:data, created_at=NOW() '
-                        'WHERE id=:id'
-                    ),
-                    {'title': new_title, 'weeks': weeks_json,
-                     'wk_dates': wkdates_json, 'data': data_json, 'id': report_id}
-                )
-            else:
+            with get_engine().begin() as conn:
                 result = conn.execute(
                     text(
-                        "INSERT INTO reports "
-                        "(title, country, weeks, wk_dates, data, camp_file, port_file) "
-                        "VALUES (:title, :country, :weeks, :wk_dates, :data, '', '')"
+                        """
+                        INSERT INTO reports
+                            (title, country, week_key, week_start, week_end,
+                             weeks, wk_dates, data, camp_file, port_file, created_at)
+                        VALUES
+                            (:title, :country, :week_key, :week_start, :week_end,
+                             :weeks, :wk_dates, :data, '', '', NOW())
+                        ON DUPLICATE KEY UPDATE
+                            title=VALUES(title),
+                            week_start=VALUES(week_start),
+                            week_end=VALUES(week_end),
+                            weeks=VALUES(weeks),
+                            wk_dates=VALUES(wk_dates),
+                            data=VALUES(data),
+                            created_at=NOW()
+                        """
                     ),
-                    {'title': new_title, 'country': str(country),
-                     'weeks': weeks_json, 'wk_dates': wkdates_json, 'data': data_json}
+                    {
+                        'title': new_title,
+                        'country': str(country),
+                        'week_key': week_key,
+                        'week_start': week_start,
+                        'week_end': week_end,
+                        'weeks': weeks_json,
+                        'wk_dates': wkdates_json,
+                        'data': data_json,
+                    }
                 )
-                report_id = result.lastrowid
+                existing = conn.execute(
+                    text('SELECT id FROM reports WHERE country=:country AND week_key=:week_key'),
+                    {'country': str(country), 'week_key': week_key}
+                ).first()
+                report_id = existing[0] if existing else result.lastrowid
 
-        report_ids.append(report_id)
-        print(f'[rebuild] {country}  report_id={report_id}  {wk_range}  '
-              f'camp={len(dc)}行  port={len(dp)}行')
+            report_ids.append(report_id)
+            print(f'[rebuild] {country} {week_key} report_id={report_id} '
+                  f'camp={len(dcw)}行 port={len(dpw)}行')
 
     return report_ids
 
@@ -796,7 +1145,11 @@ def rebuild_from_raw() -> list:
 def delete_report(report_id: int):
     """删除报告。raw_camp_lx / raw_port_lx 是原始数据源，不随报告删除。"""
     with get_engine().begin() as conn:
-        conn.execute(text('DELETE FROM reports WHERE id=:id'), {'id': report_id})
+        row = conn.execute(text('SELECT country, week_key FROM reports WHERE id=:id'), {'id': report_id}).first()
+        if row and row[1]:
+            conn.execute(text('DELETE FROM reports WHERE country=:country'), {'country': row[0]})
+        else:
+            conn.execute(text('DELETE FROM reports WHERE id=:id'), {'id': report_id})
 
 
 # ── Config ────────────────────────────────────────────────────────────────────

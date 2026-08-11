@@ -32,3 +32,32 @@ sql/
 .DS_Store
 Thumbs.db
 docs/
+
+# Market Monitor deliverables: keep the broad local-data rules above, but
+# version only this feature's regression suite and approved source artifacts.
+!ads_funnel/tests/
+ads_funnel/tests/*
+!ads_funnel/tests/conftest.py
+!ads_funnel/tests/market_test_database.py
+!ads_funnel/tests/test_market_monitor*.py
+
+!ads_funnel/docs/
+ads_funnel/docs/*
+!ads_funnel/docs/market_monitor_daily_collection.md
+!ads_funnel/docs/US_Dog Slip Leads_关键词洞察列表_2026-06_高中低关键词.xlsx
+!ads_funnel/docs/superpowers/
+ads_funnel/docs/superpowers/*
+!ads_funnel/docs/superpowers/specs/
+ads_funnel/docs/superpowers/specs/*
+!ads_funnel/docs/superpowers/specs/2026-07-20-market-monitor-intelligent-dashboard-design.md
+!ads_funnel/docs/superpowers/specs/2026-07-20-market-monitor-collector-design.md
+!ads_funnel/docs/superpowers/specs/2026-07-20-slip-lead-leash-market-monitor-design.md
+!ads_funnel/docs/superpowers/plans/
+ads_funnel/docs/superpowers/plans/*
+!ads_funnel/docs/superpowers/plans/2026-07-20-market-monitor-intelligent-dashboard.md
+!ads_funnel/docs/superpowers/plans/2026-07-20-market-monitor-collector.md
+!ads_funnel/docs/superpowers/plans/2026-07-20-slip-lead-leash-market-monitor-backend.md
+
+# Runtime verification outputs are local-only and can be very large.
+.codex_tmp/
+.superpowers/brainstorm/

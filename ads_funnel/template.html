@@ -455,6 +455,7 @@ body.dark .drs-track::before{background:#334155}
 body.dark .drs-fill{background:#60a5fa}
 body.dark .drs-input::-webkit-slider-thumb{background:#3b82f6}
 body.dark .drs-lbl{color:#64748b}
+/* __MARKET_MONITOR_CSS__ */
 
 </style>
 </head>
@@ -465,7 +466,8 @@ body.dark .drs-lbl{color:#64748b}
   <button id="theme-btn" onclick="toggleTheme()" title="切换明暗模式">🌙</button>
 </div>
 <div id="tabbar">
-  <button class="tab-btn active" onclick="switchTab('ov')">总览</button>
+  <button class="tab-btn active" onclick="switchTab('mi')">市场洞察</button>
+  <button class="tab-btn" onclick="switchTab('ov')">总览</button>
   <button class="tab-btn" onclick="switchTab('l1')">L1 广告类别</button>
   <button class="tab-btn" onclick="switchTab('l2')">L2 广告组合</button>
   <button class="tab-btn" onclick="switchTab('l3')">L3 广告活动</button>
@@ -475,7 +477,125 @@ body.dark .drs-lbl{color:#64748b}
   <button class="tab-btn" onclick="switchTab('help')">使用说明</button>
 </div>
 
-<div id="tab-ov" class="tab-pane active">
+<div id="tab-mi" class="tab-pane active mi-root mi-command-center">
+  <header id="mi-context" class="mi-context" aria-label="市场监控上下文">
+    <div class="mi-context-title">
+      <span class="mi-eyebrow">DAILY COMMAND CENTER</span>
+      <h2>Slip Lead 市场指挥中心</h2>
+      <span id="mi-status" class="mi-status" role="status" aria-live="polite">准备加载</span>
+    </div>
+    <div class="mi-context-controls">
+      <div class="mi-field">
+        <label for="mi-market">细分利基</label>
+        <select id="mi-market"><option value="slip_lead_leash">Slip Lead Leash · US</option></select>
+      </div>
+      <div class="mi-field mi-object-field">
+        <label id="mi-object-label">分析对象 <span>· Listing 代表子体</span></label>
+        <button id="mi-object-trigger" class="mi-object-trigger" type="button" role="combobox"
+                aria-labelledby="mi-object-label" aria-controls="mi-object-options"
+                aria-haspopup="listbox" aria-expanded="false"></button>
+        <ul id="mi-object-options" class="mi-object-options" role="listbox"
+            aria-labelledby="mi-object-label" tabindex="-1" hidden></ul>
+        <select id="mi-asin" class="mi-visually-hidden" aria-hidden="true" tabindex="-1"></select>
+      </div>
+      <div class="mi-range" aria-label="日期范围">
+        <span class="mi-control-label">时间范围</span>
+        <div class="mi-segmented" role="group" aria-label="日期范围">
+          <button type="button" data-mi-range="7d">7 天</button>
+          <button type="button" data-mi-range="30d" class="is-active">30 天</button>
+          <button type="button" data-mi-range="custom">自定义</button>
+        </div>
+        <div id="mi-custom-dates" class="mi-custom-dates" hidden>
+          <label for="mi-date-from">开始</label><input id="mi-date-from" type="date">
+          <label for="mi-date-to">结束</label><input id="mi-date-to" type="date">
+        </div>
+      </div>
+      <button id="mi-refresh" class="mi-primary-button" type="button">刷新数据</button>
+    </div>
+  </header>
+
+  <section id="mi-data-quality" class="mi-data-quality" aria-label="数据质量"></section>
+  <section id="mi-kpis" class="mi-kpi-grid" aria-label="核心指标"></section>
+  <section id="mi-keyword-contribution" class="mi-section mi-keyword-contribution" aria-labelledby="mi-keyword-contribution-title">
+    <div class="mi-section-heading">
+      <div><span class="mi-section-kicker">KEYWORD MIX</span><h3 id="mi-keyword-contribution-title">关键词贡献 Top</h3></div>
+      <span class="mi-section-note">所选代表子体 · 最新完整日</span>
+    </div>
+    <div class="mi-section-body"></div>
+  </section>
+
+  <div class="mi-command-grid">
+    <section id="mi-trend" class="mi-section mi-trend" aria-labelledby="mi-trend-title">
+      <div class="mi-section-heading">
+        <div><span class="mi-section-kicker">MARKET SIGNAL</span><h3 id="mi-trend-title">联动趋势</h3></div>
+        <div class="mi-scenario-controls">
+          <div class="mi-segmented" role="group" aria-label="分析场景" id="mi-scenarios"></div>
+          <div class="mi-segmented mi-metrics" role="group" aria-label="分析指标" id="mi-metrics"></div>
+        </div>
+      </div>
+      <div class="mi-chart-frame"><div id="mi-trend-state" class="mi-chart-state" aria-live="polite"></div><canvas id="miTrendChart" height="132" aria-label="市场与商品趋势图" role="img" tabindex="-1"></canvas></div>
+    </section>
+
+    <div class="mi-signal-column">
+      <section id="mi-insights" class="mi-section" aria-labelledby="mi-insights-title">
+        <div class="mi-section-heading"><div><span class="mi-section-kicker">BRIEFING</span><h3 id="mi-insights-title">今日研判</h3></div></div>
+        <div class="mi-section-body"></div>
+      </section>
+      <section id="mi-anomalies" class="mi-section" aria-labelledby="mi-anomalies-title">
+        <div class="mi-section-heading"><div><span class="mi-section-kicker">INBOX</span><h3 id="mi-anomalies-title">异常事件</h3></div></div>
+        <div class="mi-section-body"></div>
+      </section>
+      <section id="mi-opportunities" class="mi-section" aria-labelledby="mi-opportunities-title">
+        <div class="mi-section-heading"><div><span class="mi-section-kicker">PRIORITY</span><h3 id="mi-opportunities-title">机会排序</h3></div></div>
+        <div class="mi-section-body"></div>
+      </section>
+    </div>
+  </div>
+
+  <aside id="mi-evidence-drawer" class="mi-evidence-drawer" aria-labelledby="mi-evidence-title" aria-hidden="true" hidden>
+    <div class="mi-drawer-heading"><div><span class="mi-section-kicker">EVIDENCE</span><h3 id="mi-evidence-title">证据链</h3></div><button id="mi-evidence-close" type="button" aria-label="关闭证据链">关闭</button></div>
+    <div id="mi-evidence-content"></div>
+  </aside>
+
+  <section id="mi-comparison" class="mi-section mi-comparison" aria-labelledby="mi-comparison-title">
+    <div class="mi-section-heading">
+      <div><span class="mi-section-kicker">DEEP COMPARISON</span><h3 id="mi-comparison-title">对象对比</h3></div>
+      <span class="mi-section-note">自身 vs 最多 3 个代表子体</span>
+    </div>
+    <div id="mi-competitor-picker" class="mi-competitor-picker" aria-label="选择竞品"></div>
+    <div class="mi-analysis-grid">
+      <div class="mi-chart-frame"><div id="mi-comparison-state" class="mi-chart-state" aria-live="polite"></div><canvas id="miComparisonChart" height="128" aria-label="商品对比趋势图" role="img"></canvas></div>
+      <div id="mi-comparison-table" class="mi-table-wrap"></div>
+    </div>
+    <div id="mi-gap-analysis" class="mi-gap-analysis" aria-label="差距贡献与行动优先级"></div>
+    <div id="mi-asin-table" class="mi-table-wrap mi-support-table"></div>
+  </section>
+
+  <section id="mi-keyword-dashboard" class="mi-section mi-keyword-dashboard" aria-labelledby="mi-keyword-title">
+    <div class="mi-section-heading">
+      <div><span class="mi-section-kicker">JUNE 2026 CATALOG</span><h3 id="mi-keyword-title">关键词竞争雷达</h3></div>
+      <div id="mi-relevance-tabs" class="mi-segmented mi-relevance-tabs" role="group" aria-label="关键词相关性">
+        <button type="button" data-mi-relevance="high" class="is-active">高相关 <strong>77</strong></button>
+        <button type="button" data-mi-relevance="mid">中相关 <strong>40</strong></button>
+        <button type="button" data-mi-relevance="low">低相关 <strong>139</strong></button>
+      </div>
+    </div>
+    <div class="mi-keyword-tools">
+      <div class="mi-field"><label for="mi-keyword">关键词</label><select id="mi-keyword"></select></div>
+      <div class="mi-field"><label for="mi-keyword-search">搜索词表</label><input id="mi-keyword-search" type="search" placeholder="关键词 / 中文翻译"></div>
+      <div id="mi-keyword-metrics" class="mi-segmented mi-keyword-metrics" role="group" aria-label="关键词趋势指标"></div>
+      <div id="mi-keyword-summary" class="mi-keyword-summary"></div>
+    </div>
+    <div class="mi-analysis-grid">
+      <div class="mi-chart-frame"><div id="mi-keyword-state" class="mi-chart-state" aria-live="polite"></div><canvas id="miKeywordChart" height="126" aria-label="关键词趋势图" role="img"></canvas></div>
+      <div id="mi-asin-keyword-table" class="mi-table-wrap"></div>
+    </div>
+    <div id="mi-keyword-opportunity" class="mi-keyword-opportunity" aria-label="关键词机会矩阵"></div>
+    <div id="mi-keyword-comp-table" class="mi-table-wrap"></div>
+  </section>
+</div>
+
+<div id="tab-ov" class="tab-pane">
   <div class="filter-bar">
     <span class="filter-label">商品</span>
     <button class="filter-pill active" onclick="setOvProd('all')">全部</button>
@@ -1868,6 +1988,9 @@ const REPORT_COUNTRY = '__REPORT_COUNTRY__';
 const REPORT_COUNTRY_CODE = '__REPORT_COUNTRY_CODE__';
 const RAW = __RAW_JSON__;</script>
 <script>
+/* __MARKET_MONITOR_JS__ */
+</script>
+<script>
 const WEEKS = ['W15','W16','W17','W18','W19'];
 const WK_DATES = {W15:'4/6-4/12',W16:'4/13-4/19',W17:'4/20-4/26',W18:'4/27-5/3',W19:'5/4-5/10'};
 const WK_ISO_DATES = {};
@@ -2365,11 +2488,12 @@ function initDaySlider(chartId, prefix, days){
 // ── Tab routing ────────────────────────────────────────────────────────────────
 function switchTab(id){
   document.querySelectorAll('.tab-btn').forEach((b,i)=>{
-    b.classList.toggle('active',['ov','l1','l2','l3','ana','cfg','data','help'][i]===id);
+    b.classList.toggle('active',['mi','ov','l1','l2','l3','ana','cfg','data','help'][i]===id);
   });
   document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('tab-'+id).classList.add('active');
-  if(id==='ov')renderOv();
+  if(id==='mi')MarketMonitor.load();
+  else if(id==='ov')renderOv();
   else if(id==='l1')renderL1();
   else if(id==='l2')renderL2();
   else if(id==='l3'){

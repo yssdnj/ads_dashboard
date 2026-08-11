@@ -35,17 +35,19 @@ db.py 使用 SQLAlchemy + PyMySQL，通过 `get_engine()` 单例获取连接。
 ```
 ads_funnel/
 ├── start.py          # 一键启动
-├── template.html     # 报告渲染模板（完整 JS+CSS，每次请求从磁盘读取并注入数据）
+├── template.html     # 报告渲染模板（含 Market Monitor 资源内联标记）
 ├── api/
 │   ├── main.py       # FastAPI 路由
 │   ├── db.py         # MySQL 操作层（SQLAlchemy）
 │   ├── gen_data.py   # Excel DataFrame → ads_compact dict
 │   ├── export.py     # ads_compact → HTML / CSV
+│   ├── market_monitoring/    # 市场监控：schema/repository/collector/analytics/service/router
 │   ├── targeting_analysis.py  # 投放结构分析 + 多轮竞价建议
 │   └── bulk_update.py         # 将分析结果写回 Amazon Bulk xlsx
 ├── frontend/
-│   └── index.html    # 无数据时的空状态页（上传入口）
-└── tests/            # 本地测试脚本（.gitignore 排除，不入库）
+│   ├── index.html    # 无数据时的空状态页（上传入口）
+│   └── static/market-monitor.{css,js}  # Market Insights 独立资源，导出时内联
+└── tests/            # 默认本地测试；Market Monitor 回归由 .gitignore 精确例外纳入版本控制
 ```
 
 `legacy/` 目录为 v1.0 冻结存档，请勿修改。
@@ -96,6 +98,14 @@ GET /api/analysis/mode1/campaign-trend         单活动的周趋势 + 日趋势
 - **日趋势标注**：调价日期在 x 轴显示橙色虚线（`chartjs-plugin-annotation@3`），悬停时通过 `chart.onHover` 展开每条原价→新价幅度详情
 - **注意**：`raw_camp_lx` 的国家列值为 `'UK'`/`'US'`/`'DE'`（非 `'United Kingdom'` 等全称）；`reports` 表的 `title` 首词即国家代码
 
+### Market Insights 市场监控
+
+- 业务库为 `ads_funnel_market`；FastAPI 查询路由不调用 MCP/供应商接口，但 lifespan 会建库/建表、执行增量迁移并 upsert 默认市场和 seed ASIN，因此启动账号需要 DDL/DML 权限。
+- 实现位于 `api/market_monitoring/`；三个旧 `market_monitor*.py` 仅为兼容 facade。
+- 关键词唯一来源为 `docs/US_Dog Slip Leads_关键词洞察列表_2026-06_高中低关键词.xlsx`：`high=77`、`mid=40`、`low=139`；只能用导入脚本显式同步，服务启动不会 seed 关键词；旧 `strong` 不参与活动配置、接口和聚合。
+- `/api/market-monitor/asins` 返回按父 ASIN 分组的代表子体。每日 ASIN 快照可持久化 nullable `image_url`；缺图由前端使用本地占位图。
+- 采集与关键词导入操作见 `docs/market_monitor_daily_collection.md`。
+
 ## 数据结构（ads_compact dict）
 
 ```
@@ -124,11 +134,17 @@ daily_*       按日期键的每日汇总
 
 ## 模板修改规则
 
-`template.html` 包含完整 JS+CSS，每次 HTTP 请求由 `export.py:_build_html()` 读取并用正则注入以下变量：
+`template.html` 每次 HTTP 请求由 `export.py:_build_html()` 读取并用正则注入以下变量：
 - `const RAW = __RAW_JSON__;` → 实际数据
 - `const WEEKS` / `const WK_DATES` / `const WK_ISO_DATES` → 周次信息（WK_ISO_DATES 供 L3 日期范围计算）
 - `let acosTargets = {...}` → ACoS 目标值
 - `const REPORT_COUNTRY = '__REPORT_COUNTRY__'` → 当前国家代码（如 `'UK'`）
+
+Market Monitor 的 CSS/JS 分别维护在 `frontend/static/market-monitor.css` 与
+`frontend/static/market-monitor.js`。`template.html` 保留
+`/* __MARKET_MONITOR_CSS__ */` / `/* __MARKET_MONITOR_JS__ */` 标记，
+`export.py:_build_html()` 在服务端内联资源，确保导出的 HTML 可离线使用。不要把该模块
+重新塞回内联源码，也不要改成运行时 `/static/market-monitor.*` 依赖。
 
 修改模板后，`--reload` 模式下刷新页面即可看到效果（无需重启）。
 
