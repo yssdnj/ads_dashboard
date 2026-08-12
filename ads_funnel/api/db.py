@@ -1013,7 +1013,40 @@ def upsert_raw(df_c: pd.DataFrame, df_p: pd.DataFrame):
     return affected
 
 
-def get_raw_dfs():
+def _week_date_range(week_keys):
+    if not week_keys:
+        return None, None
+    starts = []
+    ends = []
+    for week_key in week_keys:
+        year, week = str(week_key).split('W', 1)
+        iso_year = 2000 + int(year)
+        start = datetime.fromisocalendar(iso_year, int(week), 1).date()
+        starts.append(start)
+        ends.append(datetime.fromisocalendar(iso_year, int(week), 7).date())
+    return min(starts), max(ends)
+
+
+def _raw_filter_sql(countries=None, week_keys=None):
+    clauses = []
+    params = {}
+    if countries:
+        country_params = []
+        for idx, country in enumerate(countries):
+            key = f'country_{idx}'
+            country_params.append(f':{key}')
+            params[key] = str(country)
+        clauses.append(f"`国家` IN ({', '.join(country_params)})")
+    date_from, date_to = _week_date_range(week_keys)
+    if date_from and date_to:
+        clauses.append('`日期` BETWEEN :date_from AND :date_to')
+        params['date_from'] = date_from
+        params['date_to'] = date_to
+    where = f" WHERE {' AND '.join(clauses)}" if clauses else ''
+    return where, params
+
+
+def get_raw_dfs(countries=None, week_keys=None):
     """
     从 raw_camp_lx / raw_port_lx 读回完整 DataFrame，供 rebuild_from_raw 使用。
     表不存在或为空时返回 (None, None)。
@@ -1023,10 +1056,11 @@ def get_raw_dfs():
     tables = set(insp.get_table_names())
     if 'raw_camp_lx' not in tables or 'raw_port_lx' not in tables:
         return None, None
+    where_sql, params = _raw_filter_sql(countries, week_keys)
     with engine.connect() as _c:
-        df_c = pd.read_sql('SELECT * FROM `raw_camp_lx`', _c)
-        df_p = pd.read_sql('SELECT * FROM `raw_port_lx`', _c)
-    if df_c.empty or df_p.empty:
+        df_c = pd.read_sql(text(f'SELECT * FROM `raw_camp_lx`{where_sql}'), _c, params=params)
+        df_p = pd.read_sql(text(f'SELECT * FROM `raw_port_lx`{where_sql}'), _c, params=params)
+    if df_c.empty:
         return None, None
     for df in (df_c, df_p):
         if '日期' in df.columns:
@@ -1042,7 +1076,7 @@ def rebuild_from_raw(countries=None, week_keys=None, clear_reports: bool = False
     """
     from . import gen_data
 
-    df_c, df_p = get_raw_dfs()
+    df_c, df_p = get_raw_dfs(countries=countries, week_keys=week_keys)
     if df_c is None:
         return []
     ensure_report_week_cols()
@@ -1071,7 +1105,7 @@ def rebuild_from_raw(countries=None, week_keys=None, clear_reports: bool = False
     for country in countries:
         dc = df_c[df_c[col_c] == country].copy() if col_c else df_c
         dp = df_p[df_p[col_p] == country].copy() if col_p else df_p
-        if dc.empty or dp.empty:
+        if dc.empty:
             continue
 
         for week_key in week_keys:
