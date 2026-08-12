@@ -466,8 +466,7 @@ body.dark .drs-lbl{color:#64748b}
   <button id="theme-btn" onclick="toggleTheme()" title="切换明暗模式">🌙</button>
 </div>
 <div id="tabbar">
-  <button class="tab-btn active" onclick="switchTab('mi')">市场洞察</button>
-  <button class="tab-btn" onclick="switchTab('ov')">总览</button>
+  <button class="tab-btn active" onclick="switchTab('ov')">总览</button>
   <button class="tab-btn" onclick="switchTab('l1')">L1 广告类别</button>
   <button class="tab-btn" onclick="switchTab('l2')">L2 广告组合</button>
   <button class="tab-btn" onclick="switchTab('l3')">L3 广告活动</button>
@@ -475,9 +474,10 @@ body.dark .drs-lbl{color:#64748b}
   <button class="tab-btn" onclick="switchTab('cfg')">导入和配置</button>
   <button class="tab-btn" onclick="switchTab('data')">国家切换</button>
   <button class="tab-btn" onclick="switchTab('help')">使用说明</button>
+  <button class="tab-btn" onclick="switchTab('mi')">市场洞察</button>
 </div>
 
-<div id="tab-mi" class="tab-pane active mi-root mi-command-center">
+<div id="tab-mi" class="tab-pane mi-root mi-command-center">
   <header id="mi-context" class="mi-context" aria-label="市场监控上下文">
     <div class="mi-context-title">
       <span class="mi-eyebrow">DAILY COMMAND CENTER</span>
@@ -595,7 +595,7 @@ body.dark .drs-lbl{color:#64748b}
   </section>
 </div>
 
-<div id="tab-ov" class="tab-pane">
+<div id="tab-ov" class="tab-pane active">
   <div class="filter-bar">
     <span class="filter-label">商品</span>
     <button class="filter-pill active" onclick="setOvProd('all')">全部</button>
@@ -2488,7 +2488,7 @@ function initDaySlider(chartId, prefix, days){
 // ── Tab routing ────────────────────────────────────────────────────────────────
 function switchTab(id){
   document.querySelectorAll('.tab-btn').forEach((b,i)=>{
-    b.classList.toggle('active',['mi','ov','l1','l2','l3','ana','cfg','data','help'][i]===id);
+    b.classList.toggle('active',['ov','l1','l2','l3','ana','cfg','data','help','mi'][i]===id);
   });
   document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('tab-'+id).classList.add('active');
