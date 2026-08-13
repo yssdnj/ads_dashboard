@@ -1394,6 +1394,19 @@ def get_campaign_stats_by_date_range(
                 ),
                 {'country': country, 'date_from': date_from, 'date_to': date_to},
             )
+            weekly_result = conn.execute(
+                text(
+                    'SELECT `广告活动`, `日期`,'
+                    '  SUM(`花费`) AS sp,'
+                    '  SUM(`广告销售额`) AS sl'
+                    ' FROM `raw_camp_lx`'
+                    ' WHERE `国家` = :country'
+                    '   AND `日期` >= :date_from'
+                    '   AND `日期` <= :date_to'
+                    ' GROUP BY `广告活动`, `日期`'
+                ),
+                {'country': country, 'date_from': date_from, 'date_to': date_to},
+            )
             out: dict = {}
             for row in result.mappings():
                 name = str(row['广告活动'])
@@ -1409,6 +1422,27 @@ def get_campaign_stats_by_date_range(
                     'ct':  float(row['ct'])  if row['ct']  is not None else None,
                     'cv':  float(row['cv'])  if row['cv']  is not None else None,
                 }
+            week_keys = []
+            start_dt = pd.to_datetime(date_from).date()
+            end_dt = pd.to_datetime(date_to).date()
+            cur = start_dt
+            while cur <= end_dt:
+                wk = _week_key_for_date(cur)
+                if wk not in week_keys:
+                    week_keys.append(wk)
+                cur = cur + pd.Timedelta(days=1)
+            weekly_totals: dict = {}
+            for row in weekly_result.mappings():
+                name = str(row['广告活动'])
+                wk = _week_key_for_date(row['日期'])
+                bucket = weekly_totals.setdefault(name, {}).setdefault(wk, {'sp': 0.0, 'sl': 0.0})
+                bucket['sp'] += float(row['sp'] or 0)
+                bucket['sl'] += float(row['sl'] or 0)
+            for name, item in out.items():
+                item['wa'] = [
+                    round(v['sp'] / v['sl'] * 100, 2) if (v := weekly_totals.get(name, {}).get(wk)) and v['sl'] > 0 else None
+                    for wk in week_keys
+                ]
             return out
     except Exception:
         import traceback

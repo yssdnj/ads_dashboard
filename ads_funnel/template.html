@@ -2195,8 +2195,8 @@ function trendDots(wa,prod,maxPerRow){
   if(!wa||!wa.length)return'';
   const dots=wa.map((v,i)=>{
     let bg='#e2e8f0';
-    if(v!==null){const t=getTarget(prod);bg=v<=t*0.85?'#10b981':v<=t?'#3b82f6':v<=t*1.3?'#f59e0b':'#ef4444';}
-    const lbl=v!==null?v.toFixed(0)+'%':'--';
+    if(v!=null){const t=getTarget(prod);bg=v<=t*0.85?'#10b981':v<=t?'#3b82f6':v<=t*1.3?'#f59e0b':'#ef4444';}
+    const lbl=v!=null?v.toFixed(0)+'%':'--';
     return`<div class="tdot-col"><div class="tdot-val" style="color:${bg==='#e2e8f0'?'#94a3b8':bg}">${lbl}</div><div class="tdot-dot" style="background:${bg}"></div></div>`;
   });
   if(!maxPerRow)return'<div class="tdots-ext">'+dots.join('')+'</div>';
@@ -2204,10 +2204,18 @@ function trendDots(wa,prod,maxPerRow){
   for(let i=0;i<dots.length;i+=maxPerRow){
     rows.push(`<div class="tdots-ext">${dots.slice(i,i+maxPerRow).join('')}</div>`);
   }
-  return`<div style="display:flex;flex-direction:column;align-items:center;gap:3px">${rows.join('')}</div>`;
+  return`<div style="display:flex;flex-direction:column;align-items:flex-start;gap:3px">${rows.join('')}</div>`;
 }
 
 // ── Date/week helpers ──────────────────────────────────────────────────────────
+function l3TrendWa(c,r){
+  if(l3WkData&&Array.isArray(r?.wa))return r.wa;
+  return sliceWa(c.wa,l3WkFrom,l3WkTo);
+}
+function refreshL3ForFilters(){
+  syncWeekPicker('l3',l3WkFrom,l3WkTo);
+  setL3WkRange();
+}
 function _isoWkNum(dateStr){
   const d=new Date(dateStr+'T12:00:00');
   d.setDate(d.getDate()+3-(d.getDay()+6)%7);
@@ -2504,7 +2512,8 @@ function switchTab(id){
           L3_PCT_MAP=new Map(rows.map(r=>[r.campaign_name.toLowerCase().trim(),r]));
         }catch(e){L3_PCT_MAP=new Map();}
       }
-      renderL3();
+      syncWeekPicker('l3',l3WkFrom,l3WkTo);
+      await setL3WkRange();
     })();
   }
   else if(id==='ana'){renderAna();renderAnaFunnel();}
@@ -3284,30 +3293,30 @@ function setL3Prod(p){
   l3Prod=p;l3Page=0;
   document.querySelectorAll('[id^="l3pd-"]').forEach(el=>el.classList.remove('active'));
   const el=document.getElementById('l3pd-'+p);if(el)el.classList.add('active');
-  renderL3();
+  refreshL3ForFilters();
 }
-function setL3Cat(c){l3Cat=c;l3Page=0;document.querySelectorAll('[id^="l3ca-"]').forEach(el=>el.classList.remove('active'));document.getElementById('l3ca-'+(c==='all'?'all':c)).classList.add('active');renderL3();}
+function setL3Cat(c){l3Cat=c;l3Page=0;document.querySelectorAll('[id^="l3ca-"]').forEach(el=>el.classList.remove('active'));document.getElementById('l3ca-'+(c==='all'?'all':c)).classList.add('active');refreshL3ForFilters();}
 function setL3St(s){
   l3St=s;l3Page=0;
   document.querySelectorAll('[id^="l3st-"]').forEach(el=>el.classList.remove('active'));
   const m={all:'all',converting:'conv',click_no_order:'cno',imp_only:'imp',no_imp:'no'};
   const el=document.getElementById('l3st-'+m[s]);if(el)el.classList.add('active');
-  renderL3();
+  refreshL3ForFilters();
 }
 function setL3PerPage(n){l3PerPage=n;l3Page=0;renderL3();}
 function setL2Search(v){l2Search=v;l2Page=0;renderL2Table();}
-function setL3Search(v){l3Search=v;l3Page=0;renderL3();}
+function setL3Search(v){l3Search=v;l3Page=0;refreshL3ForFilters();}
 function setL3PortSearch(v){
   l3PortSearch=v||'';
   l3PortSelections=l3PortSearch?[l3PortSearch]:[];
   l3PortQuery='';
   l3Page=0;
-  renderL3();
+  refreshL3ForFilters();
 }
 function setL3PortQuery(v){
   l3PortQuery=v||'';
   l3Page=0;
-  renderL3();
+  refreshL3ForFilters();
   const inp=document.getElementById('l3PortSearchInput');
   if(inp){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}
 }
@@ -3343,7 +3352,7 @@ function selectL3PortSingle(v){
   l3PortQuery='';
   l3PortDropdownOpen=false;
   l3Page=0;
-  renderL3();
+  refreshL3ForFilters();
 }
 function toggleL3PortCheck(e,v){
   e.stopPropagation();
@@ -3352,7 +3361,7 @@ function toggleL3PortCheck(e,v){
   else l3PortSelections.push(v);
   l3PortSearch=l3PortSelections.join(' | ');
   l3Page=0;
-  renderL3();
+  refreshL3ForFilters();
 }
 function _l3EscOption(v){
   return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -3619,7 +3628,7 @@ function renderL3(){
       <td>${fmt(r.im,'int')}</td><td>${fmt(r.cl,'int')}</td><td>${fmt(r.or_||r.or,'int')}</td>
       <td>${fmt(r.sp,'$')}</td><td>${fmt(r.sl,'$')}</td><td>${fmt(r.cp,'$')}</td><td>${fmt(r.ct,'pct2')}</td><td>${fmt(r.cv,'pct2')}</td>
       <td class="${acCls}">${fmt(r.ac,'pct')}</td><td style="color:#718096;font-size:11px">${getTarget(c.p)}%</td><td>${fmt(r.ro,'x')}</td>
-      <td><div style="display:flex;justify-content:flex-start">${trendDots(sliceWa(c.wa,l3WkFrom,l3WkTo),c.p,20)}</div></td>
+      <td><div style="display:flex;justify-content:flex-start">${trendDots(l3TrendWa(c,r),c.p,20)}</div></td>
     </tr>`;
   }
   html+='</tbody></table>';
