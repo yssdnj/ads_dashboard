@@ -87,7 +87,6 @@ def test_get_raw_dfs_allows_empty_port_rows_when_campaign_rows_exist(monkeypatch
 
 def test_campaign_stats_by_date_range_returns_weekly_acos(monkeypatch):
     campaign_col = "\u5e7f\u544a\u6d3b\u52a8"
-    date_col = "\u65e5\u671f"
 
     class Result:
         def __init__(self, rows):
@@ -104,39 +103,34 @@ def test_campaign_stats_by_date_range_returns_weekly_acos(monkeypatch):
             return False
 
         def execute(self, statement, params):
-            sql = str(statement)
-            if "GROUP BY `\u5e7f\u544a\u6d3b\u52a8`, `" in sql:
-                return Result([
-                    {campaign_col: "camp-a", date_col: date(2026, 7, 27), "sp": 10, "sl": 100},
-                    {campaign_col: "camp-a", date_col: date(2026, 8, 3), "sp": 30, "sl": 100},
-                    {campaign_col: "camp-b", date_col: date(2026, 8, 3), "sp": 0, "sl": 0},
-                ])
+            assert "YEARWEEK" in str(statement)
             return Result([
                 {
                     campaign_col: "camp-a",
-                    "sp": 40,
-                    "sl": 200,
-                    "cl": 4,
-                    "im": 400,
-                    "or_": 2,
-                    "ac": 20,
-                    "ro": 5,
-                    "cp": 10,
-                    "ct": 1,
-                    "cv": 50,
+                    "yw": 202631,
+                    "sp": 10,
+                    "sl": 100,
+                    "cl": 1,
+                    "im": 100,
+                    "or_": 1,
+                },
+                {
+                    campaign_col: "camp-a",
+                    "yw": 202632,
+                    "sp": 30,
+                    "sl": 100,
+                    "cl": 3,
+                    "im": 300,
+                    "or_": 1,
                 },
                 {
                     campaign_col: "camp-b",
+                    "yw": 202632,
                     "sp": 0,
                     "sl": 0,
                     "cl": 0,
                     "im": 10,
                     "or_": 0,
-                    "ac": None,
-                    "ro": None,
-                    "cp": None,
-                    "ct": 0,
-                    "cv": None,
                 },
             ])
 
@@ -149,4 +143,9 @@ def test_campaign_stats_by_date_range_returns_weekly_acos(monkeypatch):
     result = db.get_campaign_stats_by_date_range("US", "2026-07-27", "2026-08-09")
 
     assert result["camp-a"]["wa"] == [10.0, 30.0]
+    assert result["camp-a"]["ac"] == 20.0
+    assert result["camp-a"]["ro"] == 5.0
+    assert result["camp-a"]["cp"] == 10.0
+    assert result["camp-a"]["ct"] == 1.0
+    assert result["camp-a"]["cv"] == 50.0
     assert result["camp-b"]["wa"] == [None, None]
