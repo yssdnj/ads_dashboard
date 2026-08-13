@@ -2212,6 +2212,9 @@ function l3TrendWa(c,r){
   if(l3WkData&&Array.isArray(r?.wa))return r.wa;
   return sliceWa(c.wa,l3WkFrom,l3WkTo);
 }
+function hasL3PrecomputedWa(){
+  return Array.isArray(RAW?.camps)&&RAW.camps.some(c=>Array.isArray(c.wa)&&c.wa.length===WEEKS.length&&c.wa.some(v=>v!=null));
+}
 function refreshL3ForFilters(){
   syncWeekPicker('l3',l3WkFrom,l3WkTo);
   setL3WkRange();
@@ -3502,6 +3505,9 @@ async function setL3WkRange(){
   l3Page=0;
   // 全范围不查 DB
   if(l3WkFrom===WEEKS[0]&&l3WkTo===WEEKS[WEEKS.length-1]){
+    l3WkData=null; l3WkNoData=false; renderL3(); return;
+  }
+  if(hasL3PrecomputedWa()){
     l3WkData=null; l3WkNoData=false; renderL3(); return;
   }
   const fromDays=wkDays(l3WkFrom), toDays=wkDays(l3WkTo);

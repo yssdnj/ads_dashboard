@@ -149,3 +149,44 @@ def test_campaign_stats_by_date_range_returns_weekly_acos(monkeypatch):
     assert result["camp-a"]["ct"] == 1.0
     assert result["camp-a"]["cv"] == 50.0
     assert result["camp-b"]["wa"] == [None, None]
+
+
+def test_merge_weekly_reports_preserves_list_weekly_acos():
+    weekly = [
+        {
+            "wk": ["26W31"],
+            "wk_dates": {"26W31": "7/27-8/2"},
+            "wk_iso_dates": {"26W31": ["2026-07-27", "2026-08-02"]},
+            "ov": {"w": [{"sp": 10, "sl": 100, "cl": 1, "im": 100, "or_": 1}]},
+            "cats": {},
+            "prods": {},
+            "prod_cats": {},
+            "ports": [
+                {"n": "port-a", "p": "SL", "c": "3_SP_KW\u7cbe\u51c6", "sp": 10, "sl": 100, "cl": 1, "im": 100, "or_": 1, "ac": 10.0, "wa": [10.0]},
+            ],
+            "camps": [
+                {"n": "camp-a", "po": "port-a", "p": "SL", "c": "3_SP_KW\u7cbe\u51c6", "ty": "SP", "st": "converting", "sp": 10, "sl": 100, "cl": 1, "im": 100, "or_": 1, "ac": 10.0, "wa": [10.0]},
+            ],
+        },
+        {
+            "wk": ["26W32"],
+            "wk_dates": {"26W32": "8/3-8/9"},
+            "wk_iso_dates": {"26W32": ["2026-08-03", "2026-08-09"]},
+            "ov": {"w": [{"sp": 30, "sl": 100, "cl": 3, "im": 300, "or_": 1}]},
+            "cats": {},
+            "prods": {},
+            "prod_cats": {},
+            "ports": [
+                {"n": "port-a", "p": "SL", "c": "3_SP_KW\u7cbe\u51c6", "sp": 30, "sl": 100, "cl": 3, "im": 300, "or_": 1, "ac": 30.0, "wa": [30.0]},
+            ],
+            "camps": [
+                {"n": "camp-a", "po": "port-a", "p": "SL", "c": "3_SP_KW\u7cbe\u51c6", "ty": "SP", "st": "converting", "sp": 30, "sl": 100, "cl": 3, "im": 300, "or_": 1, "ac": 30.0, "wa": [30.0]},
+            ],
+        },
+    ]
+
+    merged = db._merge_ads_compact(weekly)
+
+    assert merged["camps"][0]["wa"] == [10.0, 30.0]
+    assert merged["ports"][0]["wa"] == [10.0, 30.0]
+    assert merged["camps"][0]["ac"] == 20.0

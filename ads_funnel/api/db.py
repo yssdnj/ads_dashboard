@@ -424,7 +424,7 @@ def _merge_list_section(weekly_data, section, key_field, weeks):
                 continue
             bucket = merged.setdefault(key, {'base': {}, 'metrics': [None] * len(weeks)})
             bucket['base'].update({k: v for k, v in item.items() if k not in ('t', 'wa')})
-            metric = item.get('t') or {k: item.get(k) for k in ('sp', 'sl', 'cl', 'im', 'or_')}
+            metric = item.get('t') or {k: item.get(k) for k in ('sp', 'sl', 'cl', 'im', 'or_', 'ac', 'ro', 'ct', 'cv', 'cp')}
             bucket['metrics'][idx] = metric
 
     out = []
