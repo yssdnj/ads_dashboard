@@ -8,7 +8,7 @@ import re
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
-from sqlalchemy import create_engine, text, inspect as sa_inspect
+from sqlalchemy import create_engine, text, inspect as sa_inspect, Text
 
 _CONFIG_PATH = Path(__file__).parent.parent / 'db_config.json'
 _engine = None
@@ -895,7 +895,9 @@ def _upsert_lx(tbl: str, df_new: pd.DataFrame, keys: list, comp_key_fn=None):
 
     if row_count == 0:
         with engine.begin() as conn:
-            df_new.to_sql(tbl, conn, if_exists='replace', index=False)
+            # Empty budget-type values must not cause a numeric SQL column.
+            dtype = {'预算类型': Text()} if tbl == 'raw_camp_lx' and '预算类型' in df_new.columns else None
+            df_new.to_sql(tbl, conn, if_exists='replace', index=False, dtype=dtype)
     else:
         date_col = '日期'
         new_min = str(df_new[date_col].min())
